@@ -25,6 +25,7 @@ storage/checkpoints/*
 storage/backups/*
 storage/voices/*
 storage/music/*
+storage/review/*
 storage/*.json
 !storage/**/.gitkeep
 *.db

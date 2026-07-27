@@ -1,0 +1,5 @@
+# Review Agent — configuration
+# Bundles every produced video into a self-contained review folder for manual
+# approval BEFORE anything can be published. Controlled by
+# config/settings.yaml -> publishing.require_manual_approval.
+copy_video: true       # copy the mp4 into the review bundle (self-contained)

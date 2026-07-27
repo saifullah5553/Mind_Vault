@@ -216,7 +216,12 @@ See inline `# DESIGN:` comments throughout the code and the dedicated section in
 | Image generation | ✅ Free fallback (Pillow slide cards) | Stable Diffusion / ComfyUI + GPU |
 | Video assembly | ✅ Real **.mp4** via bundled ffmpeg (`pip install imageio-ffmpeg`), GIF fallback | richer motion graphics later |
 | Captions | ✅ Synced `.srt` generated + attached to uploads | — |
-| Publishing (YouTube/TikTok/IG/FB) | ✅ Real uploaders built (httpx), credential-gated, dry-run by default | just add credentials + set `dry_run: false` (see docs/PUBLISHING.md) |
+| Long-form documentaries (8–15 min) | ✅ Chaptered generator; can weave related shorts into one doc | — |
+| Background music | ✅ Procedural royalty-safe bed (or your tracks) + narration ducking + intro/outro swell | drop royalty-free tracks in `storage/music/` (optional) |
+| Batch production | ✅ `scripts.batch` produces N videos from the calendar with schedule | — |
+| Quality scorecard | ✅ hook / storytelling / fact / originality / retention / copyright-risk | — |
+| Review + manual approval | ✅ Every video held in `storage/review/` until approved (`scripts.review`) | — |
+| Publishing (YouTube/TikTok/IG/FB) | ✅ Real uploaders (httpx), credential-gated, **dry-run + private + approval-gated** | add credentials + `dry_run: false` (see docs/PUBLISHING.md) |
 | Analytics ingestion | 🔶 Schema + simulated ingest | Platform Data APIs |
 | Self-learning loop | ✅ Framework + rules updates on stored analytics | more real data over time |
 
@@ -235,6 +240,31 @@ To demonstrate the full **published → analytics → learning → CEO** loop of
 python -m scripts.seed_demo      # seeds published videos, then runs analytics+learning+CEO
 python -m scripts.build_calendar # prints the rolling balanced content calendar
 ```
+
+### Content operations: batch → review → approve → publish
+
+Nothing publishes automatically. The safe production workflow:
+
+```bash
+# 1. Produce a batch from the 90-day calendar (each lands in review as 'pending')
+python -m scripts.batch --count 5 --category both        # or --format long
+python -m scripts.run_pipeline --format long             # one long documentary
+
+# 2. Review the queue and inspect any bundle (video + script + thumbnail + scorecard)
+python -m scripts.review list
+python -m scripts.review show <run_id>
+
+# 3. Approve (or reject) — approval is the ONLY path to publishing
+python -m scripts.review approve <run_id>
+
+# 4. Publish approved videos — stays PRIVATE + dry-run until you flip those
+python -m scripts.publish_approved
+```
+
+Each review bundle lives in `storage/review/<run_id>/` with the final video,
+`script.txt`, `thumbnail.png`, `captions.srt`, `metadata.json`, and a
+`review.json` scorecard (hook / storytelling / fact / originality / retention /
+copyright-risk). Videos are gated by `publishing.require_manual_approval: true`.
 
 ### The AI presenter "Aria" — how to reach photorealism
 

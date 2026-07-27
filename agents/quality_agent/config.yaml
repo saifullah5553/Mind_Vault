@@ -1,4 +1,13 @@
 # Quality Control Agent — configuration
-# Thresholds mirror config/settings.yaml -> quality; kept here so QA can be
-# tuned independently of the global gate if needed.
-weights: {fact: 0.35, originality: 0.30, hook: 0.20, media: 0.15}
+# Full scorecard weights (sum ~1.0). Each dimension is scored and saved to the
+# review bundle. HARD gates: fact / originality / hook (from settings.yaml ->
+# quality) plus an overall floor here. Storytelling and retention_prediction are
+# ADVISORY (surfaced for the human reviewer; they do NOT trigger regeneration).
+weights:
+  fact: 0.22
+  originality: 0.20
+  hook: 0.18
+  storytelling: 0.18
+  retention: 0.12
+  media: 0.10
+overall_min: 70        # a produced video below this overall score is held/regenerated

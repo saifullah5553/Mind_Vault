@@ -45,8 +45,53 @@ class StubLLM(LLMProvider):
             "research": self._research,
             "improve_topic": self._improve_topic,
             "ceo_report": self._ceo_report,
+            "chapter": self._chapter,
         }.get(task, self._prose)
         return handler(topic, category, prompt)
+
+    def _chapter(self, topic: str, category: str, prompt: str) -> str:
+        chapter = _marker(prompt, "CHAPTER", "the story")
+        a = _seed_choice(topic + chapter + "1", [
+            f"When we turn to {chapter.lower()}, the story of {topic} stops being simple.",
+            f"The chapter of {chapter.lower()} is where {topic} first reveals its depth.",
+            f"To understand {chapter.lower()} is to see {topic} in a new light.",
+        ])
+        b = _seed_choice(topic + chapter + "2", [
+            "What looked settled was, in truth, balanced on a knife's edge.",
+            "Beneath the surface, forces had been building for a long time.",
+            "A single overlooked detail would come to change everything.",
+        ])
+        c = _seed_choice(topic + chapter + "3", [
+            f"The people caught inside {topic} could not yet see where it was leading.",
+            f"Each decision narrowed the paths still open to {topic}.",
+            f"Slowly, then all at once, {topic} bent toward its turning point.",
+        ])
+        d = _seed_choice(topic + chapter + "4", [
+            "And when the moment finally came, there was no going back.",
+            "By the time anyone understood, the shape of the future was already set.",
+            "What happened next would be remembered long after the reasons were forgotten.",
+        ])
+        e = _seed_choice(topic + chapter + "5", [
+            "Historians would later argue over exactly when the balance tipped.",
+            "The record is incomplete, but the shape of what happened is unmistakable.",
+            "Those closest to events left behind only fragments of what they knew.",
+        ])
+        f = _seed_choice(topic + chapter + "6", [
+            f"What makes {topic} so compelling is how ordinary it looked from the inside.",
+            f"The people living through {topic} had no map for what was coming.",
+            f"Every generation rediscovers {topic} and reads its own fears into it.",
+        ])
+        return (
+            f"{a} {b} {c} For a time, everything seemed to hold — the routines, the certainties, "
+            f"the quiet assumption that tomorrow would look like today. But the story of {topic} "
+            f"was never that kind of story. Small pressures accumulated in the background, unnoticed "
+            f"by almost everyone, until they were impossible to ignore. {e} And yet the deeper we look, "
+            f"the clearer it becomes that this was not the work of a single cause, but of many threads "
+            f"pulling at once. {f} Ambition and fear, loyalty and betrayal, chance and design — all of "
+            f"them left their mark on {chapter.lower()}. To trace them is to watch a familiar story "
+            f"become strange again, its edges sharper, its people more human. {d} It is here that "
+            f"{chapter.lower()} gives way to what comes next, and the deeper pattern of {topic} begins "
+            f"to show itself — a pattern that, once seen, is almost impossible to unsee.")
 
     # ── task handlers ──────────────────────────────────────────────────────
     def _hooks(self, topic: str, category: str, prompt: str) -> str:

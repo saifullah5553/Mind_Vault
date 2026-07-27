@@ -81,6 +81,68 @@ def test_hook_and_title_cleaners_strip_labels_and_quotes():
     assert seo._clean_title("The Fall of Rome") == "The Fall of Rome"
 
 
+def test_music_bed_is_procedural_and_copyright_safe():
+    from core.media.music import get_music_bed
+    path, source = get_music_bed(6.0, seed_text="test-topic")
+    assert source in ("procedural", "user")
+    if source == "procedural":
+        assert path and Path(path).exists()   # self-generated => copyright-safe
+
+
+def test_documentary_agent_builds_long_chaptered_script():
+    from core.registry import get_agent, load_all_agents
+    load_all_agents()
+    res = get_agent("documentary").execute(
+        {"topic": "the fall of an empire", "category": "history",
+         "hook": "One decision ended a thousand years of power.",
+         "chapters": ["Origins", "The Turning Point", "The Consequences", "What It Means Today"]})
+    assert res.status == "success"
+    script = res.output
+    assert "[CHAPTER: Origins]" in script.full_text
+    assert script.full_text.count("[CHAPTER:") == 4
+    assert script.word_count > 800                # ~6+ minutes of narration
+    assert script.structure.startswith("documentary-")
+
+
+def test_quality_scorecard_has_all_dimensions():
+    from core.registry import get_agent, load_all_agents
+    from core.schemas import (Hook, PipelineContext, ScoredTopic, Script)
+    load_all_agents()
+    ctx = PipelineContext(run_id="qtest", category="history")
+    ctx.topic = ScoredTopic(topic="rome", category="history", angle="The Fall of Rome")
+    ctx.selected_hook = Hook(text="Why did Rome really fall?", total=84.0)
+    ctx.script = Script(title="The Fall of Rome", hook="h", introduction="It began quietly.",
+                        body="But conflict grew. Then came the turning point. The lesson is ours.",
+                        ending="And so we remember.", cta="Follow.",
+                        full_text="It began quietly. But conflict grew. Then came the turning "
+                                   "point, a fateful and tragic moment. The lesson is ours today.",
+                        word_count=24)
+    rep = get_agent("quality").execute(ctx).output
+    for k in ("hook", "storytelling", "fact_confidence", "originality",
+              "retention_prediction", "copyright_risk", "overall"):
+        assert k in rep.scorecard
+    assert 0 <= rep.retention_prediction <= 100
+    assert 0 <= rep.storytelling_score <= 100
+
+
+def test_review_gate_holds_publishing_until_approved():
+    from core.orchestrator import Orchestrator
+    from core.config import get_settings
+    get_settings().publishing.require_manual_approval = True
+    ctx = Orchestrator().produce(category="psychology", video_format="short")
+    # A review bundle exists and is pending; publishing was HELD (no results).
+    assert ctx.extra.get("review_dir") and Path(ctx.extra["review_dir"]).exists()
+    assert (Path(ctx.extra["review_dir"]) / "review.json").exists()
+    assert (Path(ctx.extra["review_dir"]) / "metadata.json").exists()
+    assert ctx.publish_results == []            # nothing published without approval
+
+    # Approving flips the record; then it's eligible for (still-private) publish.
+    import scripts.review as review
+    review._set_status(ctx.run_id, "approved")
+    _, rec = review._load(ctx.run_id)
+    assert rec["status"] == "approved"
+
+
 def test_srt_captions_generated_from_scenes():
     from core.media.captions import build_srt
     from core.schemas import Scene

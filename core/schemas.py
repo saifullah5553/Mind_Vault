@@ -125,12 +125,16 @@ class QualityReport(BaseModel):
     fact_score: float
     originality_score: float
     hook_score: float
-    audio_ok: bool
-    visual_ok: bool
-    copyright_risk: str
-    overall_score: float
-    passed: bool
+    storytelling_score: float = 0.0
+    retention_prediction: float = 0.0
+    copyright_risk_score: float = 0.0        # 0 = no risk, 100 = high risk
+    audio_ok: bool = False
+    visual_ok: bool = False
+    copyright_risk: str = "low"
+    overall_score: float = 0.0
+    passed: bool = False
     reasons: list[str] = Field(default_factory=list)
+    scorecard: dict = Field(default_factory=dict)  # all named scores for the review UI
 
 
 class PlatformMetadata(BaseModel):

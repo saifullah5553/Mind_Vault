@@ -29,6 +29,7 @@ PROMPT_FILES: dict[str, str] = {
     "title": "title.txt",
     "description": "description.txt",
     "research": "research.txt",
+    "chapter": "chapter.txt",
 }
 
 

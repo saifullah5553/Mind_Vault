@@ -49,10 +49,12 @@ class StrategyConfig(BaseModel):
 
 class PublishingConfig(BaseModel):
     dry_run: bool = True
+    require_manual_approval: bool = True
     short_days: list[str] = Field(default_factory=lambda: ["mon", "wed", "fri"])
     long_days: list[str] = Field(default_factory=lambda: ["sun"])
     platforms: list[str] = Field(default_factory=lambda: ["youtube", "tiktok", "instagram", "facebook"])
     timezone: str = "UTC"
+    review_dir: str = "storage/review"
 
 
 class FormatSpec(BaseModel):
@@ -94,8 +96,10 @@ class ImagesConfig(BaseModel):
 class VideoConfig(BaseModel):
     engine: str = "auto"
     captions: bool = True
-    background_music: bool = False
+    background_music: bool = True
     music_dir: str = "storage/music"
+    music_volume: float = 0.18          # bed level under narration
+    music_intro_outro_seconds: float = 4.0  # bed swells louder at start/end
 
 
 class PresenterConfig(BaseModel):

@@ -153,6 +153,37 @@ def _composite_presenter(base: Path, overlay: str, out: Path, res, scale: float,
         return False
 
 
+def _mix_music(base: Path, out: Path, seconds: float, seed: str) -> bool:
+    """Lay a background bed UNDER the narration with ducking + intro/outro swell."""
+    ffmpeg = _ffmpeg_exe()
+    if not ffmpeg:
+        return False
+    from core.media.music import get_music_bed
+    cfg = get_settings().video
+    bed, source = get_music_bed(seconds, seed)
+    if not bed or source == "none":
+        return False
+    vol = cfg.music_volume
+    io = cfg.music_intro_outro_seconds
+    end = max(io, seconds - io)
+    # Louder at the intro (t<io) and outro (t>end), quieter in the middle; then
+    # sidechain-compress so the music dips whenever the narration is speaking.
+    env = f"volume='if(lt(t,{io}),{vol*2.4}, if(gt(t,{end}),{vol*2.4},{vol}))':eval=frame"
+    fc = (f"[1:a]{env}[bed];"
+          f"[bed][0:a]sidechaincompress=threshold=0.04:ratio=8:attack=5:release=320[duck];"
+          f"[0:a][duck]amix=inputs=2:duration=first:dropout_transition=2[a]")
+    cmd = [ffmpeg, "-y", "-i", str(base), "-stream_loop", "-1", "-i", bed,
+           "-filter_complex", fc, "-map", "0:v", "-map", "[a]",
+           "-c:v", "copy", "-c:a", "aac", "-shortest", str(out)]
+    try:
+        subprocess.run(cmd, check=True, capture_output=True)
+        log.info("Mixed %s background music (ducked).", source)
+        return out.exists()
+    except Exception as exc:
+        log.warning("Music mix failed (%s); keeping video without music.", exc)
+        return False
+
+
 def assemble_video(scenes: list[Scene], audio: VoiceResult | None, out_path: str | Path,
                    video_format: str = "short", presenter_overlay: str | None = None) -> VideoResult:
     """Assemble the final video. Never raises — always returns a VideoResult."""
@@ -191,13 +222,21 @@ def assemble_video(scenes: list[Scene], audio: VoiceResult | None, out_path: str
             final_path = composed
             presenter_used = True
 
-    log.info("Assembled video via %s%s -> %s", engine_used,
-             " + presenter PiP" if presenter_used else "", final_path.name)
+    # Background music (ducked under narration) on ffmpeg-built videos.
+    music_used = False
+    if engine_used == "ffmpeg" and cfg.video.background_music:
+        mixed = final_path.with_name(final_path.stem + "_music.mp4")
+        if _mix_music(final_path, mixed, total, out.stem):
+            final_path = mixed
+            music_used = True
+
+    tags = ("+presenter" if presenter_used else "") + ("+music" if music_used else "")
+    log.info("Assembled video via %s%s -> %s", engine_used, tags, final_path.name)
     return VideoResult(
         video_path=str(final_path),
         duration=round(total, 2),
         resolution=list(res),
-        engine=engine_used + ("+presenter" if presenter_used else ""),
+        engine=engine_used + tags,
         has_captions=cfg.video.captions,
     )
 

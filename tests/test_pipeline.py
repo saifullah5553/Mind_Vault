@@ -34,7 +34,7 @@ def test_pipeline_persists_content_and_memory():
         content = s.get(Content, ctx.content_id)
         assert content is not None
         # Any terminal status is valid; the point is content + Topic DNA persist.
-        assert content.status in ("published", "quality_passed", "quality_failed")
+        assert content.status in ("published", "quality_passed", "quality_failed", "in_review")
         assert content.quality_score is not None
         mem = s.query(ContentMemory).filter_by(video_id=ctx.content_id).first()
         assert mem is not None

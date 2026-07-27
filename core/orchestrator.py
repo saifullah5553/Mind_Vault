@@ -83,6 +83,7 @@ class Orchestrator:
             ("approve", self._stage_approve),
             ("seo", self._stage_seo),
             ("thumbnail", self._stage_thumbnail),
+            ("review", self._stage_review),
             ("publish", self._stage_publish),
             ("finalize", self._stage_finalize),
         ]
@@ -151,11 +152,18 @@ class Orchestrator:
     def _stage_script(self, ctx):
         from core.schemas import ResearchFact
         facts = [ResearchFact(**f) for f in ctx.extra.get("approved_facts", [])]
-        ctx.script = self._agent_output("script", {
+        common = {
             "topic": ctx.topic.topic, "category": ctx.category,
             "hook": ctx.selected_hook.text if ctx.selected_hook else "",
             "facts": facts, "title": ctx.topic.angle, "video_format": ctx.video_format,
-        }, ctx)
+        }
+        if ctx.video_format == "long":
+            # Long-form uses the chaptered Documentary agent. Related short-video
+            # topics can be threaded in as chapters via ctx.extra["chapters"].
+            common["chapters"] = ctx.extra.get("chapters")
+            ctx.script = self._agent_output("documentary", common, ctx)
+        else:
+            ctx.script = self._agent_output("script", common, ctx)
         self._update_content(ctx, status=ContentStatus.SCRIPTED.value, script=ctx.script.full_text,
                              title=ctx.script.title, keywords=[])
 
@@ -241,9 +249,23 @@ class Orchestrator:
         ctx.extra["thumbnails"] = result.get("variants", [])
         ctx.extra["thumbnail"] = result.get("selected")
 
+    def _stage_review(self, ctx):
+        if ctx.extra.get("quality_failed"):
+            return  # nothing worth reviewing
+        result = self._agent_output("review", ctx, ctx)
+        ctx.extra["review_dir"] = result.get("review_dir")
+        ctx.extra["review_status"] = result.get("status")
+
     def _stage_publish(self, ctx):
         if ctx.extra.get("quality_failed"):
             log.info("Publish skipped for run %s (quality gate not cleared).", ctx.run_id)
+            return
+        # Human-in-the-loop gate: hold everything for manual approval.
+        if self.settings.publishing.require_manual_approval and not ctx.extra.get("approved"):
+            log.info("Publish HELD for run %s — awaiting manual approval in %s "
+                     "(approve with: python -m scripts.review approve %s).",
+                     ctx.run_id, ctx.extra.get("review_dir"), ctx.run_id)
+            ctx.publish_results = []
             return
         ctx.publish_results = self._agent_output("publishing", ctx, ctx)
         published = any(r.status in ("published", "dry_run") for r in ctx.publish_results)

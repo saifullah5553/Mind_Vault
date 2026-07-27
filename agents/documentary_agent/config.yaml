@@ -1,0 +1,8 @@
+# Long-form Documentary Agent — configuration
+# Produces an 8–15 minute chaptered documentary. Chapters can be derived from the
+# taxonomy, or supplied (e.g. from several related short videos to combine).
+min_chapters: 4
+max_chapters: 6
+# Default documentary arc if specific chapter themes aren't supplied.
+default_arc: ["Origins", "The Turning Point", "The Consequences", "The Hidden Pattern", "What It Means Today"]
+target_words: [1200, 2200]     # ~8–15 min at ~150 wpm

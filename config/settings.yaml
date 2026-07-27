@@ -24,10 +24,12 @@ strategy:
 # ── Publishing cadence ──────────────────────────────────────────────────────
 publishing:
   dry_run: true                 # true = generate metadata but DO NOT upload
+  require_manual_approval: true # hold every video in the review folder until approved
   short_days: ["mon", "wed", "fri"]
   long_days: ["sun"]
   platforms: ["youtube", "tiktok", "instagram", "facebook"]
   timezone: "Asia/Dubai"
+  review_dir: "storage/review"
 
 # ── Video formats ───────────────────────────────────────────────────────────
 formats:
@@ -71,8 +73,10 @@ images:
 video:
   engine: "auto"                 # auto | ffmpeg | moviepy
   captions: true
-  background_music: false        # off until you supply royalty-free tracks
+  background_music: true         # procedural bed by default; drop royalty-free tracks in music_dir
   music_dir: "storage/music"
+  music_volume: 0.18             # bed level under narration (ducks automatically)
+  music_intro_outro_seconds: 4.0 # music swells a little at the intro and outro
 
 # ── Presenter (fictional AI persona; NEVER a real person; disclosed as AI) ──
 # Full persona + rendering settings live in agents/presenter_agent/config.yaml.

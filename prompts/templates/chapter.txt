@@ -1,0 +1,13 @@
+TASK: chapter
+TOPIC: {topic}
+CATEGORY: {category}
+CHAPTER: {chapter}
+FACTS:
+{facts}
+
+You are writing ONE chapter of a premium Mind_Vault documentary about the topic
+above. Write the chapter titled "{chapter}" as 250–350 words of flowing
+documentary narration (no headings, no bullet points, no "in this chapter").
+Use only verified facts; never invent quotes, dates, or statistics. Maintain
+suspense and a clear through-line, and end on a beat that pulls the viewer into
+the next chapter. Write in a warm, articulate narrator's voice.

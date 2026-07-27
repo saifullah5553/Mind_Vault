@@ -11,7 +11,8 @@ def test_all_agents_registered():
     names = set(list_agents())
     expected = {"ceo", "trend", "topic", "research", "fact", "hook", "script",
                 "visual", "voice", "presenter", "video", "quality", "seo",
-                "publishing", "analytics", "competitor", "learning", "thumbnail"}
+                "publishing", "analytics", "competitor", "learning", "thumbnail",
+                "review", "documentary"}
     assert expected.issubset(names), expected - names
 
 

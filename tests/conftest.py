@@ -18,12 +18,21 @@ os.environ["MIND_VAULT_LLM_PROVIDER"] = "stub"
 
 @pytest.fixture(autouse=True)
 def _fresh_db():
-    """Fresh in-memory schema per test."""
-    from core.config import reload_settings
+    """Fresh in-memory schema per test, with heavy media disabled for speed.
+
+    Pipeline smoke tests only need the DAG to complete, so we force the fast GIF
+    engine and turn off ffmpeg-heavy presenter compositing + music mixing here.
+    Those features have their own focused unit tests.
+    """
+    from core.config import get_settings, reload_settings
     from core.database.session import init_db, reset_engine
 
     reset_engine()
-    reload_settings()
+    s = reload_settings()
+    s.video.engine = "gif"
+    s.video.background_music = False
+    s.presenter.enabled = False
+    s.tts.provider = "silence"   # instant, deterministic audio in tests (real Piper is slow)
     init_db(drop=True)
     yield
     reset_engine()

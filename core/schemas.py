@@ -118,6 +118,7 @@ class VideoResult(BaseModel):
     resolution: list[int]
     engine: str
     has_captions: bool = False
+    srt_path: str | None = None
 
 
 class QualityReport(BaseModel):
@@ -139,6 +140,21 @@ class PlatformMetadata(BaseModel):
     tags: list[str] = Field(default_factory=list)
     hashtags: list[str] = Field(default_factory=list)
     category: str = ""
+
+
+class PublishPackage(BaseModel):
+    """Everything a platform uploader needs to post one video."""
+
+    platform: str
+    video_path: str
+    title: str
+    description: str
+    tags: list[str] = Field(default_factory=list)
+    hashtags: list[str] = Field(default_factory=list)
+    category: str = ""
+    thumbnail_path: str | None = None
+    srt_path: str | None = None
+    privacy: str = "private"                 # start PRIVATE for safety; flip to public later
 
 
 class PublishResult(BaseModel):

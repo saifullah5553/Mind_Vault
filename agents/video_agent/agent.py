@@ -35,6 +35,12 @@ class VideoAgent(BaseAgent):
         presenter_overlay = payload.get("presenter_overlay")
         result = assemble_video(plan.scenes, voice, out, video_format=video_format,
                                 presenter_overlay=presenter_overlay)
+
+        # Synced SRT captions (platforms reward them; used by the uploaders).
+        if self.settings.video.captions:
+            from core.media.captions import build_srt
+            srt = build_srt(plan.scenes, Path(self.settings.storage_path("videos")) / f"{run_id}.srt")
+            result.srt_path = srt
         self.log.info("Final video: %s via %s (%.1fs)",
                       Path(result.video_path).name, result.engine, result.duration)
         return result

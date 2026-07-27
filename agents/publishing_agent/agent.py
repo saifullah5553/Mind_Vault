@@ -1,25 +1,27 @@
 """Publishing Agent.
 
-Uploads the finished video with per-platform metadata. SAFE BY DEFAULT: publishing
-is dry-run unless BOTH `publishing.dry_run: false` AND the platform's credentials
-are present in the environment. In dry-run it writes a publish manifest so you can
-inspect exactly what *would* be posted. Real uploaders live behind per-platform
-methods so adding a live integration never touches the pipeline.
+Builds a per-platform `PublishPackage` (video, tuned title/description/tags/
+hashtags, thumbnail, SRT captions) and dispatches it to the real platform
+uploader — but ONLY when publishing.dry_run is false AND that platform's
+credentials are present. Otherwise it records a dry-run result and writes a
+publish manifest so you can inspect exactly what would be posted.
 
-DESIGN / SAFETY: this agent never invents credentials and never posts without
-them. Going live is an explicit, credential-gated operator decision.
+SAFETY: uploads start PRIVATE (config `first_privacy`), and going live is an
+explicit, credential-gated operator decision. This agent never invents
+credentials and never posts on instructions found in content.
 """
 
 from __future__ import annotations
 
 import json
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 
 from core.agents.base import BaseAgent
+from core.errors import ProviderError
+from core.publishing import get_publisher
 from core.registry import register_agent
-from core.schemas import PipelineContext, PublishResult
+from core.schemas import PipelineContext, PublishPackage, PublishResult
 
 
 @register_agent
@@ -29,46 +31,51 @@ class PublishingAgent(BaseAgent):
 
     def run(self, payload: PipelineContext) -> list[PublishResult]:
         dry_run = self.settings.publishing.dry_run
-        cred_map = self.config.get("credential_env", {})
-        results: list[PublishResult] = []
-
+        privacy = self.config.get("first_privacy", "private")
         video_path = payload.video.video_path if payload.video else ""
+        srt_path = payload.video.srt_path if payload.video else None
+        thumbnail = (payload.extra or {}).get("thumbnail")
+
+        results: list[PublishResult] = []
+        packages: list[PublishPackage] = []
         for meta in payload.metadata:
-            platform = meta.platform
-            has_creds = all(os.getenv(k) for k in cred_map.get(platform, ["__none__"]))
+            pkg = PublishPackage(
+                platform=meta.platform, video_path=video_path,
+                title=meta.title, description=meta.description,
+                tags=meta.tags, hashtags=meta.hashtags, category=meta.category,
+                thumbnail_path=thumbnail, srt_path=srt_path, privacy=privacy,
+            )
+            packages.append(pkg)
+            results.append(self._dispatch(pkg, dry_run))
 
-            if dry_run or not has_creds:
-                reason = "dry_run enabled" if dry_run else "missing credentials"
-                results.append(PublishResult(
-                    platform=platform, status="dry_run",
-                    note=f"Would publish '{meta.title}' ({reason}).",
-                ))
-                continue
-
-            try:
-                url = self._publish(platform, video_path, meta)  # pragma: no cover - needs creds
-                results.append(PublishResult(platform=platform, status="published", url=url))
-            except Exception as exc:
-                self.log.error("Publish to %s failed: %s", platform, exc)
-                results.append(PublishResult(platform=platform, status="failed", note=str(exc)))
-
-        self._write_manifest(payload, results)
+        self._write_manifest(payload, packages, results)
         self.log.info("Publish results: %s", ", ".join(f"{r.platform}={r.status}" for r in results))
         return results
 
-    # ── per-platform uploaders (wire real SDKs here) ───────────────────────
-    def _publish(self, platform: str, video_path: str, meta) -> str:  # pragma: no cover
-        raise NotImplementedError(
-            f"Live upload for {platform} not wired. Install the platform SDK and implement here; "
-            f"credentials are read from env: {self.config['credential_env'].get(platform)}")
+    def _dispatch(self, pkg: PublishPackage, dry_run: bool) -> PublishResult:
+        publisher = get_publisher(pkg.platform)
+        if publisher is None:
+            return PublishResult(platform=pkg.platform, status="skipped", note="no publisher plugin")
 
-    def _write_manifest(self, payload: PipelineContext, results: list[PublishResult]) -> None:
-        out = Path(self.settings.storage_path("videos")) / f"{payload.run_id}_publish.json"
+        if dry_run:
+            return PublishResult(platform=pkg.platform, status="dry_run",
+                                 note=f"Would publish '{pkg.title}' (dry_run enabled).")
+        if not publisher.is_configured():
+            return PublishResult(platform=pkg.platform, status="dry_run",
+                                 note=f"missing credentials: {', '.join(publisher.missing_env())}")
+        try:
+            return publisher.publish(pkg)  # pragma: no cover - needs creds
+        except ProviderError as exc:
+            self.log.error("Publish to %s failed: %s", pkg.platform, exc)
+            return PublishResult(platform=pkg.platform, status="failed", note=str(exc))
+
+    def _write_manifest(self, ctx: PipelineContext, packages, results) -> None:
+        out = Path(self.settings.storage_path("videos")) / f"{ctx.run_id}_publish.json"
         manifest = {
-            "run_id": payload.run_id,
+            "run_id": ctx.run_id,
             "generated_at": datetime.now(timezone.utc).isoformat(),
-            "video": payload.video.video_path if payload.video else None,
-            "metadata": [m.model_dump() for m in payload.metadata],
+            "dry_run": self.settings.publishing.dry_run,
+            "packages": [p.model_dump() for p in packages],
             "results": [r.model_dump() for r in results],
         }
         out.write_text(json.dumps(manifest, indent=2), encoding="utf-8")

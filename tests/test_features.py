@@ -81,6 +81,46 @@ def test_hook_and_title_cleaners_strip_labels_and_quotes():
     assert seo._clean_title("The Fall of Rome") == "The Fall of Rome"
 
 
+def test_srt_captions_generated_from_scenes():
+    from core.media.captions import build_srt
+    from core.schemas import Scene
+    scenes = [Scene(index=0, narration="First line.", visual_prompt="x", duration=3.0),
+              Scene(index=1, narration="Second line.", visual_prompt="y", duration=2.5)]
+    path = build_srt(scenes, "storage/audio/_test.srt")
+    assert path and Path(path).exists()
+    body = Path(path).read_text(encoding="utf-8")
+    assert "00:00:00,000 --> 00:00:03,000" in body
+    assert "First line." in body and "Second line." in body
+
+
+def test_publishers_gated_without_credentials(monkeypatch):
+    from core.publishing import get_publisher, publisher_status
+    # Ensure no creds in env for this test.
+    for k in ("YOUTUBE_CLIENT_ID", "FACEBOOK_PAGE_ID", "TIKTOK_ACCESS_TOKEN", "INSTAGRAM_USER_ID"):
+        monkeypatch.delenv(k, raising=False)
+    status = publisher_status()
+    assert set(status) == {"youtube", "facebook", "tiktok", "instagram"}
+    assert all(not v["configured"] for v in status.values())
+    yt = get_publisher("youtube")
+    assert not yt.is_configured()
+    assert "YOUTUBE_CLIENT_ID" in yt.missing_env()
+
+
+def test_publishing_agent_dry_run_by_default():
+    from core.registry import get_agent, load_all_agents
+    from core.schemas import PipelineContext, PlatformMetadata, VideoResult
+    load_all_agents()
+    ctx = PipelineContext(run_id="pubtest", category="history")
+    ctx.video = VideoResult(video_path="storage/videos/nope.mp4", duration=60,
+                            resolution=[1080, 1920], engine="gif")
+    ctx.metadata = [PlatformMetadata(platform="youtube", title="T", description="D"),
+                    PlatformMetadata(platform="tiktok", title="T", description="D")]
+    res = get_agent("publishing").execute(ctx).output
+    assert {r.platform for r in res} == {"youtube", "tiktok"}
+    # dry_run is true by default -> nothing actually posts.
+    assert all(r.status == "dry_run" for r in res)
+
+
 def test_ollama_availability_is_graceful_when_absent():
     from core.llm.ollama_provider import OllamaLLM
     o = OllamaLLM(model="llama3.1")

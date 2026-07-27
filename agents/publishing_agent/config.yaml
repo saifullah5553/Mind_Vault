@@ -1,9 +1,15 @@
 # Publishing Agent — configuration
+#
 # dry_run is inherited from config/settings.yaml -> publishing.dry_run.
-# Real uploads require platform credentials in .env / GitHub Secrets. Until those
-# exist, every platform returns a 'dry_run' result and writes a publish manifest.
-credential_env:
-  youtube:   ["YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "YOUTUBE_REFRESH_TOKEN"]
-  tiktok:    ["TIKTOK_ACCESS_TOKEN"]
-  instagram: ["INSTAGRAM_ACCESS_TOKEN"]
-  facebook:  ["FACEBOOK_PAGE_TOKEN"]
+# Real uploads require each platform's credentials in .env / GitHub Secrets
+# (see docs/PUBLISHING.md). Until then every platform returns a 'dry_run' result
+# and a full publish manifest is written for inspection.
+#
+# Credentials are declared by each publisher plugin (core/publishing/*.py):
+#   youtube   -> YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN
+#   facebook  -> FACEBOOK_PAGE_ID, FACEBOOK_PAGE_TOKEN
+#   tiktok    -> TIKTOK_ACCESS_TOKEN
+#   instagram -> INSTAGRAM_USER_ID, INSTAGRAM_ACCESS_TOKEN (+ public INSTAGRAM_VIDEO_URL)
+
+# New uploads start PRIVATE so you can review before making them public.
+first_privacy: "private"     # private | unlisted | public

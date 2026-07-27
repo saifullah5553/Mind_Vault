@@ -102,6 +102,17 @@ def _check_presenter():
     return lines
 
 
+def _check_publishing():
+    from core.publishing import publisher_status
+    lines = []
+    for name, st in publisher_status().items():
+        lines.append(f"[{_ok(st['configured'])}] {name} credentials"
+                     + ("" if st["configured"] else f"  -> set: {', '.join(st['missing_env'])}"))
+    lines.append(f"        publishing.dry_run = {get_settings().publishing.dry_run}"
+                 " (uploads happen only when this is false AND creds present)")
+    return lines
+
+
 def main() -> None:
     s = get_settings()
     print("\n" + "=" * 64)
@@ -112,7 +123,8 @@ def main() -> None:
     print(f"Presenter enabled: {s.presenter.enabled}   avatar: (see presenter_agent/config.yaml)")
     for title, fn in [("LLM / Ollama", _check_ollama), ("Natural voice", _check_voice),
                       ("GPU / CUDA", _check_gpu), ("Video / ffmpeg", _check_video),
-                      ("Presenter (photoreal)", _check_presenter)]:
+                      ("Presenter (photoreal)", _check_presenter),
+                      ("Publishing (credentials)", _check_publishing)]:
         print(f"\n-- {title} " + "-" * (60 - len(title)))
         for line in fn():
             print("  " + line)

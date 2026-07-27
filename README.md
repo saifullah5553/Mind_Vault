@@ -215,7 +215,8 @@ See inline `# DESIGN:` comments throughout the code and the dedicated section in
 | AI presenter "Aria" | ✅ Consistent synthetic persona, portrait generated & composited as PiP, disclosed as AI | GPU + Stable Diffusion (photoreal face) + SadTalker/Wav2Lip (lip-sync) — all free/open-source |
 | Image generation | ✅ Free fallback (Pillow slide cards) | Stable Diffusion / ComfyUI + GPU |
 | Video assembly | ✅ Real **.mp4** via bundled ffmpeg (`pip install imageio-ffmpeg`), GIF fallback | richer motion graphics later |
-| Publishing (YouTube/TikTok/IG/FB) | 🔶 Dry-run + metadata generation | Platform OAuth credentials |
+| Captions | ✅ Synced `.srt` generated + attached to uploads | — |
+| Publishing (YouTube/TikTok/IG/FB) | ✅ Real uploaders built (httpx), credential-gated, dry-run by default | just add credentials + set `dry_run: false` (see docs/PUBLISHING.md) |
 | Analytics ingestion | 🔶 Schema + simulated ingest | Platform Data APIs |
 | Self-learning loop | ✅ Framework + rules updates on stored analytics | more real data over time |
 

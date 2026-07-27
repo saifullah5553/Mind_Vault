@@ -1,0 +1,12 @@
+TASK: improve_topic
+TOPIC: {topic}
+
+Rewrite this generic topic into ONE curiosity-driven, click-worthy documentary
+title. Keep it truthful (no clickbait that the video can't deliver). Prefer a
+hidden reason, a surprising cause, or an untold story framing.
+
+Example:
+  Generic:  "The History of Rome"
+  Improved: "The Secret Reason Rome Collapsed After 1,000 Years"
+
+Return only the improved title, nothing else.

@@ -1,0 +1,8 @@
+TASK: research
+TOPIC: {topic}
+CATEGORY: {category}
+
+Produce concise research notes about the topic above for a documentary. Return
+5–8 factual bullet points covering: origins, key people, turning points, and
+common misconceptions. State only well-established, verifiable facts. Do not
+invent quotes, dates, or statistics. One bullet per line, starting with "- ".

@@ -1,0 +1,9 @@
+# Trend Discovery Agent — configuration
+# Network is OFF by default so runs are deterministic and offline-safe. Turn it
+# on to pull live signals from FREE sources (no API key required for these).
+use_network: false
+candidates_per_run: 12
+sources:
+  wikipedia_top: "https://en.wikipedia.org/api/rest_v1/feed/featured/2024/01/01"
+  reddit_json: "https://www.reddit.com/r/{sub}/top.json?t=week&limit=25"
+seasonal_boost: true    # boost topics tied to this month's historical anniversaries

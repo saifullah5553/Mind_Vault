@@ -1,0 +1,16 @@
+[project]
+name = "mind_vault"
+version = "0.1.0"
+description = "Autonomous, free-first AI media engine for psychology & history content."
+requires-python = ">=3.11"
+readme = "README.md"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.setuptools]
+# The project runs as a set of top-level packages (core, agents, api, scripts),
+# not a single installable package, so we keep discovery explicit.
+packages = ["core", "agents", "api", "scripts"]

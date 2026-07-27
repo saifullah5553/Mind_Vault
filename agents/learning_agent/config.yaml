@@ -1,0 +1,4 @@
+# Learning Agent — configuration
+min_samples: 3          # need at least N videos before trusting a pattern
+learned_rules_path: "config/learned_rules.yaml"
+top_n: 5

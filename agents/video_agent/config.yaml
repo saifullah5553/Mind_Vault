@@ -1,0 +1,4 @@
+# Video Editing Engine — configuration
+# Engine (ffmpeg/moviepy/gif) is chosen in config/settings.yaml (video.engine).
+generate_images: true      # render a still per scene before assembling
+burn_captions: true        # captions are baked into scene images by the image layer

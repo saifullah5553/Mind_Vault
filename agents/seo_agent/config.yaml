@@ -1,0 +1,8 @@
+# SEO / Metadata Agent — configuration
+# Each platform gets tuned metadata — NOT a copy-paste across platforms.
+platform_rules:
+  youtube:   {title_max: 100, desc_max: 4800, tags: 15, hashtags: 3, optimize_for: "watch time + search"}
+  tiktok:    {title_max: 100, desc_max: 2000, tags: 8,  hashtags: 5, optimize_for: "first-3s retention"}
+  instagram: {title_max: 90,  desc_max: 2000, tags: 8,  hashtags: 8, optimize_for: "saves + shares"}
+  facebook:  {title_max: 100, desc_max: 4000, tags: 10, hashtags: 3, optimize_for: "shares + comments"}
+base_hashtags: ["#mind_vault", "#psychology", "#history", "#documentary", "#learnontiktok"]

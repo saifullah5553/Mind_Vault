@@ -1,0 +1,38 @@
+# Secrets — NEVER commit
+.env
+*.key
+*.pem
+secrets/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Mind_Vault runtime artifacts
+logs/*.log
+# Runtime storage artifacts (keep the .gitkeep placeholders and the presenter's
+# canonical brand portrait storage/presenter/aria.png, which is NOT matched below).
+storage/videos/*
+storage/audio/*
+storage/images/*
+storage/thumbnails/*
+storage/checkpoints/*
+storage/backups/*
+storage/voices/*
+storage/music/*
+storage/*.json
+!storage/**/.gitkeep
+*.db
+*.sqlite3
+mind_vault.db
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

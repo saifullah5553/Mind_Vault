@@ -1,0 +1,7 @@
+# Analytics Agent — configuration
+# When platform API credentials are absent, the agent runs in 'simulate' mode:
+# it generates plausible performance figures (seeded by the video's quality/hook)
+# so the learning loop is exercisable end-to-end. Clearly flagged as simulated.
+mode: "auto"          # auto | simulate | live
+simulate_seed_from: "quality"   # quality | hook | random
+retention_deciles: 10

@@ -1,0 +1,14 @@
+# Fact Checking Agent — configuration
+# Confidence thresholds from the brief.
+approve_at: 90         # >= 90 -> approved
+verify_at: 70          # 70–90 -> needs additional verification (kept, flagged)
+# below 70 -> rejected (dropped from the dossier)
+require_min_approved: 3 # a script needs at least this many approved facts
+# Bonus/penalty applied to a source's base confidence during checking.
+license_bonus:
+  public-domain: 5
+  CC-BY-SA: 3
+  CC-BY: 3
+  general-knowledge: -3   # usable but flagged for verification (70–90 band)
+  none: -10
+  unknown: -5

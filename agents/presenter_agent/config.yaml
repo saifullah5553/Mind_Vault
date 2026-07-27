@@ -1,0 +1,60 @@
+# AI Presenter Agent — configuration
+#
+# ETHICS / TRANSPARENCY (do not remove):
+# - The presenter is a FULLY AI-GENERATED, FICTIONAL persona — a person who does
+#   NOT exist. She must never be built from, or made to resemble, a real,
+#   identifiable individual.
+# - Output is disclosed as AI-generated (see `disclosure`), which also keeps us
+#   compliant with platform synthetic-media rules (e.g. YouTube disclosure).
+#
+# The presenter is ENABLED. It degrades gracefully: if the photoreal models
+# (Stable Diffusion + SadTalker/Wav2Lip) or a GPU are absent, it still produces a
+# real, consistent portrait-over-narration clip on CPU at $0.
+
+enabled: true
+
+# ── The persona (a consistent brand identity) ───────────────────────────────
+persona:
+  name: "Aria"
+  # Descriptor used to GENERATE her synthetic face. Kept generic + fictional.
+  appearance: >
+    a young adult woman in her mid-20s, warm friendly natural face, soft studio
+    lighting, subtle smile, professional documentary host, photorealistic,
+    natural skin texture, neutral modern background
+  # A FIXED seed makes the same synthetic face appear in every video (brand
+  # consistency). Change it once to redesign her, then keep it stable.
+  seed: 776633
+  voice_gender: "female"
+  voice_style: "warm, calm, articulate documentary narration"
+
+disclosure: "Narrated by Aria, an AI-generated presenter."
+
+# ── Rendering pipeline (free-first, pluggable) ──────────────────────────────
+# avatar_provider: how her still portrait is created
+#   auto            -> stable_diffusion if a GPU/model is available, else stylized
+#   stable_diffusion-> photoreal synthetic face (needs GPU + diffusers)
+#   stylized        -> tasteful CPU portrait card (always works, $0, not photoreal)
+avatar_provider: "auto"
+
+# lipsync_provider: how the talking clip is produced
+#   auto      -> sadtalker/wav2lip if installed, else ken_burns
+#   sadtalker -> photoreal talking head (needs GPU)
+#   wav2lip   -> lip-synced mouth on the portrait (needs GPU)
+#   ken_burns -> $0 CPU fallback: portrait with subtle motion over the narration
+lipsync_provider: "auto"
+
+# Path where her canonical portrait is cached/reused across videos.
+portrait_path: "storage/presenter/aria.png"
+
+# Photoreal lip-sync commands (GPU). Uncomment + edit paths after installing the
+# tool. Placeholders: {image} {audio} {out} {outdir}. See docs/SETUP_AI.md.
+# sadtalker_cmd: "python /opt/SadTalker/inference.py --source_image {image} --driven_audio {audio} --result_dir {outdir} --still --preprocess full"
+# wav2lip_cmd:   "python /opt/Wav2Lip/inference.py --checkpoint_path /opt/Wav2Lip/checkpoints/wav2lip_gan.pth --face {image} --audio {audio} --outfile {out}"
+
+# How the presenter is placed in the final video.
+#   pip   -> picture-in-picture over the documentary slides (recommended)
+#   full  -> presenter fills the frame (talking-head style)
+#   intro -> presenter only as a short intro, then slides
+composite: "pip"
+pip_scale: 0.30          # presenter width as a fraction of the frame (pip mode)
+pip_corner: "bottom-right"

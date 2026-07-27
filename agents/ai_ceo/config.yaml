@@ -1,0 +1,5 @@
+# AI CEO Agent — configuration
+# The CEO enforces the strategic category mix and quality bar, and authors the
+# weekly review. It reads (not overrides) config/settings.yaml -> strategy/quality.
+report_period_format: "%Y-W%W"    # e.g. 2026-W30
+approve_requires_quality_pass: true

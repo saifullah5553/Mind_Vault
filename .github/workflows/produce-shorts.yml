@@ -1,0 +1,39 @@
+name: Produce Short Videos
+
+# Generates complete short videos Mon / Wed / Fri.
+on:
+  schedule:
+    - cron: "0 9 * * 1,3,5"   # 09:00 UTC Mon, Wed, Fri
+  workflow_dispatch:
+    inputs:
+      category:
+        description: "psychology | history | (blank = CEO decides)"
+        required: false
+        default: ""
+
+jobs:
+  produce:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Install system media tools (FFmpeg)
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: pip install -r requirements.txt
+      - name: Produce a short
+        env:
+          MIND_VAULT_ENV: production
+          OLLAMA_HOST: ${{ secrets.OLLAMA_HOST }}
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+        run: |
+          python -m scripts.init_db
+          python -m scripts.run_pipeline ${{ github.event.inputs.category && format('--category {0}', github.event.inputs.category) || '' }} --format short
+      - name: Backup
+        run: python -m scripts.backup
+      - uses: actions/upload-artifact@v4
+        with:
+          name: short-video
+          path: storage/videos/

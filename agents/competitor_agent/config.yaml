@@ -1,0 +1,5 @@
+# Competitor Intelligence Agent — configuration
+use_network: false     # opt-in: YouTube Data API / RSS scans (respect ToS)
+# Seed niches to monitor. Do NOT copy content — find under-served angles.
+niches: ["psychology explainers", "history mysteries", "educational documentaries"]
+opportunity_threshold: 0.6   # high demand + weak existing coverage

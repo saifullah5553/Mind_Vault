@@ -1,0 +1,5 @@
+# Voice Agent — configuration
+# The actual provider is chosen in config/settings.yaml (tts.provider). This file
+# is for narration-specific tuning only.
+add_intro_pause: true
+narration_prefix: ""     # optional spoken channel ident, e.g. "Mind_Vault."

@@ -1,0 +1,4 @@
+# Quality Control Agent — configuration
+# Thresholds mirror config/settings.yaml -> quality; kept here so QA can be
+# tuned independently of the global gate if needed.
+weights: {fact: 0.35, originality: 0.30, hook: 0.20, media: 0.15}

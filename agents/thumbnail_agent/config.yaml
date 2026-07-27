@@ -1,0 +1,12 @@
+# Thumbnail Testing Engine — configuration
+# Generates multiple free (Pillow) thumbnail variants per video and stores them
+# for A/B testing. Once CTR data accrues in the `thumbnails` table, the Learning
+# Agent can favour the styles/colours/layouts that actually win.
+variants: 3
+short_size: [1080, 1920]     # vertical
+long_size: [1280, 720]       # classic YouTube 16:9
+styles:
+  - {name: "bold-contrast", palette: [[10, 12, 20], [232, 74, 74]], text: "top"}
+  - {name: "calm-authority", palette: [[12, 22, 34], [64, 120, 200]], text: "center"}
+  - {name: "mystery-dark",  palette: [[8, 8, 12], [180, 150, 60]], text: "bottom"}
+max_words: 6                 # thumbnails are punchy, not full titles

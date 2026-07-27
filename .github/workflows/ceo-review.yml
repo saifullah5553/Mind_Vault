@@ -1,0 +1,38 @@
+name: Weekly AI CEO Review
+
+# Sunday-night strategy review: analyze performance, learn, adjust strategy.
+on:
+  schedule:
+    - cron: "0 22 * * 0"    # 22:00 UTC Sunday
+  workflow_dispatch: {}
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r requirements.txt
+      - name: Learn & report
+        env:
+          MIND_VAULT_ENV: production
+          OLLAMA_HOST: ${{ secrets.OLLAMA_HOST }}
+        run: |
+          python -m scripts.init_db
+          python - <<'PY'
+          from core.registry import load_all_agents, get_agent
+          load_all_agents()
+          get_agent("analytics").execute({})
+          learn = get_agent("learning").execute({})
+          report = get_agent("ceo").execute({})
+          print("Learning insights:", learn.output)
+          print("CEO report:", report.output.summary if report.output else None)
+          PY
+      - name: Commit learned rules
+        run: |
+          git config user.name "mind_vault-ceo"
+          git config user.email "ceo@mind_vault.local"
+          git add config/learned_rules.yaml || true
+          git commit -m "chore(ceo): weekly learned rules update" || echo "no changes"
+          git push || echo "push skipped"

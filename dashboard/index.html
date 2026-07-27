@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Mind_Vault — Control Room</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --line:#232b36; --ink:#e6edf3; --mut:#8b949e; --acc:#8b7bf0; --ok:#3fb950; --warn:#d29922; --bad:#f85149; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--ink); }
+  header { padding:20px 28px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:14px; }
+  header h1 { font-size:18px; margin:0; letter-spacing:.3px; }
+  header .tag { color:var(--mut); font-size:12px; }
+  .btn { margin-left:auto; background:var(--acc); color:#fff; border:0; padding:9px 16px; border-radius:8px; cursor:pointer; font-weight:600; }
+  .btn:active { transform:translateY(1px); }
+  main { padding:24px 28px; max-width:1200px; margin:0 auto; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:22px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px 18px; }
+  .card .k { color:var(--mut); font-size:12px; text-transform:uppercase; letter-spacing:.6px; }
+  .card .v { font-size:26px; font-weight:700; margin-top:6px; }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px 20px; margin-bottom:20px; }
+  section h2 { font-size:14px; margin:0 0 12px; color:var(--mut); text-transform:uppercase; letter-spacing:.6px; }
+  table { width:100%; border-collapse:collapse; }
+  th,td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); font-size:13px; }
+  th { color:var(--mut); font-weight:600; }
+  .pill { padding:2px 9px; border-radius:20px; font-size:11px; font-weight:600; }
+  .s-published { background:rgba(63,185,80,.15); color:var(--ok); }
+  .s-quality_failed,.s-failed { background:rgba(248,81,73,.15); color:var(--bad); }
+  .s-produced,.s-scripted,.s-researched,.s-idea { background:rgba(210,153,34,.15); color:var(--warn); }
+  .muted { color:var(--mut); }
+  .summary { line-height:1.7; }
+  ul.actions { margin:8px 0 0; padding-left:18px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🧠 Mind_Vault</h1>
+  <span class="tag">autonomous media control room</span>
+  <button class="btn" onclick="triggerRun()">▶ Produce a video</button>
+</header>
+<main>
+  <div class="grid" id="stats"></div>
+
+  <section>
+    <h2>AI CEO — latest review</h2>
+    <div id="ceo" class="summary muted">Loading…</div>
+  </section>
+
+  <section>
+    <h2>Recent content</h2>
+    <table><thead><tr><th>Title</th><th>Category</th><th>Format</th><th>Quality</th><th>Status</th></tr></thead>
+    <tbody id="content"></tbody></table>
+  </section>
+
+  <section>
+    <h2>Top topic pipeline</h2>
+    <table><thead><tr><th>Angle</th><th>Category</th><th>Score</th><th>Status</th></tr></thead>
+    <tbody id="topics"></tbody></table>
+  </section>
+
+  <section>
+    <h2>Recent agent runs</h2>
+    <table><thead><tr><th>Run</th><th>Agent</th><th>Status</th><th>ms</th></tr></thead>
+    <tbody id="runs"></tbody></table>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const pill = s => `<span class="pill s-${s}">${s}</span>`;
+
+async function j(url, opt){ const r = await fetch(url, opt); return r.json(); }
+
+async function load(){
+  try {
+    const [sum, content, topics, ceo, runs] = await Promise.all([
+      j('/api/analytics/summary'), j('/api/content?limit=15'),
+      j('/api/topics?limit=10'), j('/api/ceo/report'), j('/api/runs?limit=15')
+    ]);
+
+    $('stats').innerHTML = [
+      ['Published', sum.published],
+      ['Total views', sum.total_views.toLocaleString()],
+      ['Avg retention', sum.avg_retention + '%'],
+      ['Content items', content.length],
+    ].map(([k,v]) => `<div class="card"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+
+    $('ceo').innerHTML = `<div>${ceo.summary}</div>` +
+      (ceo.actions && ceo.actions.length ? `<ul class="actions">${ceo.actions.map(a=>`<li>${a}</li>`).join('')}</ul>` : '');
+
+    $('content').innerHTML = content.map(c => `<tr>
+      <td>${c.title || c.topic}</td><td>${c.category}</td><td>${c.format}</td>
+      <td>${c.quality_score ?? '—'}</td><td>${pill(c.status)}</td></tr>`).join('')
+      || '<tr><td colspan="5" class="muted">No content yet — click “Produce a video”.</td></tr>';
+
+    $('topics').innerHTML = topics.map(t => `<tr>
+      <td>${t.angle || t.topic}</td><td>${t.category}</td>
+      <td>${t.total_score}</td><td>${pill(t.status)}</td></tr>`).join('')
+      || '<tr><td colspan="4" class="muted">No topics yet.</td></tr>';
+
+    $('runs').innerHTML = runs.map(r => `<tr>
+      <td class="muted">${r.run_id}</td><td>${r.agent}</td>
+      <td>${pill(r.status)}</td><td>${r.duration_ms}</td></tr>`).join('')
+      || '<tr><td colspan="4" class="muted">No runs yet.</td></tr>';
+  } catch(e){ console.error(e); }
+}
+
+async function triggerRun(){
+  const res = await j('/api/pipeline/run', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+  alert('Production started (job ' + res.job_id + '). The dashboard refreshes automatically.');
+  setTimeout(load, 4000);
+}
+
+load();
+setInterval(load, 8000);
+</script>
+</body>
+</html>

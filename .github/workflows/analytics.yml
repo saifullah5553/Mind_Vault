@@ -1,0 +1,32 @@
+name: Daily Analytics
+
+# Collects performance data and updates the learning database daily.
+on:
+  schedule:
+    - cron: "0 5 * * *"     # 05:00 UTC daily
+  workflow_dispatch: {}
+
+jobs:
+  analytics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r requirements.txt
+      - name: Ingest analytics
+        env:
+          MIND_VAULT_ENV: production
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+        run: |
+          python -m scripts.init_db
+          python - <<'PY'
+          from core.registry import load_all_agents, get_agent
+          load_all_agents()
+          get_agent("analytics").execute({})
+          print("Analytics ingested.")
+          PY
+      - name: Backup
+        run: python -m scripts.backup

@@ -1,0 +1,26 @@
+name: Weekly Documentary
+
+# Generates one long-form documentary every Sunday.
+on:
+  schedule:
+    - cron: "0 10 * * 0"     # 10:00 UTC Sunday
+  workflow_dispatch: {}
+
+jobs:
+  documentary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: pip install -r requirements.txt
+      - name: Produce long-form
+        env:
+          MIND_VAULT_ENV: production
+          OLLAMA_HOST: ${{ secrets.OLLAMA_HOST }}
+        run: |
+          python -m scripts.init_db
+          python -m scripts.run_pipeline --format long
+      - uses: actions/upload-artifact@v4
+        with: { name: documentary, path: storage/videos/ }

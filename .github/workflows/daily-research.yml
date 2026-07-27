@@ -1,0 +1,35 @@
+name: Daily Content Research
+
+# Finds trending topics, refreshes the topic database, logs opportunities.
+on:
+  schedule:
+    - cron: "0 6 * * *"      # 06:00 UTC daily
+  workflow_dispatch: {}
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r requirements.txt
+      - name: Discover trends & score topics
+        env:
+          MIND_VAULT_ENV: production
+          OLLAMA_HOST: ${{ secrets.OLLAMA_HOST }}
+        run: |
+          python -m scripts.init_db
+          python - <<'PY'
+          from core.registry import load_all_agents, get_agent
+          load_all_agents()
+          for cat in ("psychology", "history"):
+              trends = get_agent("trend").execute({"category": cat}).output
+              get_agent("topic").execute({"category": cat, "trends": trends})
+              get_agent("competitor").execute({"category": cat})
+          print("Daily research complete.")
+          PY
+      - name: Backup
+        run: python -m scripts.backup
+      - uses: actions/upload-artifact@v4
+        with: { name: research-db, path: mind_vault.db }

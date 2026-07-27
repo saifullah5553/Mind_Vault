@@ -1,0 +1,9 @@
+TASK: hooks
+TOPIC: {topic}
+CATEGORY: {category}
+
+Write 10 distinct one-line video hooks (each under 15 words) for a short
+documentary about the topic above. Maximize curiosity in the first 3 seconds.
+Mix these angles: a shocking claim, an unanswered question, a hidden secret, a
+reversal of a common belief, and a personal stake for the viewer.
+Return one hook per line, no numbering.

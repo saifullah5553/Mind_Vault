@@ -1,0 +1,38 @@
+# ── Mind_Vault — base runtime dependencies ────────────────────────────────
+# Deliberately light so the project installs and runs on any machine at $0.
+# Heavy / optional capabilities (Stable Diffusion, Whisper, Coqui TTS, platform
+# SDKs) are documented as EXTRAS below and are never required to run the core.
+
+# Core framework
+pydantic>=2.6,<3
+pydantic-settings>=2.2,<3
+PyYAML>=6.0
+SQLAlchemy>=2.0,<3
+python-dotenv>=1.0
+
+# API + dashboard
+fastapi>=0.110
+uvicorn[standard]>=0.29
+jinja2>=3.1
+
+# HTTP (free data sources: Wikipedia, RSS, Reddit JSON, etc.)
+httpx>=0.27
+feedparser>=6.0
+
+# Media (all free / open source). Pillow is required (light); MoviePy optional.
+Pillow>=10.0
+numpy>=1.26
+
+# Testing
+pytest>=8.0
+
+# ── OPTIONAL EXTRAS (install only what you want; none are required) ──────────
+# Real .mp4 output, free, no system install:  pip install imageio-ffmpeg
+# Local LLM (recommended free upgrade):     https://ollama.com   (no pip needed)
+# Natural offline TTS:                       pip install pyttsx3
+# High-quality open TTS:                     pip install TTS            # Coqui
+# Speech-to-text / caption timing:           pip install openai-whisper
+# Semantic dedup (better than difflib):      pip install sentence-transformers
+# Programmatic video editing:                pip install moviepy
+# Stable Diffusion (needs GPU):              pip install diffusers torch
+# YouTube publishing:                        pip install google-api-python-client google-auth-oauthlib

@@ -1,0 +1,13 @@
+# Topic Generator + Opportunity Engine — configuration
+generate_candidates: 40
+# Weights for the scoring formula. Total = (V + Cur + Ever + Edu + Emo) - Comp
+weights:
+  virality: 1.0
+  curiosity: 1.2      # curiosity is king for retention -> weighted highest
+  evergreen: 1.0
+  educational: 1.0
+  emotional: 0.8
+  competition: 1.0    # subtracted
+reframe_generic_topics: true   # the "opportunity engine": generic -> curiosity-driven
+reframe_top_k: 6               # only LLM-reframe the top-K candidates (perf w/ real models)
+min_total_score: 40

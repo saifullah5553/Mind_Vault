@@ -1,0 +1,119 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  Mind_Vault — master configuration
+#  Everything the system does is controlled from here. NO provider, threshold,
+#  or path is hard-coded in the Python. Secrets are the ONLY thing not here —
+#  those come from environment variables / .env (see .env.example).
+# ═══════════════════════════════════════════════════════════════════════════
+
+brand:
+  name: "Mind_Vault"
+  tagline: "The vault of the human mind and its history."
+  language: "en"
+  cta: "Follow for more stories about the human mind and history."
+
+# ── Content strategy ────────────────────────────────────────────────────────
+strategy:
+  # The content mix the CEO tries to maintain across the rolling calendar.
+  category_mix:
+    psychology: 0.5
+    history: 0.5
+  calendar_days: 90
+  # Avoid repeating the same emotional angle / structure back to back.
+  avoid_repeat_window: 8
+
+# ── Publishing cadence ──────────────────────────────────────────────────────
+publishing:
+  dry_run: true                 # true = generate metadata but DO NOT upload
+  short_days: ["mon", "wed", "fri"]
+  long_days: ["sun"]
+  platforms: ["youtube", "tiktok", "instagram", "facebook"]
+  timezone: "Asia/Dubai"
+
+# ── Video formats ───────────────────────────────────────────────────────────
+formats:
+  short:
+    duration_seconds: [45, 75]
+    resolution: [1080, 1920]     # vertical
+    fps: 30
+  long:
+    duration_seconds: [480, 900] # 8–15 min
+    resolution: [1920, 1080]     # horizontal
+    fps: 30
+
+# ── LLM (pluggable — swap provider without touching code) ───────────────────
+llm:
+  provider: "ollama"             # stub | ollama | openai | anthropic
+  model: "llama3.2:3b"           # small model that fits the MX550/CPU; scales up freely
+  temperature: 0.8
+  max_tokens: 2048
+  ollama_host_env: "OLLAMA_HOST" # which env var holds the host (default localhost)
+  timeout_seconds: 180
+
+# ── Text-to-speech (pluggable, natural-voice capable) ───────────────────────
+tts:
+  provider: "auto"               # auto | piper | coqui | pyttsx3 | silence
+  voice: "Aria"
+  gender: "female"
+  words_per_minute: 155          # used to time narration when synthesizing
+  # FREE natural voice: pip install piper-tts, then drop a voice .onnx into
+  # storage/voices/ (e.g. en_US-amy-medium) or set the path here / $PIPER_MODEL.
+  piper_model: ""
+  coqui_speaker: "Ana Florence"  # a female XTTS preset (used when provider=coqui)
+
+# ── Image generation (pluggable, free-first) ────────────────────────────────
+images:
+  provider: "auto"               # auto | pillow | stable_diffusion | comfyui
+  style: "cinematic documentary, muted palette, dramatic lighting"
+  width: 1024
+  height: 1024
+
+# ── Video assembly ──────────────────────────────────────────────────────────
+video:
+  engine: "auto"                 # auto | ffmpeg | moviepy
+  captions: true
+  background_music: false        # off until you supply royalty-free tracks
+  music_dir: "storage/music"
+
+# ── Presenter (fictional AI persona; NEVER a real person; disclosed as AI) ──
+# Full persona + rendering settings live in agents/presenter_agent/config.yaml.
+presenter:
+  enabled: true                  # a consistent AI presenter ("Aria") is composited in
+  composite: "pip"               # pip | full | intro  (how she appears in the video)
+
+# ── Quality gates (a video must clear ALL of these to publish) ──────────────
+quality:
+  fact_score_min: 90
+  originality_score_min: 85
+  hook_score_min: 80
+  duplicate_similarity_max: 0.80   # reject topics/scripts ≥ 80% similar
+  audio_check: true
+  visual_check: true
+  copyright_risk_max: "low"
+
+# ── Duplicate detection ─────────────────────────────────────────────────────
+dedup:
+  method: "auto"                 # auto | difflib | embeddings
+  threshold: 0.80
+
+# ── Storage ─────────────────────────────────────────────────────────────────
+storage:
+  root: "storage"
+  videos: "storage/videos"
+  audio: "storage/audio"
+  images: "storage/images"
+  thumbnails: "storage/thumbnails"
+  backups: "storage/backups"
+
+# ── Reliability ─────────────────────────────────────────────────────────────
+reliability:
+  max_retries: 3
+  retry_backoff_seconds: 2
+  checkpoint: true               # save partial pipeline state to resume on failure
+
+# ── Logging ─────────────────────────────────────────────────────────────────
+logging:
+  level: "INFO"
+  dir: "logs"
+  json: false                    # true = structured JSON logs for shipping
+  rotate_mb: 10
+  backups: 5

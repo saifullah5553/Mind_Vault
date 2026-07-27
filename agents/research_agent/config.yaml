@@ -1,0 +1,10 @@
+# Research Agent — configuration
+use_network: false        # opt-in: pull free Wikipedia REST summaries
+min_facts: 5
+free_sources:
+  history:
+    - {name: "Wikipedia", url: "https://en.wikipedia.org/api/rest_v1/page/summary/{q}", license: "CC-BY-SA"}
+    - {name: "Internet Archive", url: "https://archive.org", license: "public-domain"}
+  psychology:
+    - {name: "Wikipedia", url: "https://en.wikipedia.org/api/rest_v1/page/summary/{q}", license: "CC-BY-SA"}
+    - {name: "Open-access papers", url: "https://www.semanticscholar.org", license: "varies"}

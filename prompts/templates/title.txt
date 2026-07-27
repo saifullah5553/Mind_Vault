@@ -1,0 +1,8 @@
+TASK: title
+TOPIC: {topic}
+CATEGORY: {category}
+
+Write 5 alternative video titles for a short documentary about the topic above.
+Each must be truthful, curiosity-driven, and under 60 characters. Prefer a
+hidden reason, a surprising cause, or an untold-story framing. Avoid clickbait
+the video can't deliver. Return one title per line, no numbering.

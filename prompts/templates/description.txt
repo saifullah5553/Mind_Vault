@@ -1,0 +1,9 @@
+TASK: description
+TOPIC: {topic}
+CATEGORY: {category}
+
+Write an engaging video description (2 short paragraphs) for a Mind_Vault
+documentary about the topic above. Open with a curiosity line, summarize the
+journey (setup, conflict, turning point, lesson) without spoiling the ending,
+and close with: "Follow for more stories about the human mind and history."
+Keep it natural and human. Do not list hashtags here.

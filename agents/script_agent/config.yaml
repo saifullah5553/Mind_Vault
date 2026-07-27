@@ -1,0 +1,14 @@
+# Script Writing Agent — configuration
+style: "netflix-documentary"
+structure: "hook-intro-story-lesson"
+reading_level: "general audience"
+# Target words derived from format duration and narration WPM (see agent).
+short_target_words: [110, 190]
+long_target_words: [1200, 2200]
+# Phrases the script must avoid (anti-"AI voice" guardrail).
+banned_phrases:
+  - "in conclusion"
+  - "in today's video"
+  - "as an ai"
+  - "delve into"
+  - "in this article"

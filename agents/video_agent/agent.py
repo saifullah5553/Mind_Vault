@@ -27,6 +27,19 @@ class VideoAgent(BaseAgent):
         run_id = payload.get("run_id", "run")
         video_format = payload.get("video_format", "short")
 
+        # Match total video length to the ACTUAL narration length so nothing gets
+        # cut off (critical for long-form, where capped scene durations otherwise
+        # sum to less than the ~11 min of narration and ffmpeg -shortest truncates).
+        if voice and voice.duration and plan.scenes:
+            total = sum(max(0.8, s.duration) for s in plan.scenes)
+            if total > 0 and abs(total - voice.duration) > 1.0:
+                factor = voice.duration / total
+                for s in plan.scenes:
+                    s.duration = round(max(0.8, s.duration) * factor, 2)
+                plan.total_duration = round(sum(s.duration for s in plan.scenes), 2)
+                self.log.info("Scaled %d scenes to match narration (%.1fs, x%.2f).",
+                              len(plan.scenes), voice.duration, factor)
+
         img_dir = Path(self.settings.storage_path("images")) / run_id
         if self.config.get("generate_images", True):
             generate_images(plan.scenes, img_dir)

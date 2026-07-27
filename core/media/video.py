@@ -70,7 +70,7 @@ def _ffmpeg_build(scenes, audio: VoiceResult | None, out_path: Path, res) -> boo
         cmd1 = [ffmpeg, "-y", "-f", "concat", "-safe", "0", "-i", str(concat),
                 "-vf", f"scale={res[0]}:{res[1]}:force_original_aspect_ratio=decrease,"
                        f"pad={res[0]}:{res[1]}:(ow-iw)/2:(oh-ih)/2,format=yuv420p",
-                "-r", "30", str(silent)]
+                "-r", "30", "-c:v", "libx264", "-preset", "veryfast", str(silent)]
         subprocess.run(cmd1, check=True, capture_output=True)
 
         if audio and Path(audio.audio_path).exists():
@@ -144,7 +144,8 @@ def _composite_presenter(base: Path, overlay: str, out: Path, res, scale: float,
     loop = [] if is_video else ["-loop", "1"]
     cmd = [ffmpeg, "-y", "-i", str(base), *loop, "-i", overlay,
            "-filter_complex", fc, "-map", "[v]", "-map", "0:a?",
-           "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "copy", "-shortest", str(out)]
+           "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
+           "-c:a", "copy", "-shortest", str(out)]
     try:
         subprocess.run(cmd, check=True, capture_output=True)
         return out.exists()
@@ -175,6 +176,7 @@ def _mix_music(base: Path, out: Path, seconds: float, seed: str) -> bool:
     cmd = [ffmpeg, "-y", "-i", str(base), "-stream_loop", "-1", "-i", bed,
            "-filter_complex", fc, "-map", "0:v", "-map", "[a]",
            "-c:v", "copy", "-c:a", "aac", "-shortest", str(out)]
+    # (video is stream-copied here, so only the base build + presenter pass encode)
     try:
         subprocess.run(cmd, check=True, capture_output=True)
         log.info("Mixed %s background music (ducked).", source)

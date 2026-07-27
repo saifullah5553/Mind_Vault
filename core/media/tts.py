@@ -78,7 +78,11 @@ def _try_piper(text: str, path: Path) -> bool:  # pragma: no cover - needs voice
         from piper import PiperVoice  # type: ignore
         voice = PiperVoice.load(model)
         with wave.open(str(path), "wb") as wf:
-            voice.synthesize(text, wf)
+            # piper-tts >= 1.3: writes a proper WAV header itself.
+            if hasattr(voice, "synthesize_wav"):
+                voice.synthesize_wav(text, wf, set_wav_format=True)
+            else:  # older API: synthesize wrote directly
+                voice.synthesize(text, wf)
         return path.exists() and path.stat().st_size > 0
     except Exception as exc:
         log.warning("Piper TTS failed (%s).", exc)

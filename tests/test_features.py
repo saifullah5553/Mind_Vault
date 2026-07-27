@@ -69,6 +69,18 @@ def test_seo_includes_presenter_disclosure():
     assert all("AI-generated presenter" in m.description for m in metas)
 
 
+def test_hook_and_title_cleaners_strip_labels_and_quotes():
+    from agents.hook_engine.agent import _clean_line
+    assert _clean_line('Hook 8: "Revealed: the hidden reason."') == "Revealed: the hidden reason."
+    assert _clean_line("- 3) The Secret of Rome") == "The Secret of Rome"
+    assert _clean_line('"A quoted hook"') == "A quoted hook"
+
+    from core.registry import get_agent
+    seo = get_agent("seo")
+    assert seo._clean_title('2. "The Untold Story"') == "The Untold Story"
+    assert seo._clean_title("The Fall of Rome") == "The Fall of Rome"
+
+
 def test_ollama_availability_is_graceful_when_absent():
     from core.llm.ollama_provider import OllamaLLM
     o = OllamaLLM(model="llama3.1")

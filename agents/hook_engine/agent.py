@@ -7,6 +7,8 @@ are stored so the Learning Agent can later correlate hook style with retention.
 
 from __future__ import annotations
 
+import re
+
 from core.agents.base import BaseAgent
 from core.database.models import Hook as HookRow
 from core.database.session import session_scope
@@ -14,6 +16,15 @@ from core.llm.base import LLMMessage
 from core.prompts import render
 from core.registry import register_agent
 from core.schemas import Hook
+
+
+def _clean_line(text: str) -> str:
+    """Strip list markers, a leading 'Hook N:' label, and wrapping quotes that
+    real LLMs often add — so on-screen hooks read cleanly."""
+    s = text.strip().strip("-•*").strip()
+    s = re.sub(r"^\s*hook\s*\d*\s*[:.)-]\s*", "", s, flags=re.IGNORECASE)
+    s = re.sub(r"^\s*\d+\s*[:.)-]\s*", "", s)          # leading "8:" / "8." / "8)"
+    return s.strip().strip('"').strip("'").strip()
 
 
 @register_agent
@@ -36,7 +47,7 @@ class HookEngine(BaseAgent):
     def _generate(self, topic: str, category: str) -> list[str]:
         prompt = render("hooks", topic=topic, category=category)
         raw = self.llm.generate([LLMMessage("user", prompt)])
-        lines = [ln.strip("-•0123456789. ").strip() for ln in raw.splitlines() if ln.strip()]
+        lines = [_clean_line(ln) for ln in raw.splitlines() if ln.strip()]
         lines = [ln for ln in lines if len(ln) > 15]
         # Guarantee the minimum count with deterministic fillers.
         while len(lines) < self.config.get("min_hooks", 10):

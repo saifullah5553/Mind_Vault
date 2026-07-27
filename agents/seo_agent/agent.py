@@ -59,15 +59,21 @@ class SEOAgent(BaseAgent):
     def _best_title(self, topic: str, category: str, fallback: str) -> str:
         try:
             raw = self.llm.generate([LLMMessage("user", render("title", topic=topic, category=category))])
-            cands = [c.strip("-•0123456789. ").strip() for c in raw.splitlines() if len(c.strip()) > 8]
+            cands = [self._clean_title(c) for c in raw.splitlines() if len(c.strip()) > 8]
         except Exception:
             cands = []
-        cands.append(fallback)
+        cands.append(self._clean_title(fallback))
+        cands = [c for c in cands if c]
         # Score: curiosity words + ideal length ~55 chars.
         def score(t: str) -> float:
             cur = sum(w in t.lower() for w in ("secret", "why", "hidden", "truth", "reason"))
             return cur * 10 - abs(len(t) - 55) * 0.2
         return max(cands, key=score)
+
+    def _clean_title(self, text: str) -> str:
+        """Remove list markers, numbering, and wrapping quotes from a title."""
+        s = re.sub(r"^\s*\d+\s*[:.)-]\s*", "", text.strip().strip("-•*").strip())
+        return s.strip().strip('"').strip("'").strip()
 
     def _description(self, topic: str, category: str) -> str:
         try:

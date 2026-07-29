@@ -56,6 +56,14 @@ class PresenterAgent(BaseAgent):
         result["portrait"] = portrait
         result["overlay"] = portrait  # default: composite the still portrait
 
+        # Prefer a circular, transparent PiP badge — reads as a broadcast presenter
+        # rather than a pasted rectangle. The raw portrait is kept for lip-sync.
+        if portrait and self.config.get("pip_badge", True):
+            from core.media.avatar import make_pip_badge
+            badge = make_pip_badge(portrait, Path(portrait).with_name("aria_pip.png"))
+            if badge:
+                result["overlay"] = badge
+
         # 2) Optional photoreal talking clip (GPU pipelines).
         voice: VoiceResult | None = payload.get("voice")
         run_id = payload.get("run_id", "run")

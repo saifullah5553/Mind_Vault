@@ -54,8 +54,10 @@ def test_presenter_generates_consistent_portrait():
     assert out["persona"]                      # a named persona
     assert out["disclosure"]                   # AI disclosure present
     assert out["portrait"] and Path(out["portrait"]).exists()   # synthetic face made
-    # overlay defaults to the portrait when no GPU lip-sync clip was produced
-    assert out["overlay"] == out["portrait"] or out["clip"]
+    # Overlay is the circular PiP badge (or a lip-sync clip when a GPU produced one);
+    # either way it must be a real file derived from her portrait.
+    assert out["overlay"] and Path(out["overlay"]).exists()
+    assert out["clip"] or Path(out["overlay"]).name in ("aria_pip.png", Path(out["portrait"]).name)
 
 
 def test_seo_includes_presenter_disclosure():

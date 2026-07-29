@@ -44,7 +44,10 @@ avatar_provider: "auto"
 lipsync_provider: "auto"
 
 # Path where her canonical portrait is cached/reused across videos.
+# An operator-supplied image here is NEVER overwritten — drop your own
+# AI-generated persona portrait in and it becomes the permanent brand face.
 portrait_path: "storage/presenter/aria.png"
+pip_badge: true          # composite as a circular badge (vs a raw rectangle)
 
 # Photoreal lip-sync commands (GPU). Uncomment + edit paths after installing the
 # tool. Placeholders: {image} {audio} {out} {outdir}. See docs/SETUP_AI.md.

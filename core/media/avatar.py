@@ -100,9 +100,57 @@ def _stylized_portrait(name: str, seed: int, out: Path, size: int = 768) -> bool
         return False
 
 
+def make_pip_badge(portrait_path: str, out_path: str | Path, size: int = 512,
+                   ring: int = 10) -> str | None:
+    """Build a circular, transparent-background version of the portrait for use as
+    a picture-in-picture badge (reads as a broadcast presenter bug rather than a
+    pasted rectangle). Regenerated whenever the source portrait is newer."""
+    try:
+        from PIL import Image, ImageDraw
+
+        src = Path(portrait_path)
+        out = Path(out_path)
+        if out.exists() and out.stat().st_mtime >= src.stat().st_mtime:
+            return str(out)
+
+        img = Image.open(src).convert("RGBA")
+        # Center-crop to a square, then resize.
+        w, h = img.size
+        side = min(w, h)
+        img = img.crop(((w - side) // 2, (h - side) // 2,
+                        (w - side) // 2 + side, (h - side) // 2 + side)).resize((size, size),
+                                                                               Image.LANCZOS)
+        # Circular alpha mask (supersampled for smooth edges).
+        ss = 4
+        mask = Image.new("L", (size * ss, size * ss), 0)
+        ImageDraw.Draw(mask).ellipse((0, 0, size * ss, size * ss), fill=255)
+        mask = mask.resize((size, size), Image.LANCZOS)
+
+        badge = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        badge.paste(img, (0, 0), mask)
+
+        # Soft white ring for separation against any background.
+        draw = ImageDraw.Draw(badge)
+        draw.ellipse((ring // 2, ring // 2, size - ring // 2, size - ring // 2),
+                     outline=(255, 255, 255, 210), width=ring)
+
+        out.parent.mkdir(parents=True, exist_ok=True)
+        badge.save(out, "PNG")
+        log.info("Built circular presenter PiP badge -> %s", out.name)
+        return str(out)
+    except Exception as exc:
+        log.warning("PiP badge build failed (%s); using the raw portrait.", exc)
+        return None
+
+
 def get_presenter_portrait(appearance: str, name: str, seed: int, portrait_path: str,
                            provider: str = "auto", force: bool = False) -> str | None:
-    """Return a path to the (cached) presenter portrait, generating it if needed."""
+    """Return a path to the (cached) presenter portrait, generating it if needed.
+
+    NOTE: an operator-supplied portrait at `portrait_path` is always kept as-is —
+    we never overwrite it — so a real AI-generated persona image you drop in
+    becomes the permanent face of the brand.
+    """
     out = ROOT_DIR / portrait_path if not Path(portrait_path).is_absolute() else Path(portrait_path)
     if out.exists() and not force:
         return str(out)

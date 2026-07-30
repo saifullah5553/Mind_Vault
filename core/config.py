@@ -87,16 +87,17 @@ class TTSConfig(BaseModel):
 
 
 class ImagesConfig(BaseModel):
-    provider: str = "auto"
+    provider: str = "auto"          # auto | stock | pillow | stable_diffusion
     style: str = "cinematic documentary"
-    width: int = 1024
-    height: int = 1024
+    width: int = 1080
+    height: int = 1920
 
 
 class VideoConfig(BaseModel):
     engine: str = "auto"
     captions: bool = True
     background_music: bool = True
+    ken_burns: bool = True          # slow zoom/pan on stills (cinematic motion)
     music_dir: str = "storage/music"
     music_volume: float = 0.18          # bed level under narration
     music_intro_outro_seconds: float = 4.0  # bed swells louder at start/end

@@ -41,7 +41,7 @@ avatar_provider: "auto"
 #   sadtalker -> photoreal talking head (needs GPU)
 #   wav2lip   -> lip-synced mouth on the portrait (needs GPU)
 #   ken_burns -> $0 CPU fallback: portrait with subtle motion over the narration
-lipsync_provider: "auto"
+lipsync_provider: "wav2lip"
 
 # Path where her canonical portrait is cached/reused across videos.
 # An operator-supplied image here is NEVER overwritten — drop your own
@@ -49,10 +49,18 @@ lipsync_provider: "auto"
 portrait_path: "storage/presenter/aria.png"
 pip_badge: true          # composite as a circular badge (vs a raw rectangle)
 
-# Photoreal lip-sync commands (GPU). Uncomment + edit paths after installing the
-# tool. Placeholders: {image} {audio} {out} {outdir}. See docs/SETUP_AI.md.
-# sadtalker_cmd: "python /opt/SadTalker/inference.py --source_image {image} --driven_audio {audio} --result_dir {outdir} --still --preprocess full"
-# wav2lip_cmd:   "python /opt/Wav2Lip/inference.py --checkpoint_path /opt/Wav2Lip/checkpoints/wav2lip_gan.pth --face {image} --audio {audio} --outfile {out}"
+# ── Lip-sync (ACTIVE) ───────────────────────────────────────────────────────
+# Wav2Lip is installed under tools/Wav2Lip and runs on CPU. Placeholders:
+# {image} {audio} {out} {outdir}. Run from the Wav2Lip dir (wav2lip_cwd).
+wav2lip_cmd: "python inference.py --checkpoint_path checkpoints/wav2lip_gan.pth --face {image} --audio {audio} --outfile {out} --fps 25 --pads 0 12 0 0"
+wav2lip_cwd: "tools/Wav2Lip"
+# The face image fed to Wav2Lip (square). Smaller = much faster on CPU.
+lipsync_face_size: 512
+# Skip lip-sync above this narration length (CPU cost); falls back to the badge.
+# ~11 min documentaries are fine; raise once you have a GPU.
+lipsync_max_seconds: 900
+
+# sadtalker_cmd: "python /path/SadTalker/inference.py --source_image {image} --driven_audio {audio} --result_dir {outdir} --still --preprocess full"
 
 # How the presenter is placed in the final video.
 #   pip   -> picture-in-picture over the documentary slides (recommended)

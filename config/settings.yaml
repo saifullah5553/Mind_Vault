@@ -64,15 +64,19 @@ tts:
 
 # ── Image generation (pluggable, free-first) ────────────────────────────────
 images:
-  provider: "auto"               # auto | pillow | stable_diffusion | comfyui
+  # "stock" = REAL openly-licensed documentary photos (Wikimedia Commons /
+  # Openverse), cinematically graded. This is what stops the output looking
+  # like a slideshow. Falls back to a typographic card if nothing is found.
+  provider: "auto"               # auto | stock | pillow | stable_diffusion
   style: "cinematic documentary, muted palette, dramatic lighting"
-  width: 1024
-  height: 1024
+  width: 1080                    # match the vertical short frame
+  height: 1920
 
 # ── Video assembly ──────────────────────────────────────────────────────────
 video:
   engine: "auto"                 # auto | ffmpeg | moviepy
   captions: true
+  ken_burns: true                # slow zoom/pan on every still (cinematic motion)
   background_music: true         # procedural bed by default; drop royalty-free tracks in music_dir
   music_dir: "storage/music"
   music_volume: 0.18             # bed level under narration (ducks automatically)

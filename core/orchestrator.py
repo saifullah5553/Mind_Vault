@@ -189,6 +189,8 @@ class Orchestrator:
             "scene_plan": ctx.scene_plan, "voice": ctx.voice,
             "run_id": ctx.run_id, "video_format": ctx.video_format,
             "presenter_overlay": ctx.presenter_path,
+            "topic": (ctx.topic.topic if ctx.topic else ""),
+            "category": ctx.category,
         }, ctx)
         self._update_content(ctx, status=ContentStatus.PRODUCED.value,
                              video_path=ctx.video.video_path,

@@ -50,6 +50,67 @@ def _have_moviepy() -> bool:
         return False
 
 
+def _kenburns_build(scenes, audio: VoiceResult | None, out_path: Path, res, fps: int = 30) -> bool:
+    """Build with a slow Ken Burns move on every still + crossfades.
+
+    Static images are the #1 reason generated video reads as a cheap slideshow;
+    a gentle, per-scene zoom/pan makes the same frames feel filmed. Each scene is
+    rendered to its own short clip, then concatenated.
+    """
+    imgs = [s for s in scenes if s.image_path]
+    ffmpeg = _ffmpeg_exe()
+    if not imgs or not ffmpeg:
+        return False
+    w, h = res
+    with tempfile.TemporaryDirectory() as td:
+        tdp = Path(td)
+        parts: list[Path] = []
+        for i, s in enumerate(imgs):
+            dur = max(0.8, s.duration)
+            frames = max(2, int(dur * fps))
+            # Alternate the move so consecutive scenes don't feel repetitive.
+            mode = i % 4
+            if mode == 0:      # slow push in
+                z = f"zoom+0.0009"; x = "iw/2-(iw/zoom/2)"; y = "ih/2-(ih/zoom/2)"
+            elif mode == 1:    # pull out
+                z = f"if(lte(zoom,1.0),1.18,zoom-0.0009)"; x = "iw/2-(iw/zoom/2)"; y = "ih/2-(ih/zoom/2)"
+            elif mode == 2:    # push + drift right
+                z = f"zoom+0.0008"; x = f"(iw-iw/zoom)*(on/{frames})"; y = "ih/2-(ih/zoom/2)"
+            else:              # push + drift down
+                z = f"zoom+0.0008"; x = "iw/2-(iw/zoom/2)"; y = f"(ih-ih/zoom)*(on/{frames})"
+
+            # Upscale first so zoompan doesn't soften the image.
+            vf = (f"scale={w*2}:{h*2}:force_original_aspect_ratio=increase,"
+                  f"crop={w*2}:{h*2},"
+                  f"zoompan=z='{z}':x='{x}':y='{y}':d={frames}:s={w}x{h}:fps={fps},"
+                  f"format=yuv420p")
+            part = tdp / f"p{i:04d}.mp4"
+            cmd = [ffmpeg, "-y", "-loop", "1", "-t", f"{dur:.3f}", "-i", s.image_path,
+                   "-vf", vf, "-r", str(fps), "-c:v", "libx264", "-preset", "veryfast",
+                   "-crf", "23", str(part)]
+            try:
+                subprocess.run(cmd, check=True, capture_output=True)
+                parts.append(part)
+            except Exception as exc:
+                log.debug("Ken Burns segment %d failed (%s); skipping.", i, exc)
+        if not parts:
+            return False
+
+        lst = tdp / "list.txt"
+        lst.write_text("\n".join(f"file '{p.as_posix()}'" for p in parts), encoding="utf-8")
+        silent = tdp / "silent.mp4"
+        subprocess.run([ffmpeg, "-y", "-f", "concat", "-safe", "0", "-i", str(lst),
+                        "-c", "copy", str(silent)], check=True, capture_output=True)
+
+        if audio and Path(audio.audio_path).exists():
+            cmd2 = [ffmpeg, "-y", "-i", str(silent), "-i", audio.audio_path,
+                    "-c:v", "copy", "-c:a", "aac", "-shortest", str(out_path)]
+        else:
+            cmd2 = [ffmpeg, "-y", "-i", str(silent), "-c", "copy", str(out_path)]
+        subprocess.run(cmd2, check=True, capture_output=True)
+    return out_path.exists()
+
+
 def _ffmpeg_build(scenes, audio: VoiceResult | None, out_path: Path, res) -> bool:
     imgs = [s for s in scenes if s.image_path]
     if not imgs:
@@ -201,7 +262,10 @@ def assemble_video(scenes: list[Scene], audio: VoiceResult | None, out_path: str
     final_path = out
 
     try:
-        if engine_pref in ("auto", "ffmpeg") and _have_ffmpeg() and _ffmpeg_build(scenes, audio, out, res):
+        if (engine_pref in ("auto", "ffmpeg") and _have_ffmpeg()
+                and cfg.video.ken_burns and _kenburns_build(scenes, audio, out, res, fmt.fps)):
+            engine_used = "ffmpeg-kenburns"
+        elif engine_pref in ("auto", "ffmpeg") and _have_ffmpeg() and _ffmpeg_build(scenes, audio, out, res):
             engine_used = "ffmpeg"
         elif engine_pref in ("auto", "moviepy") and _have_moviepy() and _moviepy_build(scenes, audio, out, res):
             engine_used = "moviepy"
@@ -215,7 +279,7 @@ def assemble_video(scenes: list[Scene], audio: VoiceResult | None, out_path: str
 
     presenter_used = False
     # Composite the AI presenter (PiP) onto ffmpeg-built videos.
-    if (presenter_overlay and engine_used == "ffmpeg"
+    if (presenter_overlay and engine_used.startswith("ffmpeg")
             and cfg.presenter.enabled and cfg.presenter.composite == "pip"):
         composed = out.with_name(out.stem + "_final.mp4")
         pcfg = _presenter_render_cfg()
@@ -226,7 +290,7 @@ def assemble_video(scenes: list[Scene], audio: VoiceResult | None, out_path: str
 
     # Background music (ducked under narration) on ffmpeg-built videos.
     music_used = False
-    if engine_used == "ffmpeg" and cfg.video.background_music:
+    if engine_used.startswith("ffmpeg") and cfg.video.background_music:
         mixed = final_path.with_name(final_path.stem + "_music.mp4")
         if _mix_music(final_path, mixed, total, out.stem):
             final_path = mixed

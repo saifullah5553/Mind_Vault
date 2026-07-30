@@ -42,7 +42,14 @@ class VideoAgent(BaseAgent):
 
         img_dir = Path(self.settings.storage_path("images")) / run_id
         if self.config.get("generate_images", True):
-            generate_images(plan.scenes, img_dir)
+            # Render frames at the video's own resolution so nothing is letterboxed,
+            # and pass the topic so image search returns RELEVANT photos.
+            fmt = (self.settings.formats.short if video_format == "short"
+                   else self.settings.formats.long)
+            self.settings.images.width, self.settings.images.height = fmt.resolution
+            generate_images(plan.scenes, img_dir,
+                            topic=payload.get("topic", ""),
+                            category=payload.get("category", "history"))
 
         out = Path(self.settings.storage_path("videos")) / f"{run_id}.mp4"
         presenter_overlay = payload.get("presenter_overlay")

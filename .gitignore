@@ -37,3 +37,15 @@ mind_vault.db
 Thumbs.db
 .idea/
 .vscode/
+# Wav2Lip working copy (tools/) — large model checkpoints are NOT committed.
+tools/Wav2Lip/checkpoints/*.pth
+tools/Wav2Lip/face_detection/detection/sfd/*.pth
+tools/Wav2Lip/temp/
+tools/Wav2Lip/results/
+tools/**/__pycache__/
+storage/presenter/aria_face*.png
+storage/presenter/*_talk_test.mp4
+storage/presenter/short4s.wav
+
+# Third-party tool clones (recreate with scripts/setup_lipsync.py)
+tools/Wav2Lip/

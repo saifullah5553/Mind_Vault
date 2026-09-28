@@ -72,6 +72,32 @@ def _draw_subtitle(img, text: str, width: int, height: int) -> None:
                         spacing=8, align="center")
 
 
+def render_subtitle_overlay(text: str, width: int, height: int, out: Path,
+                            brand: str = "") -> str | None:
+    """Transparent PNG carrying just the subtitle (+ brand mark).
+
+    Used to caption real video footage: rendering the text with Pillow reuses the
+    exact styling we use on stills and avoids ffmpeg `drawtext` escaping problems
+    with apostrophes, colons and quotes in narration.
+    """
+    try:
+        from PIL import Image, ImageDraw
+
+        layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        if text.strip():
+            _draw_subtitle(layer, text, width, height)
+        if brand:
+            ImageDraw.Draw(layer).text((30, height - 46), brand,
+                                       font=_font(max(16, width // 60)),
+                                       fill=(225, 225, 235, 220))
+        out.parent.mkdir(parents=True, exist_ok=True)
+        layer.save(out, "PNG")
+        return str(out)
+    except Exception as exc:
+        log.warning("Subtitle overlay failed (%s).", exc)
+        return None
+
+
 def _cinematic_from_photo(src: Path, scene: Scene, out: Path, width: int, height: int,
                           brand: str, subtitle: bool = True) -> bool:
     """Full-bleed cover-crop of a real photo + cinematic grade + subtitle."""

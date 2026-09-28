@@ -1,4 +1,12 @@
 # Video Editing Engine — configuration
 # Engine (ffmpeg/moviepy/gif) is chosen in config/settings.yaml (video.engine).
-generate_images: true      # render a still per scene before assembling
-burn_captions: true        # captions are baked into scene images by the image layer
+
+# REAL HD FOOTAGE (free, keyless, no GPU). Sources: Internet Archive
+# (public-domain archival film — best for history) and Wikimedia Commons.
+# Optionally add free keys for better modern b-roll:
+#   PEXELS_API_KEY  / PIXABAY_API_KEY   (see docs/FOOTAGE.md)
+use_stock_footage: true
+footage_pool_size: 8       # clips fetched per video, cycled across scenes
+
+generate_images: true      # stills for any scene without footage
+burn_captions: true        # captions are baked in (overlay PNG over footage)

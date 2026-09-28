@@ -85,8 +85,12 @@ video:
 # ── Presenter (fictional AI persona; NEVER a real person; disclosed as AI) ──
 # Full persona + rendering settings live in agents/presenter_agent/config.yaml.
 presenter:
-  enabled: true                  # a consistent AI presenter ("Aria") is composited in
-  composite: "pip"               # pip | full | intro  (how she appears in the video)
+  # OFF: Aria narrates (her natural Piper voice) but is NOT shown on screen.
+  # A static portrait with only mouth movement reads as an obvious AI avatar and
+  # cheapens the video; real footage + strong narration is far more credible.
+  # Re-enable once a GPU can run SadTalker (head motion + blinking).
+  enabled: false
+  composite: "pip"               # pip | full | intro  (how she appears when enabled)
 
 # ── Quality gates (a video must clear ALL of these to publish) ──────────────
 quality:

@@ -50,51 +50,93 @@ def _have_moviepy() -> bool:
         return False
 
 
-def _kenburns_build(scenes, audio: VoiceResult | None, out_path: Path, res, fps: int = 30) -> bool:
-    """Build with a slow Ken Burns move on every still + crossfades.
+def _clip_segment(ffmpeg: str, scene, dur: float, res, fps: int, part: Path) -> bool:
+    """One segment cut from REAL stock footage, captioned via a PNG overlay.
 
-    Static images are the #1 reason generated video reads as a cheap slideshow;
-    a gentle, per-scene zoom/pan makes the same frames feel filmed. Each scene is
-    rendered to its own short clip, then concatenated.
+    The clip is looped if shorter than the scene, cover-cropped to the frame (no
+    letterboxing), and the caption is overlaid as a pre-rendered transparent PNG
+    (avoids ffmpeg drawtext escaping issues with quotes/colons in narration).
     """
-    imgs = [s for s in scenes if s.image_path]
-    ffmpeg = _ffmpeg_exe()
-    if not imgs or not ffmpeg:
-        return False
     w, h = res
+    inputs = [ffmpeg, "-y", "-stream_loop", "-1", "-t", f"{dur:.3f}", "-i", scene.clip_path]
+    base = (f"[0:v]scale={w}:{h}:force_original_aspect_ratio=increase,"
+            f"crop={w}:{h},setsar=1,fps={fps},format=yuv420p")
+    overlay = scene.overlay_png
+    if overlay and Path(overlay).exists():
+        inputs += ["-i", str(overlay)]
+        fc = f"{base}[v];[v][1:v]overlay=0:0:format=auto,format=yuv420p[out]"
+    else:
+        fc = f"{base}[out]"
+    cmd = inputs + ["-filter_complex", fc, "-map", "[out]", "-an",
+                    "-r", str(fps), "-c:v", "libx264", "-preset", "veryfast",
+                    "-crf", "23", str(part)]
+    try:
+        subprocess.run(cmd, check=True, capture_output=True)
+        return part.exists()
+    except Exception as exc:
+        log.debug("Footage segment failed (%s).", exc)
+        return False
+
+
+def _kenburns_segment(ffmpeg: str, scene, i: int, dur: float, res, fps: int, part: Path) -> bool:
+    """One segment from a still, with a slow Ken Burns move so it feels filmed."""
+    w, h = res
+    frames = max(2, int(dur * fps))
+    mode = i % 4
+    if mode == 0:      # slow push in
+        z = "zoom+0.0009"; x = "iw/2-(iw/zoom/2)"; y = "ih/2-(ih/zoom/2)"
+    elif mode == 1:    # pull out
+        z = "if(lte(zoom,1.0),1.18,zoom-0.0009)"; x = "iw/2-(iw/zoom/2)"; y = "ih/2-(ih/zoom/2)"
+    elif mode == 2:    # push + drift right
+        z = "zoom+0.0008"; x = f"(iw-iw/zoom)*(on/{frames})"; y = "ih/2-(ih/zoom/2)"
+    else:              # push + drift down
+        z = "zoom+0.0008"; x = "iw/2-(iw/zoom/2)"; y = f"(ih-ih/zoom)*(on/{frames})"
+
+    # Upscale first so zoompan doesn't soften the image.
+    vf = (f"scale={w*2}:{h*2}:force_original_aspect_ratio=increase,"
+          f"crop={w*2}:{h*2},"
+          f"zoompan=z='{z}':x='{x}':y='{y}':d={frames}:s={w}x{h}:fps={fps},"
+          f"format=yuv420p")
+    cmd = [ffmpeg, "-y", "-loop", "1", "-t", f"{dur:.3f}", "-i", scene.image_path,
+           "-vf", vf, "-r", str(fps), "-c:v", "libx264", "-preset", "veryfast",
+           "-crf", "23", str(part)]
+    try:
+        subprocess.run(cmd, check=True, capture_output=True)
+        return part.exists()
+    except Exception as exc:
+        log.debug("Ken Burns segment failed (%s).", exc)
+        return False
+
+
+def _kenburns_build(scenes, audio: VoiceResult | None, out_path: Path, res, fps: int = 30) -> bool:
+    """Assemble the video scene-by-scene: REAL FOOTAGE where we have it, a
+    Ken Burns still otherwise. Segments are concatenated, then the narration is
+    muxed on top."""
+    usable = [s for s in scenes if s.clip_path or s.image_path]
+    ffmpeg = _ffmpeg_exe()
+    if not usable or not ffmpeg:
+        return False
     with tempfile.TemporaryDirectory() as td:
         tdp = Path(td)
         parts: list[Path] = []
-        for i, s in enumerate(imgs):
+        n_clips = 0
+        for i, s in enumerate(usable):
             dur = max(0.8, s.duration)
-            frames = max(2, int(dur * fps))
-            # Alternate the move so consecutive scenes don't feel repetitive.
-            mode = i % 4
-            if mode == 0:      # slow push in
-                z = f"zoom+0.0009"; x = "iw/2-(iw/zoom/2)"; y = "ih/2-(ih/zoom/2)"
-            elif mode == 1:    # pull out
-                z = f"if(lte(zoom,1.0),1.18,zoom-0.0009)"; x = "iw/2-(iw/zoom/2)"; y = "ih/2-(ih/zoom/2)"
-            elif mode == 2:    # push + drift right
-                z = f"zoom+0.0008"; x = f"(iw-iw/zoom)*(on/{frames})"; y = "ih/2-(ih/zoom/2)"
-            else:              # push + drift down
-                z = f"zoom+0.0008"; x = "iw/2-(iw/zoom/2)"; y = f"(ih-ih/zoom)*(on/{frames})"
-
-            # Upscale first so zoompan doesn't soften the image.
-            vf = (f"scale={w*2}:{h*2}:force_original_aspect_ratio=increase,"
-                  f"crop={w*2}:{h*2},"
-                  f"zoompan=z='{z}':x='{x}':y='{y}':d={frames}:s={w}x{h}:fps={fps},"
-                  f"format=yuv420p")
             part = tdp / f"p{i:04d}.mp4"
-            cmd = [ffmpeg, "-y", "-loop", "1", "-t", f"{dur:.3f}", "-i", s.image_path,
-                   "-vf", vf, "-r", str(fps), "-c:v", "libx264", "-preset", "veryfast",
-                   "-crf", "23", str(part)]
-            try:
-                subprocess.run(cmd, check=True, capture_output=True)
+            ok = False
+            if s.clip_path and Path(s.clip_path).exists():
+                ok = _clip_segment(ffmpeg, s, dur, res, fps, part)
+                if ok:
+                    n_clips += 1
+            if not ok and s.image_path:
+                ok = _kenburns_segment(ffmpeg, s, i, dur, res, fps, part)
+            if ok:
                 parts.append(part)
-            except Exception as exc:
-                log.debug("Ken Burns segment %d failed (%s); skipping.", i, exc)
         if not parts:
             return False
+        if n_clips:
+            log.info("Assembled %d segment(s): %d from real footage, %d from stills.",
+                     len(parts), n_clips, len(parts) - n_clips)
 
         lst = tdp / "list.txt"
         lst.write_text("\n".join(f"file '{p.as_posix()}'" for p in parts), encoding="utf-8")

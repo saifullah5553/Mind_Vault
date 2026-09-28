@@ -38,6 +38,8 @@ def _fresh_db():
     # Skip real Wav2Lip inference in tests (~75s/run); the presenter still returns
     # its portrait + badge, which is what the presenter tests assert on.
     os.environ["MIND_VAULT_SKIP_LIPSYNC"] = "1"
+    # No network footage downloads during tests.
+    os.environ["MIND_VAULT_SKIP_FOOTAGE"] = "1"
     init_db(drop=True)
     yield
     reset_engine()

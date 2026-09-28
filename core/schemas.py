@@ -98,6 +98,8 @@ class Scene(BaseModel):
     animation: str = "slow-zoom"
     text_overlay: str = ""
     image_path: str | None = None
+    clip_path: str | None = None      # real HD stock footage for this scene, if found
+    overlay_png: str | None = None    # transparent caption layer used over footage
 
 
 class ScenePlan(BaseModel):

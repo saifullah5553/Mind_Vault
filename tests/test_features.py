@@ -42,13 +42,23 @@ def test_thumbnail_agent_creates_variants():
         assert s.query(Thumbnail).filter_by(content_id=cid, selected=True).count() == 1
 
 
-def test_presenter_generates_consistent_portrait():
+def test_presenter_disabled_by_default_but_still_discloses():
+    """Aria narrates but is NOT shown on screen (default). The AI-voice
+    disclosure must still be emitted for platform compliance."""
     load_all_agents()
-    from core.schemas import VoiceResult
-    # Give it a real (silent) audio file so the agent path runs fully.
+    out = get_agent("presenter").execute({"run_id": "presoff"}).output
+    assert out["disclosure"]          # synthetic-media disclosure still required
+    assert out["overlay"] is None     # nothing composited into the frame
+
+
+def test_presenter_generates_consistent_portrait():
+    """The on-screen presenter capability still works when explicitly enabled."""
+    load_all_agents()
     from core.media.tts import synthesize_speech
     voice = synthesize_speech("Hello from the presenter.", "storage/audio/_pres_test.wav")
-    res = get_agent("presenter").execute({"voice": voice, "run_id": "prestest"})
+    agent = get_agent("presenter")
+    agent.config["enabled"] = True     # off by default; enable to test the capability
+    res = agent.execute({"voice": voice, "run_id": "prestest"})
     assert res.status == "success"
     out = res.output
     assert out["persona"]                      # a named persona

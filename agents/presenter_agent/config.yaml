@@ -11,7 +11,11 @@
 # (Stable Diffusion + SadTalker/Wav2Lip) or a GPU are absent, it still produces a
 # real, consistent portrait-over-narration clip on CPU at $0.
 
-enabled: true
+# OFF by default: Aria is the NARRATOR (her natural Piper voice), not an on-screen
+# avatar. A static face with only lip movement is unconvincing, and skipping it
+# also saves ~75s of CPU per video. Flip to true (and set config/settings.yaml
+# presenter.enabled) once a GPU can run SadTalker for real head motion.
+enabled: false
 
 # ── The persona (a consistent brand identity) ───────────────────────────────
 persona:
@@ -27,7 +31,9 @@ persona:
   voice_gender: "female"
   voice_style: "warm, calm, articulate documentary narration"
 
-disclosure: "Narrated by Aria, an AI-generated presenter."
+# Kept even when she is off-screen: the narration is still an AI voice, and
+# platforms (e.g. YouTube) require synthetic-media disclosure.
+disclosure: "Narrated by Aria, an AI-generated voice."
 
 # ── Rendering pipeline (free-first, pluggable) ──────────────────────────────
 # avatar_provider: how her still portrait is created

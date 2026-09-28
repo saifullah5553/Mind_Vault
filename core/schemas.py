@@ -100,6 +100,7 @@ class Scene(BaseModel):
     image_path: str | None = None
     clip_path: str | None = None      # real HD stock footage for this scene, if found
     overlay_png: str | None = None    # transparent caption layer used over footage
+    animation_kind: str | None = None  # motion-graphics kind, when this beat is animated
 
 
 class ScenePlan(BaseModel):

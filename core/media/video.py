@@ -112,7 +112,7 @@ def _kenburns_build(scenes, audio: VoiceResult | None, out_path: Path, res, fps:
     """Assemble the video scene-by-scene: REAL FOOTAGE where we have it, a
     Ken Burns still otherwise. Segments are concatenated, then the narration is
     muxed on top."""
-    usable = [s for s in scenes if s.clip_path or s.image_path]
+    usable = [s for s in scenes if s.clip_path or s.image_path or s.animation_kind]
     ffmpeg = _ffmpeg_exe()
     if not usable or not ffmpeg:
         return False
@@ -120,23 +120,35 @@ def _kenburns_build(scenes, audio: VoiceResult | None, out_path: Path, res, fps:
         tdp = Path(td)
         parts: list[Path] = []
         n_clips = 0
+        n_anim = 0
         for i, s in enumerate(usable):
             dur = max(0.8, s.duration)
             part = tdp / f"p{i:04d}.mp4"
             ok = False
-            if s.clip_path and Path(s.clip_path).exists():
+            # 1) Motion-graphics animation when this beat suits it (a headline, a
+            #    number, a date range, a cause->effect chain). Always on-topic and
+            #    copyright-free, and covers subjects with no archival footage.
+            if s.animation_kind:
+                from core.media.animation import render_animated_segment
+                ok = render_animated_segment(
+                    s.text_overlay or s.narration, s.animation_kind, part, res, fps,
+                    dur, brand=get_settings().brand.name, seed=i)
+                if ok:
+                    n_anim += 1
+            # 2) Real archival footage.
+            if not ok and s.clip_path and Path(s.clip_path).exists():
                 ok = _clip_segment(ffmpeg, s, dur, res, fps, part)
                 if ok:
                     n_clips += 1
+            # 3) Cinematic still with a Ken Burns move.
             if not ok and s.image_path:
                 ok = _kenburns_segment(ffmpeg, s, i, dur, res, fps, part)
             if ok:
                 parts.append(part)
         if not parts:
             return False
-        if n_clips:
-            log.info("Assembled %d segment(s): %d from real footage, %d from stills.",
-                     len(parts), n_clips, len(parts) - n_clips)
+        log.info("Assembled %d segment(s): %d animated, %d real footage, %d stills.",
+                 len(parts), n_anim, n_clips, len(parts) - n_anim - n_clips)
 
         lst = tdp / "list.txt"
         lst.write_text("\n".join(f"file '{p.as_posix()}'" for p in parts), encoding="utf-8")

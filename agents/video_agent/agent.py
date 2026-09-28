@@ -53,7 +53,13 @@ class VideoAgent(BaseAgent):
         if self.config.get("use_stock_footage", True) and topic and not skip_footage:
             self._attach_footage(plan.scenes, img_dir, topic, category, fmt.resolution)
 
-        # 2) Stills for any scene without footage (rendered at the video's own
+        # 2) HYBRID: mark the beats that are better ANIMATED than filmed — the
+        #    hook, figures, date ranges, cause->effect. These need no footage at
+        #    all, so they also cover topics with no archival film.
+        if self.config.get("use_animation", True):
+            self._mark_animated(plan.scenes)
+
+        # 3) Stills for any scene without footage (rendered at the video's own
         #    resolution so nothing is letterboxed).
         if self.config.get("generate_images", True):
             self.settings.images.width, self.settings.images.height = fmt.resolution
@@ -72,6 +78,28 @@ class VideoAgent(BaseAgent):
         self.log.info("Final video: %s via %s (%.1fs)",
                       Path(result.video_path).name, result.engine, result.duration)
         return result
+
+
+    # ── hybrid animation ────────────────────────────────────────────────────
+    def _mark_animated(self, scenes) -> None:
+        """Flag scenes that suit motion graphics, capped so the video stays mixed."""
+        from core.media.animation import choose_kind
+
+        max_ratio = float(self.config.get("animation_max_ratio", 0.5))
+        budget = max(1, int(len(scenes) * max_ratio))
+        used = 0
+        for i, scene in enumerate(scenes):
+            if used >= budget:
+                break
+            kind = choose_kind(scene.narration, i, is_first=(i == 0))
+            # Prefer animation when there is no footage for this scene anyway.
+            if kind is None and not scene.clip_path and not scene.image_path:
+                kind = "ambient"
+            if kind:
+                scene.animation_kind = kind
+                used += 1
+        if used:
+            self.log.info("Animating %d/%d scene(s) as motion graphics.", used, len(scenes))
 
     # ── real footage ────────────────────────────────────────────────────────
     def _attach_footage(self, scenes, out_dir: Path, topic: str, category: str, res) -> None:

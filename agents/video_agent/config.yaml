@@ -12,7 +12,7 @@ footage_pool_size: 8       # clips fetched per video, cycled across scenes
 # timelines, cause->effect diagrams) generated in code. Free, CPU-only, always
 # on-topic, zero copyright risk. See docs/ANIMATION.md.
 use_animation: true
-animation_max_ratio: 0.5   # at most half the scenes animated; rest stays footage/photos
+animation_max_ratio: 1.0   # animation-led: every eligible beat animated at native res (true HD)
 
 generate_images: true      # stills for any scene without footage
 burn_captions: true        # captions are baked in (overlay PNG over footage)

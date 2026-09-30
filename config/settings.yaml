@@ -39,7 +39,10 @@ formats:
     fps: 30
   long:
     duration_seconds: [480, 900] # 8–15 min
-    resolution: [1920, 1080]     # horizontal
+    # 2560x1440 landscape: YouTube gives 1440p a higher bitrate allocation than
+    # 1080p, so the upload looks noticeably cleaner. Override per run with
+    #   --orientation landscape --resolution 1080|1440|4k
+    resolution: [2560, 1440]     # horizontal (16:9)
     fps: 30
 
 # ── LLM (pluggable — swap provider without touching code) ───────────────────

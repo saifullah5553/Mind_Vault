@@ -62,7 +62,7 @@ def _commons_search(query: str, limit: int = 3) -> list[dict]:
         "action": "query", "format": "json", "generator": "search",
         "gsrsearch": f"{query} filetype:bitmap", "gsrnamespace": "6",
         "gsrlimit": str(limit), "prop": "imageinfo",
-        "iiprop": "url|extmetadata", "iiurlwidth": "1600",
+        "iiprop": "url|extmetadata", "iiurlwidth": "3840",   # large enough for a 4K frame
     }
     r = httpx.get("https://commons.wikimedia.org/w/api.php", params=params,
                   headers=_UA, timeout=20)

@@ -86,18 +86,38 @@ class VideoAgent(BaseAgent):
         from core.media.animation import choose_kind
 
         max_ratio = float(self.config.get("animation_max_ratio", 0.5))
-        budget = max(1, int(len(scenes) * max_ratio))
+        budget = max(1, int(round(len(scenes) * max_ratio)))
         used = 0
+
+        # Pass 1 — confident matches (a headline, a figure, a date range, a
+        # cause->effect chain). These are the scenes animation renders best.
         for i, scene in enumerate(scenes):
             if used >= budget:
                 break
             kind = choose_kind(scene.narration, i, is_first=(i == 0))
-            # Prefer animation when there is no footage for this scene anyway.
             if kind is None and not scene.clip_path and not scene.image_path:
-                kind = "ambient"
+                kind = "ambient"     # nothing else to show this beat
             if kind:
                 scene.animation_kind = kind
                 used += 1
+
+        # Pass 2 — fill the remaining budget with generic kinds. Without this,
+        # raising animation_max_ratio has almost no effect, because pass 1 only
+        # fires on scenes with an explicit signal. Filling matters for maximum
+        # HD: animated frames are drawn at the output resolution, whereas
+        # archival footage is 640x480 and cannot be sharpened by upscaling.
+        if self.config.get("animation_fill", True) and used < budget:
+            generic = ["bullets", "ambient", "concept", "ambient"]
+            gi = 0
+            for i, scene in enumerate(scenes):
+                if used >= budget:
+                    break
+                if scene.animation_kind:
+                    continue
+                scene.animation_kind = generic[gi % len(generic)]
+                gi += 1
+                used += 1
+
         if used:
             self.log.info("Animating %d/%d scene(s) as motion graphics.", used, len(scenes))
 

@@ -77,6 +77,12 @@ video:
   engine: "auto"                 # auto | ffmpeg | moviepy
   captions: true
   ken_burns: true                # slow zoom/pan on every still (cinematic motion)
+  # Encode quality for YouTube. crf 18 + medium preset gives a high-bitrate
+  # 1080p master; raise crf (e.g. 23) for faster, smaller, softer renders.
+  crf: 18
+  preset: "medium"
+  frame_quality: 95              # JPEG quality of generated animation frames
+  min_footage_height: 400        # skip stock sources too low-res to upscale
   background_music: true         # procedural bed by default; drop royalty-free tracks in music_dir
   music_dir: "storage/music"
   music_volume: 0.18             # bed level under narration (ducks automatically)

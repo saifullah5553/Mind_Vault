@@ -66,3 +66,51 @@ every animated scene follows.
   a designer.
 - Kind detection is heuristic, so it will occasionally pick an odd style; the
   `ambient` fallback keeps it safe.
+
+## Output quality — measured, not assumed
+
+| Layer | Native resolution | Genuinely HD? |
+|---|---|---|
+| **Animation** | rendered at the full frame (1080x1920 / 1920x1080) | **Yes — crisp, near-lossless** |
+| **Photos** (Wikimedia/Openverse) | large originals, requested at 1600px | **Yes** |
+| **Archival footage** (Internet Archive) | **640x480 at best** | **No — inherently SD** |
+| **Pexels / Pixabay** (free key) | 1080p–4K | **Yes** |
+
+Two things are worth understanding:
+
+**Animated scenes have a low bitrate and that is fine.** Flat vector graphics
+contain very little detail, so x264 at CRF 18 reproduces them essentially
+losslessly at a few hundred kbps. Bitrate is only a meaningful quality signal for
+noisy, grainy sources like film.
+
+**Archival film will never be HD.** These are scans of mid-20th-century reels;
+the best derivative the Internet Archive offers is typically 640x480. Upscaled to
+a 1080p frame it looks soft and dated. Two guards exist:
+
+- `video.min_footage_height` (default 400) rejects sources too small to upscale;
+  that beat falls back to a high-resolution photo or an animated scene instead.
+- The fetcher now picks the **highest-resolution** derivative available. (An
+  earlier version picked the smallest file to save bandwidth, which produced
+  320x240 sources — visibly bad. Since we only range-read a few seconds, file
+  size is irrelevant and quality wins.)
+
+### Dials
+
+`config/settings.yaml`:
+```yaml
+video:
+  crf: 18            # lower = better quality (18 ~ visually lossless); 23 = faster/smaller
+  preset: "medium"   # slower preset = better quality per bitrate
+  frame_quality: 95  # JPEG quality of generated animation frames
+  min_footage_height: 400
+```
+
+### If you want everything to be true HD
+
+Archival footage is the only SD element. Either:
+
+1. **Go animation-heavy** — set `animation_max_ratio: 1.0` in
+   `agents/video_agent/config.yaml`. Every frame is then generated at native
+   resolution and is genuinely HD, at zero cost.
+2. **Add a free Pexels/Pixabay key** — real 1080p/4K stock video (see
+   [FOOTAGE.md](FOOTAGE.md)).

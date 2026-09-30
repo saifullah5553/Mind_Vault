@@ -67,6 +67,21 @@ def _font(size: int, bold: bool = False):
     return ImageFont.load_default()
 
 
+def _frame_quality() -> int:
+    from core.config import get_settings
+    return int(getattr(get_settings().video, "frame_quality", 95))
+
+
+def _enc_crf() -> int:
+    from core.config import get_settings
+    return int(getattr(get_settings().video, "crf", 18))
+
+
+def _enc_preset() -> str:
+    from core.config import get_settings
+    return str(getattr(get_settings().video, "preset", "medium"))
+
+
 def _ease(t: float) -> float:
     """Smooth in/out easing; motion never starts or stops abruptly."""
     t = max(0.0, min(1.0, t))
@@ -341,10 +356,10 @@ def render_animated_segment(text: str, kind: str, out_path: Path, res, fps: int,
                     ImageDraw.Draw(frame).text((30, h - 46), brand,
                                                font=_font(max(16, w // 60)),
                                                fill=style.muted)
-                frame.save(tdp / f"f{i:05d}.jpg", "JPEG", quality=88)
+                frame.save(tdp / f"f{i:05d}.jpg", "JPEG", quality=_frame_quality(), subsampling=0)
             cmd = [ffmpeg, "-y", "-framerate", str(fps), "-i", str(tdp / "f%05d.jpg"),
-                   "-r", str(fps), "-c:v", "libx264", "-preset", "veryfast",
-                   "-crf", "23", "-pix_fmt", "yuv420p", str(out_path)]
+                   "-r", str(fps), "-c:v", "libx264", "-preset", _enc_preset(),
+                   "-crf", str(_enc_crf()), "-pix_fmt", "yuv420p", str(out_path)]
             subprocess.run(cmd, check=True, capture_output=True)
         return out_path.exists()
     except Exception as exc:

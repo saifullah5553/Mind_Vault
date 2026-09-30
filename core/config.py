@@ -98,6 +98,12 @@ class VideoConfig(BaseModel):
     captions: bool = True
     background_music: bool = True
     ken_burns: bool = True          # slow zoom/pan on stills (cinematic motion)
+    # Encode quality. CRF is the main dial: lower = better (18 is visually
+    # near-lossless, 23 was noticeably soft for 1080p upload).
+    crf: int = 18
+    preset: str = "medium"          # slower preset = better quality per bitrate
+    frame_quality: int = 95         # JPEG quality for animation frames
+    min_footage_height: int = 400   # don't upscale sources smaller than this
     music_dir: str = "storage/music"
     music_volume: float = 0.18          # bed level under narration
     music_intro_outro_seconds: float = 4.0  # bed swells louder at start/end

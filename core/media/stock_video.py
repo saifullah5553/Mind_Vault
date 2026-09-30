@@ -37,6 +37,14 @@ _UA = {"User-Agent": "Mind_Vault/0.1 (https://github.com/saifullah5553/Mind_Vaul
 
 # Keep downloads sane on a home connection.
 MAX_CLIP_MB = 60
+# Sources below this height look bad blown up to a 1080p frame, so we skip them
+# and let a high-resolution photo or an animated scene take that beat instead.
+MIN_SOURCE_HEIGHT = 400
+
+
+def _min_height() -> int:
+    from core.config import get_settings
+    return int(getattr(get_settings().video, "min_footage_height", MIN_SOURCE_HEIGHT))
 _VIDEO_EXT = (".mp4", ".webm", ".ogv", ".m4v", ".mov")
 
 
@@ -118,20 +126,26 @@ def _ia_file(identifier: str) -> dict | None:
     if not ok:
         return None
 
-    best = None
+    # Pick the HIGHEST-resolution derivative. File size is irrelevant because we
+    # only range-read a few seconds; picking the smallest file (as an earlier
+    # version did) yielded 320x240 sources that looked terrible upscaled to 1080p.
+    best = None      # (name, height, width)
     for f in data.get("files") or []:
         name = f.get("name", "")
         if not name.lower().endswith(_VIDEO_EXT):
             continue
         try:
-            size_mb = int(f.get("size", 0)) / (1024 * 1024)
+            fw = int(f.get("width") or 0)
+            fh = int(f.get("height") or 0)
         except (TypeError, ValueError):
-            size_mb = 0.0
-        # Prefer the smallest usable derivative; size is fine because we only
-        # range-read a few seconds of it.
-        if best is None or (size_mb and size_mb < best[1]):
-            best = (name, size_mb or 1e9)
+            fw = fh = 0
+        if best is None or fh > best[1]:
+            best = (name, fh, fw)
     if not best:
+        return None
+    # Refuse sources too small to survive upscaling to the output frame.
+    if best[1] and best[1] < _min_height():
+        log.debug("%s: best derivative only %dp; skipping.", identifier, best[1])
         return None
     return {
         "url": f"https://archive.org/download/{identifier}/{best[0]}",
@@ -140,6 +154,8 @@ def _ia_file(identifier: str) -> dict | None:
         "credit": str(meta.get("creator") or "")[:80],
         "source": "Internet Archive",
         "stream": True,
+        "height": best[1],
+        "width": best[2],
     }
 
 

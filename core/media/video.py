@@ -25,6 +25,15 @@ from core.schemas import Scene, VideoResult, VoiceResult
 log = get_logger("media.video")
 
 
+def _crf() -> int:
+    """Encode quality dial (lower = better). Configured in settings.video.crf."""
+    return int(getattr(get_settings().video, "crf", 18))
+
+
+def _preset() -> str:
+    return str(getattr(get_settings().video, "preset", "medium"))
+
+
 def _ffmpeg_exe() -> str | None:
     """Resolve an ffmpeg binary: system PATH first, else imageio-ffmpeg's bundled
     binary (`pip install imageio-ffmpeg`, free, no system install / no GPU)."""
@@ -68,8 +77,8 @@ def _clip_segment(ffmpeg: str, scene, dur: float, res, fps: int, part: Path) -> 
     else:
         fc = f"{base}[out]"
     cmd = inputs + ["-filter_complex", fc, "-map", "[out]", "-an",
-                    "-r", str(fps), "-c:v", "libx264", "-preset", "veryfast",
-                    "-crf", "23", str(part)]
+                    "-r", str(fps), "-c:v", "libx264", "-preset", _preset(),
+                    "-crf", str(_crf()), str(part)]
     try:
         subprocess.run(cmd, check=True, capture_output=True)
         return part.exists()
@@ -98,8 +107,8 @@ def _kenburns_segment(ffmpeg: str, scene, i: int, dur: float, res, fps: int, par
           f"zoompan=z='{z}':x='{x}':y='{y}':d={frames}:s={w}x{h}:fps={fps},"
           f"format=yuv420p")
     cmd = [ffmpeg, "-y", "-loop", "1", "-t", f"{dur:.3f}", "-i", scene.image_path,
-           "-vf", vf, "-r", str(fps), "-c:v", "libx264", "-preset", "veryfast",
-           "-crf", "23", str(part)]
+           "-vf", vf, "-r", str(fps), "-c:v", "libx264", "-preset", _preset(),
+           "-crf", str(_crf()), str(part)]
     try:
         subprocess.run(cmd, check=True, capture_output=True)
         return part.exists()
@@ -185,7 +194,7 @@ def _ffmpeg_build(scenes, audio: VoiceResult | None, out_path: Path, res) -> boo
         cmd1 = [ffmpeg, "-y", "-f", "concat", "-safe", "0", "-i", str(concat),
                 "-vf", f"scale={res[0]}:{res[1]}:force_original_aspect_ratio=decrease,"
                        f"pad={res[0]}:{res[1]}:(ow-iw)/2:(oh-ih)/2,format=yuv420p",
-                "-r", "30", "-c:v", "libx264", "-preset", "veryfast", str(silent)]
+                "-r", "30", "-c:v", "libx264", "-preset", _preset(), "-crf", str(_crf()), str(silent)]
         subprocess.run(cmd1, check=True, capture_output=True)
 
         if audio and Path(audio.audio_path).exists():
@@ -259,7 +268,7 @@ def _composite_presenter(base: Path, overlay: str, out: Path, res, scale: float,
     loop = [] if is_video else ["-loop", "1"]
     cmd = [ffmpeg, "-y", "-i", str(base), *loop, "-i", overlay,
            "-filter_complex", fc, "-map", "[v]", "-map", "0:a?",
-           "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
+           "-c:v", "libx264", "-preset", _preset(), "-crf", str(_crf()), "-pix_fmt", "yuv420p",
            "-c:a", "copy", "-shortest", str(out)]
     try:
         subprocess.run(cmd, check=True, capture_output=True)

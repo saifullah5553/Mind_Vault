@@ -104,3 +104,40 @@ git push      # when you finish
 ```
 Runtime artifacts (videos, DB, checkpoints) are intentionally **not** synced —
 each machine keeps its own.
+
+---
+
+## Moving the project folder (e.g. C: -> D:, or to another machine)
+
+The **code** is location-independent: `ROOT_DIR` is derived from the source file,
+so the database, storage and tool paths all follow the folder automatically.
+
+But artifacts produced by earlier runs record **absolute** paths — the database
+(`content.video_path` etc.), review bundles, pipeline checkpoints and publish
+manifests. After a move those still point at the old location, so
+`scripts.publish_approved` and `run_pipeline --resume` would fail to find their
+files.
+
+Fix it in one command after moving:
+
+```bash
+python -m scripts.relocate --check    # report what would change
+```
+```bash
+python -m scripts.relocate            # rewrite them to the new root
+```
+
+It is idempotent — it only rewrites paths that do not already sit under the
+current root, so running it twice is harmless.
+
+### Moving on Windows
+
+Run the copy from *outside* the folder, or Windows will refuse to delete the
+source root (a process cannot delete its own working directory):
+
+```bash
+robocopy "C:\old\path" "D:\new\path" /E /MOVE /R:2 /W:2
+```
+
+Then `python -m scripts.relocate`, and re-open your terminal/editor at the new
+path.

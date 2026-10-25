@@ -50,13 +50,7 @@ class QualityAgent(BaseAgent):
         script_text = payload.script.full_text if payload.script else ""
 
         # 1) Fact accuracy — confidence x coverage.
-        usable = [v for v in payload.fact_verdicts if v.status in ("approved", "needs_verification")]
-        if payload.fact_verdicts:
-            avg_conf = sum(v.confidence for v in usable) / len(usable) if usable else 0.0
-            coverage = len(usable) / len(payload.fact_verdicts) * 100
-            fact_score = round(0.5 * avg_conf + 0.5 * coverage, 1)
-        else:
-            fact_score = 0.0
+        fact_score = self._fact_score(payload)
         if fact_score < q.fact_score_min:
             reasons.append(f"fact_score {fact_score} < {q.fact_score_min}")
 
@@ -126,6 +120,36 @@ class QualityAgent(BaseAgent):
         )
 
     # ── scoring helpers ─────────────────────────────────────────────────────
+    # ── pre-render gate ─────────────────────────────────────────────────────
+    def precheck(self, ctx: PipelineContext) -> tuple[list[str], dict]:
+        """Cheap TEXT-ONLY gates, run BEFORE the expensive render.
+
+        Facts, originality and hook strength depend only on the research and the
+        script, so checking them after rendering wastes the whole render when they
+        fail — at 1440p that was several minutes per retry. Returns
+        (failure_reasons, scores); an empty list means the script may be rendered.
+        """
+        q = self.settings.quality
+        fact = self._fact_score(ctx)
+        orig = self._originality(ctx)
+        hook = ctx.selected_hook.total if ctx.selected_hook else 0.0
+        reasons: list[str] = []
+        if fact < q.fact_score_min:
+            reasons.append(f"fact_score {fact} < {q.fact_score_min}")
+        if orig < q.originality_score_min:
+            reasons.append(f"originality {orig} < {q.originality_score_min}")
+        if hook < q.hook_score_min:
+            reasons.append(f"hook_score {hook} < {q.hook_score_min}")
+        return reasons, {"fact_confidence": fact, "originality": orig, "hook": hook}
+
+    def _fact_score(self, ctx: PipelineContext) -> float:
+        usable = [v for v in ctx.fact_verdicts if v.status in ("approved", "needs_verification")]
+        if not ctx.fact_verdicts:
+            return 0.0
+        avg_conf = sum(v.confidence for v in usable) / len(usable) if usable else 0.0
+        coverage = len(usable) / len(ctx.fact_verdicts) * 100
+        return round(0.5 * avg_conf + 0.5 * coverage, 1)
+
     def _originality(self, ctx: PipelineContext) -> float:
         script_text = ctx.script.full_text if ctx.script else (ctx.topic.angle if ctx.topic else "")
         if not script_text:

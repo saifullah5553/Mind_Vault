@@ -133,6 +133,11 @@ storage:
 # ── Reliability ─────────────────────────────────────────────────────────────
 reliability:
   max_retries: 3
+  # Text checks (facts, originality, hook) now run BEFORE rendering. A script
+  # that fails them is rewritten, or swapped for a new topic, without rendering.
+  max_retopics: 2
+  # Full re-renders allowed after the video exists (each is minutes at 1440p).
+  max_render_retries: 1
   retry_backoff_seconds: 2
   checkpoint: true               # save partial pipeline state to resume on failure
 

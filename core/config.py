@@ -144,6 +144,8 @@ class StorageConfig(BaseModel):
 
 class ReliabilityConfig(BaseModel):
     max_retries: int = 3
+    max_retopics: int = 2          # new topics tried when originality/facts fail pre-render
+    max_render_retries: int = 1    # full re-renders allowed after rendering (expensive)
     retry_backoff_seconds: float = 2.0
     checkpoint: bool = True
 

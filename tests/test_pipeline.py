@@ -69,3 +69,40 @@ def test_learning_loop_over_seeded_analytics():
     report = get_agent("ceo").execute({})
     assert report.status == "success"
     assert report.output.summary
+
+
+def test_failed_text_gate_skips_render():
+    """A script that fails facts/originality/hook must never be rendered.
+
+    Before the pre-render gate, quality ran AFTER rendering, so every failure
+    cost a full render (minutes at 1440p) and then re-rendered on retry.
+    """
+    from core.config import get_settings
+    from core.database.models import Content
+    from core.database.session import session_scope
+
+    q = get_settings().quality
+    q.hook_score_min = 101          # impossible: forces the text gate to fail
+    ctx = Orchestrator().produce(category="history", video_format="short")
+
+    assert ctx.extra.get("precheck_failed") is True
+    assert ctx.video is None and ctx.voice is None      # nothing was rendered
+    assert "precheck" in ctx.completed_stages
+    with session_scope() as s:
+        assert s.get(Content, ctx.content_id).status == "quality_failed"
+
+
+def test_passing_text_gate_still_renders():
+    ctx = Orchestrator().produce(category="psychology", video_format="short")
+    assert ctx.extra.get("precheck", {}).get("passed") is True
+    assert ctx.video is not None
+
+
+def test_topic_agent_honours_exclusions():
+    from core.registry import get_agent, load_all_agents
+    load_all_agents()
+    agent = get_agent("topic")
+    first = agent.execute({"category": "history", "trends": []}).output
+    second = agent.execute({"category": "history", "trends": [],
+                            "exclude": [first.topic, first.angle]}).output
+    assert second.topic.lower() != first.topic.lower()

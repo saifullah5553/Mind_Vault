@@ -35,6 +35,10 @@ from core.schemas import PipelineContext
 
 log = get_logger("orchestrator")
 
+# Stages that only make sense once a script has passed the text gate.
+_RENDER_STAGES = {"visual", "voice", "presenter", "video", "quality",
+                  "approve", "seo", "thumbnail"}
+
 
 class Orchestrator:
     def __init__(self) -> None:
@@ -75,6 +79,7 @@ class Orchestrator:
             ("fact", self._stage_fact),
             ("hook", self._stage_hook),
             ("script", self._stage_script),
+            ("precheck", self._stage_precheck),
             ("visual", self._stage_visual),
             ("voice", self._stage_voice),
             ("presenter", self._stage_presenter),
@@ -89,6 +94,10 @@ class Orchestrator:
         ]
         for name, fn in stages:
             if name in ctx.completed_stages:
+                continue
+            # A script that failed the pre-render gate is never rendered.
+            if name in _RENDER_STAGES and ctx.extra.get("precheck_failed"):
+                ctx.completed_stages.append(name)
                 continue
             try:
                 fn(ctx)
@@ -118,7 +127,10 @@ class Orchestrator:
     def _stage_topic(self, ctx):
         from core.schemas import TrendItem
         trends = [TrendItem(**t) for t in ctx.extra.get("trends", [])]
-        ctx.topic = self._agent_output("topic", {"category": ctx.category, "trends": trends}, ctx)
+        ctx.topic = self._agent_output("topic", {
+            "category": ctx.category, "trends": trends,
+            "exclude": ctx.extra.get("excluded_topics", []),
+        }, ctx)
 
     def _stage_content_record(self, ctx):
         with session_scope() as s:
@@ -167,6 +179,64 @@ class Orchestrator:
         self._update_content(ctx, status=ContentStatus.SCRIPTED.value, script=ctx.script.full_text,
                              title=ctx.script.title, keywords=[])
 
+    def _stage_precheck(self, ctx):
+        """Text-only quality gate BEFORE the expensive render.
+
+        - hook too weak      -> rewrite hook + script (cheap, text only)
+        - originality / facts -> pick a DIFFERENT topic; rewriting the same topic
+                                 rarely helps (and the offline stub writes the
+                                 same script for the same topic every time)
+        If the gate still fails, the run is marked quality_failed and NOTHING is
+        rendered — a failure now costs seconds instead of a full render.
+        """
+        qa = get_agent("quality")
+        reasons, scores = qa.precheck(ctx)
+        rewrites = self.settings.reliability.max_retries
+        retopics = self.settings.reliability.max_retopics
+        while reasons:
+            needs_new_topic = any(r.startswith(("originality", "fact_score")) for r in reasons)
+            if needs_new_topic and retopics > 0:
+                retopics -= 1
+                log.warning("Pre-render gate failed (%s); choosing a different topic.", reasons)
+                if not self._retopic(ctx):
+                    break
+            elif not needs_new_topic and rewrites > 0:
+                rewrites -= 1
+                log.warning("Pre-render gate failed (%s); rewriting hook + script.", reasons)
+                self._stage_hook(ctx)
+                self._stage_script(ctx)
+            else:
+                break
+            reasons, scores = qa.precheck(ctx)
+
+        ctx.extra["precheck"] = {"passed": not reasons, "reasons": reasons, "scores": scores}
+        if reasons:
+            ctx.extra["precheck_failed"] = True
+            ctx.extra["quality_failed"] = True
+            self._update_content(ctx, status=ContentStatus.QUALITY_FAILED.value)
+            log.warning("Skipping render: text gates not met (%s).", reasons)
+        else:
+            log.info("Pre-render gate passed %s.", scores)
+
+    def _retopic(self, ctx) -> bool:
+        """Replace this run's topic, re-research it and rewrite the script."""
+        excluded = ctx.extra.setdefault("excluded_topics", [])
+        for value in (ctx.topic.topic, ctx.topic.angle):
+            if value and value not in excluded:
+                excluded.append(value)
+        try:
+            self._stage_topic(ctx)
+        except Mind_VaultError as exc:
+            log.warning("No alternative topic available (%s).", exc)
+            return False
+        self._update_content(ctx, topic=ctx.topic.topic, subcategory=ctx.topic.subcategory,
+                             title=ctx.topic.angle)
+        self._stage_research(ctx)
+        self._stage_fact(ctx)
+        self._stage_hook(ctx)
+        self._stage_script(ctx)
+        return True
+
     def _stage_visual(self, ctx):
         ctx.scene_plan = self._agent_output("visual", {"script": ctx.script}, ctx)
 
@@ -209,7 +279,9 @@ class Orchestrator:
         regenerations we record `quality_failed`, keep the artifact (never lose
         work), and let the run complete — publishing is simply withheld.
         """
-        attempts = self.settings.reliability.max_retries
+        # Each attempt is a FULL render, and the text gates already passed before
+        # rendering, so this has its own (smaller) budget.
+        attempts = self.settings.reliability.max_render_retries
         for i in range(1, attempts + 1):
             log.warning("Quality failed (%s). Regeneration attempt %d/%d.",
                         ctx.quality.reasons, i, attempts)

@@ -39,6 +39,14 @@ class TopicAgent(BaseAgent):
         trends: list[TrendItem] = payload.get("trends", []) or []
 
         candidates = self._candidate_phrases(category, trends)
+
+        # Topics the orchestrator has ruled out this run (e.g. its script was too
+        # close to something already published). Regenerating the script for the
+        # SAME topic rarely fixes originality, so the caller asks for a new topic.
+        exclude = {str(x).strip().lower() for x in (payload.get("exclude") or []) if x}
+        if exclude:
+            candidates = [(ph, sub) for ph, sub in candidates
+                          if ph.strip().lower() not in exclude]
         existing = self._existing_corpus()
 
         # PERF: reframing calls the LLM, so do a cheap heuristic pre-rank on the
@@ -56,6 +64,8 @@ class TopicAgent(BaseAgent):
         scored: list[ScoredTopic] = []
         for phrase, sub in chosen:
             angle = self._reframe(phrase) if reframe else phrase
+            if exclude and angle.strip().lower() in exclude:
+                continue
             dup, sim = is_duplicate(angle, existing)
             st = self._score(phrase, angle, category, sub, duplicate=sim)
             if dup:

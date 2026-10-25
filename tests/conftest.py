@@ -43,6 +43,7 @@ def _fresh_db():
         setattr(s.storage, bucket, f"storage/_test/{bucket}")
     s.publishing.review_dir = "storage/_test/review"
     s.storage.root = "storage/_test"  # autopilot lock + state files
+    os.environ["MIND_VAULT_LEARNED_RULES"] = "storage/_test/learned_rules.yaml"
     # Skip real Wav2Lip inference in tests (~75s/run); the presenter still returns
     # its portrait + badge, which is what the presenter tests assert on.
     os.environ["MIND_VAULT_SKIP_LIPSYNC"] = "1"

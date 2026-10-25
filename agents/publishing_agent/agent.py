@@ -49,8 +49,21 @@ class PublishingAgent(BaseAgent):
             results.append(self._dispatch(pkg, dry_run))
 
         self._write_manifest(payload, packages, results)
+        self._record_posts(payload.content_id, results)
         self.log.info("Publish results: %s", ", ".join(f"{r.platform}={r.status}" for r in results))
         return results
+
+    def _record_posts(self, content_id: int | None, results: list[PublishResult]) -> None:
+        """Remember each real upload's platform id so live analytics can find it."""
+        real = [r for r in results if r.status == "published" and r.external_id]
+        if not real or content_id is None:
+            return
+        from core.database.models import PlatformPost
+        from core.database.session import session_scope
+        with session_scope() as s:
+            for r in real:
+                s.add(PlatformPost(content_id=content_id, platform=r.platform,
+                                   external_id=r.external_id, url=r.url))
 
     def _dispatch(self, pkg: PublishPackage, dry_run: bool) -> PublishResult:
         publisher = get_publisher(pkg.platform)

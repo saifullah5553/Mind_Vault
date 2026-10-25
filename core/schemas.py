@@ -168,6 +168,7 @@ class PublishResult(BaseModel):
     platform: str
     status: str                              # published | dry_run | failed | skipped
     url: str = ""
+    external_id: str = ""                    # the platform's own video id (real uploads)
     note: str = ""
 
 

@@ -12,7 +12,7 @@ here, through `scripts/autopilot.py`.
 | every day                    | `research` | refresh trends, topics and competitor intel          |
 | `publishing.short_days`      | `short`    | one vertical Short, rendered into the review folder  |
 | `publishing.long_days`       | `long`     | one landscape documentary, into the review folder    |
-| `autopilot.review_day`       | `review`   | weekly CEO report (learning waits for live analytics)|
+| `autopilot.review_day`       | `review`   | analytics -> learning -> CEO report (real data only) |
 | every day                    | `backup`   | zip of database, config and logs                     |
 
 The CEO agent picks the category, keeping the mix close to `strategy.category_mix`.
@@ -80,13 +80,16 @@ while you are signed in, which is also when Ollama is running. Remove it with:
 python -m scripts.autopilot --uninstall-task
 ```
 
-## Why the learning loop is paused
+## How the learning loop gets real data
 
-The analytics agent only reads real platform data in `live` mode, and live
-collection is not implemented yet. In `auto` and `simulate` modes it generates
-plausible but invented figures. The weekly review therefore skips learning until
-`agents/analytics_agent/config.yaml` says `mode: "live"`, so channel strategy is
-never tuned to fictional numbers.
+The weekly review runs analytics, then learning, then the CEO report. Analytics
+reads real figures (YouTube Analytics API) only for videos that were actually
+uploaded, which are recorded in the `platform_posts` table. Anything it cannot
+measure is skipped, never estimated. Until uploads begin there is nothing to
+learn from, so the learned rules stay empty.
+
+`simulate` mode in `agents/analytics_agent/config.yaml` invents plausible numbers
+for demos; the review refuses to learn from it.
 
 ## Settings (`config/settings.yaml`)
 

@@ -5,16 +5,19 @@ updates each video's `ContentMemory.performance_score` so the learning loop has 
 target signal.
 
 Modes:
-- live      : pull from platform Data APIs (needs credentials; wire in `_live`).
+- live / auto : read REAL figures for each real upload (a PlatformPost row)
+              from that platform's analytics API. Anything that can't be
+              measured (no credentials, no live client for that platform) is
+              skipped, never estimated: learning from invented numbers would
+              steer the channel by fiction. YouTube is wired; others skip.
 - simulate  : generate plausible, seeded figures so the whole learn loop is
-              runnable at $0. CLEARLY flagged as simulated in the row's notes.
-- auto      : live where credentials exist, else simulate.
+              runnable at $0 (demos and tests). Never use it for real decisions.
 """
 
 from __future__ import annotations
 
 from core.agents.base import BaseAgent
-from core.database.models import Analytics, Content, ContentMemory
+from core.database.models import Analytics, Content, ContentMemory, PlatformPost
 from core.database.session import session_scope
 from core.registry import register_agent
 
@@ -26,10 +29,10 @@ class AnalyticsAgent(BaseAgent):
 
     def run(self, payload: dict | None = None) -> dict:
         payload = payload or {}
-        mode = self.config.get("mode", "auto")
+        mode = payload.get("mode") or self.config.get("mode", "auto")
         content_ids = payload.get("content_ids")
 
-        updated = 0
+        live_rows = sim_rows = skipped = 0
         with session_scope() as s:
             q = s.query(Content).filter(Content.status == "published")
             if content_ids:
@@ -37,18 +40,27 @@ class AnalyticsAgent(BaseAgent):
             published = q.all()
 
             for content in published:
-                for platform in self.settings.publishing.platforms:
-                    row = self._simulate(content, platform) if mode != "live" else self._live(content, platform)
-                    s.add(row)
-                    updated += 1
-                # Update the memory performance score (avg retention proxy).
+                if mode == "simulate":
+                    rows = [self._simulate(content, p) for p in self.settings.publishing.platforms]
+                    sim_rows += len(rows)
+                    score = self._perf_proxy(content)
+                else:
+                    posts = s.query(PlatformPost).filter(PlatformPost.content_id == content.id).all()
+                    rows = [r for r in (self._live(content, post) for post in posts) if r]
+                    skipped += len(posts) - len(rows)
+                    live_rows += len(rows)
+                    # Real signal: average retention across platforms we could read.
+                    score = (round(sum(r.retention for r in rows) / len(rows), 1)
+                             if rows else None)
+                s.add_all(rows)
                 mem = s.query(ContentMemory).filter(ContentMemory.video_id == content.id).first()
-                if mem:
-                    mem.performance_score = self._perf_proxy(content)
+                if mem and score is not None:
+                    mem.performance_score = score
 
-        self.log.info("Analytics ingested for %d published video(s) (%d rows, mode=%s)",
-                      len(published), updated, mode)
-        return {"videos": len(published), "rows": updated, "mode": mode}
+        self.log.info("Analytics for %d published video(s): %d live row(s), %d simulated, "
+                      "%d skipped (mode=%s)", len(published), live_rows, sim_rows, skipped, mode)
+        return {"videos": len(published), "rows": live_rows + sim_rows, "live_rows": live_rows,
+                "simulated_rows": sim_rows, "skipped": skipped, "mode": mode}
 
     def _perf_proxy(self, content: Content) -> float:
         # Seeded, deterministic performance proxy from quality + id.
@@ -74,6 +86,20 @@ class AnalyticsAgent(BaseAgent):
             saves=views // 120, subscribers_generated=views // 300,
         )
 
-    def _live(self, content: Content, platform: str) -> Analytics:  # pragma: no cover - needs creds
-        raise NotImplementedError(
-            f"Live analytics for {platform} not wired. Implement the Data API call here.")
+    def _live(self, content: Content, post: PlatformPost) -> Analytics | None:
+        """One live row for a real upload, or None if it can't be measured."""
+        if post.platform != "youtube":
+            return None                       # no live client for this platform yet
+        from core.publishing import get_publisher
+        if not get_publisher("youtube").is_configured():
+            return None
+        from core.analytics.youtube import video_report
+        from core.errors import ProviderError
+        try:
+            published = content.published_date.date() if content.published_date else None
+            data = video_report(post.external_id, published,
+                                deciles=self.config.get("retention_deciles", 10))
+        except ProviderError as exc:
+            self.log.warning("Live analytics for %s failed: %s", post.external_id, exc)
+            return None
+        return Analytics(video_id=content.id, platform=post.platform, **data)

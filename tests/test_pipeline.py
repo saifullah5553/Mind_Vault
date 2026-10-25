@@ -62,7 +62,8 @@ def test_learning_loop_over_seeded_analytics():
             s.add(ContentMemory(video_id=c.id, topic=c.topic, hook=f"hook {i}",
                                 hook_type=hook_type, duration=60.0))
 
-    assert get_agent("analytics").execute({}).status == "success"
+    # Explicit simulate: this test exercises the loop's mechanics, not real data.
+    assert get_agent("analytics").execute({"mode": "simulate"}).status == "success"
     learn = get_agent("learning").execute({})
     assert learn.status == "success"
     assert learn.output["insights"]["samples"] == 3

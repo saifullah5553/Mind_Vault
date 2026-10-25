@@ -89,6 +89,24 @@ class ContentMemory(Base, TimestampMixin):
     content: Mapped["Content"] = relationship(back_populates="memory")
 
 
+# ── PLATFORM POSTS ──────────────────────────────────────────────────────────
+class PlatformPost(Base, TimestampMixin):
+    """One real upload: which platform holds this video, under which id.
+
+    Live analytics need the platform's own video id; without this record a
+    published video cannot be looked up. Only real uploads are recorded, never
+    dry runs. (A separate table, so existing databases gain it via create_all.)
+    """
+
+    __tablename__ = "platform_posts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    content_id: Mapped[int] = mapped_column(ForeignKey("content.id"), index=True)
+    platform: Mapped[str] = mapped_column(String(40), index=True)
+    external_id: Mapped[str] = mapped_column(String(120), index=True)
+    url: Mapped[str] = mapped_column(String(300), default="")
+
+
 # ── ANALYTICS ───────────────────────────────────────────────────────────────
 class Analytics(Base, TimestampMixin):
     __tablename__ = "analytics"

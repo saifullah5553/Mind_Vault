@@ -17,9 +17,19 @@ so you can review before making them public.
 ## YouTube (Data API v3)
 1. Google Cloud Console → create a project → enable **YouTube Data API v3**.
 2. Create an **OAuth client ID** (Desktop app). Note client id + secret.
-3. Do the one-time consent flow to get a **refresh token** with scope
-   `https://www.googleapis.com/auth/youtube.upload` (and `.force-ssl` for captions).
+3. Do the one-time consent flow to get a **refresh token** with these scopes:
+   - `https://www.googleapis.com/auth/youtube.upload` (uploads, thumbnails)
+   - `https://www.googleapis.com/auth/youtube.force-ssl` (caption tracks)
+   - `https://www.googleapis.com/auth/yt-analytics.readonly` (live analytics, read-only)
+
+   Use `access_type=offline` and `prompt=consent` so Google returns a refresh token.
    (Google OAuth Playground is the easiest way, or a small local script.)
+
+   **Refresh tokens expire after 7 days while the Google Cloud app is in
+   "Testing" mode.** For unattended use, set the OAuth consent screen's publishing
+   status to "In production" (a personal app with only your own account needs no
+   Google verification for these scopes to keep working, but you will see an
+   "unverified app" warning once during consent).
 4. Set:
    ```
    YOUTUBE_CLIENT_ID=...

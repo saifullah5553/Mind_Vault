@@ -219,13 +219,15 @@ def _job_review(s: Settings) -> dict:
     load_all_agents()
     result: dict = {"status": "ok"}
     mode = get_agent("analytics").config.get("mode", "auto")
-    if mode == "live":
+    if mode == "simulate":
+        # Simulated figures are invented; learning from them would steer the
+        # channel by fiction.
+        result["learning"] = "skipped: analytics mode is 'simulate'"
+    else:
+        # auto/live read real figures for real uploads and skip the rest, so
+        # learning only ever sees measured videos (none until uploads begin).
         result["analytics"] = get_agent("analytics").execute({}).output
         result["learning"] = get_agent("learning").execute({}).output
-    else:
-        # 'auto'/'simulate' invent figures. Learning from them would steer the
-        # channel by fiction, so the loop waits for real platform analytics.
-        result["learning"] = f"skipped: analytics mode is '{mode}', not 'live'"
     report = get_agent("ceo").execute({}).output
     result["ceo"] = getattr(report, "summary", None)
     return result

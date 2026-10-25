@@ -89,31 +89,63 @@ def _clip_segment(ffmpeg: str, scene, dur: float, res, fps: int, part: Path) -> 
 
 def _kenburns_segment(ffmpeg: str, scene, i: int, dur: float, res, fps: int, part: Path) -> bool:
     """One segment from a still, with a slow Ken Burns move so it feels filmed."""
+    """Frames are drawn here and piped to ffmpeg, one per output frame.
+
+    The previous ffmpeg `zoompan` version fed a LOOPED still into zoompan, which
+    emits d frames for EVERY input frame: each ~7 s scene came out ~10 minutes
+    long (a 12-minute documentary would have taken ~10 hours, and earlier
+    videos showed their first still until -shortest cut them). Cropping with a
+    float box (Image.EXTENT + bicubic) also gives sub-pixel smooth motion, so no
+    2x upscale is needed to hide zoompan's integer jitter.
+    """
+    from PIL import Image
+
     w, h = res
     frames = max(2, round(dur * fps))
-    mode = i % 4
-    if mode == 0:      # slow push in
-        z = "zoom+0.0009"; x = "iw/2-(iw/zoom/2)"; y = "ih/2-(ih/zoom/2)"
-    elif mode == 1:    # pull out
-        z = "if(lte(zoom,1.0),1.18,zoom-0.0009)"; x = "iw/2-(iw/zoom/2)"; y = "ih/2-(ih/zoom/2)"
-    elif mode == 2:    # push + drift right
-        z = "zoom+0.0008"; x = f"(iw-iw/zoom)*(on/{frames})"; y = "ih/2-(ih/zoom/2)"
-    else:              # push + drift down
-        z = "zoom+0.0008"; x = "iw/2-(iw/zoom/2)"; y = f"(ih-ih/zoom)*(on/{frames})"
-
-    # Upscale first so zoompan doesn't soften the image.
-    vf = (f"scale={w*2}:{h*2}:force_original_aspect_ratio=increase,"
-          f"crop={w*2}:{h*2},"
-          f"zoompan=z='{z}':x='{x}':y='{y}':d={frames}:s={w}x{h}:fps={fps},"
-          f"format=yuv420p")
-    cmd = [ffmpeg, "-y", "-loop", "1", "-t", f"{dur:.3f}", "-i", scene.image_path,
-           "-vf", vf, "-r", str(fps), "-c:v", "libx264", "-preset", _preset(),
-           "-crf", str(_crf()), str(part)]
+    # Cover-fit the still to 1.15x the frame: room to move, but the tightest
+    # view is still ~1:1 pixels, so the picture stays sharp.
+    sw, sh = int(w * 1.15), int(h * 1.15)
     try:
-        subprocess.run(cmd, check=True, capture_output=True)
-        return part.exists()
+        src = Image.open(scene.image_path).convert("RGB")
+        r = max(sw / src.width, sh / src.height)
+        src = src.resize((max(sw, round(src.width * r)), max(sh, round(src.height * r))),
+                         Image.LANCZOS)
+        ox, oy = (src.width - sw) / 2, (src.height - sh) / 2
+        src = src.crop((round(ox), round(oy), round(ox) + sw, round(oy) + sh))
+    except Exception as exc:
+        log.debug("Ken Burns source unreadable (%s).", exc)
+        return False
+
+    mode = i % 4
+    z0, z1 = {0: (1.0, 1.15), 1: (1.15, 1.0)}.get(mode, (1.08, 1.12))
+    cmd = [ffmpeg, "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{w}x{h}",
+           "-r", str(fps), "-i", "-", "-c:v", "libx264", "-preset", _preset(),
+           "-crf", str(_crf()), "-pix_fmt", "yuv420p", "-threads", "2", str(part)]
+    try:
+        proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL)
+        for f in range(frames):
+            t = f / (frames - 1)                  # constant speed reads as "filmed"
+            z = z0 + (z1 - z0) * t
+            bw, bh = sw / z, sh / z               # visible box in source pixels
+            fx, fy = 0.5, 0.5                     # box centre, as a fraction of slack
+            if mode == 2:
+                fx = 0.15 + 0.7 * t               # drift right
+            elif mode == 3:
+                fy = 0.15 + 0.7 * t               # drift down
+            x0 = (sw - bw) * fx
+            y0 = (sh - bh) * fy
+            frame = src.transform((w, h), Image.EXTENT, (x0, y0, x0 + bw, y0 + bh),
+                                  Image.BICUBIC)
+            proc.stdin.write(frame.tobytes())
+        proc.stdin.close()
+        return proc.wait(timeout=600) == 0 and part.exists()
     except Exception as exc:
         log.debug("Ken Burns segment failed (%s).", exc)
+        try:
+            proc.kill()
+        except Exception:
+            pass
         return False
 
 

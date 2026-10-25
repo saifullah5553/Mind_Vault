@@ -202,9 +202,8 @@ class Orchestrator:
                     break
             elif not needs_new_topic and rewrites > 0:
                 rewrites -= 1
-                log.warning("Pre-render gate failed (%s); rewriting hook + script.", reasons)
-                self._stage_hook(ctx)
-                self._stage_script(ctx)
+                log.warning("Pre-render gate failed (%s); generating new hooks.", reasons)
+                self._rehook(ctx)
             else:
                 break
             reasons, scores = qa.precheck(ctx)
@@ -217,6 +216,34 @@ class Orchestrator:
             log.warning("Skipping render: text gates not met (%s).", reasons)
         else:
             log.info("Pre-render gate passed %s.", scores)
+
+    def _rehook(self, ctx) -> None:
+        """Try for a stronger hook, rewriting only as much script as it touches.
+
+        The hook score depends on the hook alone, so a new script is only worth
+        writing when the new hook actually scores higher. A documentary uses the
+        hook just as its opening line (chapters never see it), so the new hook
+        is spliced into the intro instead of rewriting ~1,700 words of chapters.
+        """
+        old = ctx.selected_hook
+        self._stage_hook(ctx)
+        new = ctx.selected_hook
+        if old and (new is None or new.total <= old.total):
+            ctx.selected_hook = old
+            log.info("No stronger hook (best %.1f); keeping the script.", old.total)
+            return
+        s = ctx.script
+        if (ctx.video_format == "long" and s and old and old.text
+                and s.introduction.startswith(old.text)):
+            intro = new.text + s.introduction[len(old.text):]
+            full = s.full_text.replace(s.introduction, intro, 1)
+            ctx.script = s.model_copy(update={
+                "hook": new.text, "introduction": intro, "full_text": full,
+                "word_count": len(full.split())})
+            log.info("Spliced stronger hook (%.1f -> %.1f) into the documentary intro.",
+                     old.total, new.total)
+            return
+        self._stage_script(ctx)
 
     def _retopic(self, ctx) -> bool:
         """Replace this run's topic, re-research it and rewrite the script."""

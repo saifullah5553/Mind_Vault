@@ -106,3 +106,50 @@ def test_topic_agent_honours_exclusions():
     second = agent.execute({"category": "history", "trends": [],
                             "exclude": [first.topic, first.angle]}).output
     assert second.topic.lower() != first.topic.lower()
+
+
+def _count_documentary_calls(monkeypatch) -> list:
+    from core.registry import get_agent, load_all_agents
+    load_all_agents()
+    cls = type(get_agent("documentary"))
+    calls, real = [], cls.run
+
+    def counting(self, payload):
+        calls.append(1)
+        return real(self, payload)
+
+    monkeypatch.setattr(cls, "run", counting)
+    return calls
+
+
+def test_weak_hook_without_better_option_keeps_documentary(monkeypatch):
+    """Re-writing ~1,700 words can't raise a hook score; don't do it."""
+    from core.config import get_settings
+    get_settings().quality.hook_score_min = 101
+    calls = _count_documentary_calls(monkeypatch)
+    ctx = Orchestrator().produce(category="history", video_format="long")
+    assert ctx.extra.get("precheck_failed") is True
+    assert len(calls) == 1
+
+
+def test_stronger_hook_is_spliced_into_documentary_intro(monkeypatch):
+    from core.config import get_settings
+    get_settings().quality.hook_score_min = 101
+    orch = Orchestrator()
+    ctx = orch.produce(category="history", video_format="long")
+    old = ctx.selected_hook
+    chapters_before = ctx.script.body
+    calls = _count_documentary_calls(monkeypatch)
+
+    better = old.model_copy(update={"text": "A brand new opening line.",
+                                    "total": old.total + 5})
+    monkeypatch.setattr(orch, "_stage_hook",
+                        lambda c: setattr(c, "selected_hook", better))
+    orch._rehook(ctx)
+
+    assert calls == []                                   # no chapter rewrite
+    assert ctx.selected_hook.text == better.text
+    assert ctx.script.introduction.startswith(better.text)
+    assert ctx.script.full_text.count(better.text) == 1
+    assert old.text not in ctx.script.full_text
+    assert ctx.script.body == chapters_before

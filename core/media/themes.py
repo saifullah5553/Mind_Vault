@@ -19,7 +19,9 @@ import re
 THEMES: dict[str, tuple[str, list[str]]] = {
     "ambition": (r"goal|ambition|achiev|success|striv|effort|drive|determin|persever|"
                  r"climb|purpose|motivat|pursu|passion|win\b",
-                 ["summit", "mountaineer", "marathon", "runner"]),
+                 # Two words, both required in the title: "summit" alone found a
+                 # cruise ship (Celebrity Summit), "runner" found racing dogs.
+                 ["mountain summit", "mountaineer", "marathon", "climber rock"]),
     "hope": (r"hope|change|new\b|begin|future|grow|transform|possib|dream|start|light",
              ["sunrise", "dawn", "sunrise lake"]),
     "mind": (r"mind|think|thought|idea|philosoph|aristotle|plato|socrates|theor|reason|"

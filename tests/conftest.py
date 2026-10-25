@@ -36,6 +36,12 @@ def _fresh_db():
     s.images.provider = "pillow"  # no network image fetching in tests (hermetic + fast)
     s.video.ken_burns = False     # skip per-scene ffmpeg encodes in tests
     s.video.caption_source = "scenes"  # skip slow whisper transcription in tests
+
+    # Keep test output OUT of the real storage tree. Without this, every test run
+    # drops review bundles, videos and images alongside genuine production output.
+    for bucket in ("videos", "audio", "images", "thumbnails", "backups"):
+        setattr(s.storage, bucket, f"storage/_test/{bucket}")
+    s.publishing.review_dir = "storage/_test/review"
     # Skip real Wav2Lip inference in tests (~75s/run); the presenter still returns
     # its portrait + badge, which is what the presenter tests assert on.
     os.environ["MIND_VAULT_SKIP_LIPSYNC"] = "1"

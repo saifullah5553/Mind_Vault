@@ -55,3 +55,6 @@ tools/ComfyUI/
 
 # Isolated Kokoro environment (recreate: see docs/SETUP_AI.md)
 tools/kokoro-env/
+
+# Test output (isolated from real storage)
+storage/_test/

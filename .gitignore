@@ -27,6 +27,7 @@ storage/voices/*
 storage/music/*
 storage/review/*
 storage/*.json
+storage/autopilot.lock
 !storage/**/.gitkeep
 *.db
 *.sqlite3

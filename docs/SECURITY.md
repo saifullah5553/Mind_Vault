@@ -1,0 +1,65 @@
+# Security of external code and assets
+
+This project pulls in third-party code (Wav2Lip, ComfyUI), model weights, Python
+packages, and downloaded media. Each is a supply-chain surface. Run the audit
+after **any** new download:
+
+```bash
+python -m scripts.security_audit
+```
+```bash
+python -m scripts.security_audit --update   # accept current state as baseline
+```
+
+## What it checks
+
+**1. Model files that can execute code.** PyTorch `.pth/.pt/.ckpt/.bin` files are
+Python *pickles* — `torch.load()` on a malicious checkpoint runs arbitrary code.
+This is a real, actively exploited attack. The audit's authoritative test is
+`torch.load(weights_only=True)`, which uses a **restricted unpickler** that
+refuses to execute code; if the file loads, it provably contains only tensors.
+It also walks the pickle opcodes (without executing) looking for imports of
+`os`, `subprocess`, `socket`, `builtins` and similar, and flags executables
+embedded inside checkpoint archives.
+
+**2. Tampering.** Every external asset is SHA-256 hashed into
+`security.lock.json`. Re-running reports anything CHANGED, ADDED or REMOVED —
+so a silently swapped model or a trojanised tool file is caught.
+
+**3. Vulnerable dependencies.** Runs `pip-audit` against the live CVE database.
+
+## Current status (last audited)
+
+- `wav2lip_gan.pth` — **SAFE** (restricted load succeeded)
+- `s3fd.pth` — **SAFE** (restricted load succeeded)
+- ComfyUI — cloned from the **official** `comfyanonymous/ComfyUI`;
+  `custom_nodes/` contains only shipped examples.
+
+## Standing risks and rules
+
+**ComfyUI custom nodes are the main danger.** Core ComfyUI is reputable, but
+custom nodes are arbitrary Python executed at startup, installed from
+third parties. Real credential-stealing nodes have shipped in the wild. Rules:
+
+- Install custom nodes only from sources you have independently verified.
+- Re-run `scripts.security_audit` immediately after installing any node.
+- Prefer `.safetensors` models over `.ckpt`/`.pth` — safetensors cannot execute code.
+
+**Model weights.** Our Wav2Lip weights came from third-party mirrors (the
+official links are dead), which is why they are hash-pinned and scanned. Never
+add a checkpoint without running the audit.
+
+**Dependency hygiene.** Packages are currently installed into the **global**
+Python environment, shared with unrelated projects. A virtual environment would
+isolate this project:
+
+```bash
+python -m venv .venv && .venv\Scripts\activate && pip install -r requirements.txt
+```
+
+**Downloaded media** (Internet Archive, Wikimedia) is processed by ffmpeg and
+never executed. The licence gate in `core/media/stock_video.py` is a *copyright*
+control, not a security one.
+
+**Secrets** live only in `.env` / GitHub Secrets, never in code or YAML, and
+`.env` is gitignored. Publishing stays credential-gated and dry-run by default.

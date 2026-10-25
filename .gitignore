@@ -49,3 +49,6 @@ storage/presenter/short4s.wav
 
 # Third-party tool clones (recreate with scripts/setup_lipsync.py)
 tools/Wav2Lip/
+
+# Third-party tool clones (recreate with their own setup scripts)
+tools/ComfyUI/

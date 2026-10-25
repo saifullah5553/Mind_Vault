@@ -38,7 +38,8 @@ from core.logging_setup import get_logger
 log = get_logger("media.animation")
 
 _YEAR_RE = re.compile(r"\b(1[0-9]{3}|20[0-9]{2}|[1-9][0-9]{0,2}\s?(?:BC|AD|BCE|CE))\b")
-_NUM_RE = re.compile(r"\b(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?%?)\b")
+# "%" must end the match itself: with a trailing \b, "42% of" backed off to "42".
+_NUM_RE = re.compile(r"\b(?:\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)(?:%|\b)")
 _CAUSE_RE = re.compile(r"\b(because|therefore|led to|caused|resulted in|which meant)\b", re.I)
 
 
@@ -101,19 +102,43 @@ def _background(res, style: Style):
     return Image.fromarray(arr.astype("uint8"), "RGB")
 
 
-def _fit_text(draw, text: str, font_factory, max_w: int, start: int, min_size: int = 24):
-    """Shrink the font until the text fits the frame width."""
-    import textwrap
+def _wrap_to_width(draw, text: str, font, max_w: int, spacing: int) -> str:
+    """Greedy word wrap on MEASURED widths (character estimates overflow)."""
+    lines: list[str] = []
+    for word in text.split():
+        trial = f"{lines[-1]} {word}" if lines else word
+        if lines and draw.textlength(trial, font=font) <= max_w:
+            lines[-1] = trial
+        else:
+            lines.append(word)
+    return "\n".join(lines)
+
+
+def _fit_text(draw, text: str, font_factory, max_w: int, start: int, min_size: int = 24,
+              max_h: int | None = None, spacing: int = 10):
+    """Largest font at which the wrapped text fits max_w AND max_h.
+
+    Height used to be ignored, so long text ran off the bottom of the frame or
+    out of its box. If it cannot fit even at min_size, the text is cut at a word
+    boundary (no ellipsis) rather than drawn off-screen.
+    """
     size = start
-    while size > min_size:
+    while True:
         f = font_factory(size)
-        wrapped = textwrap.fill(text, width=max(12, int(max_w / (size * 0.55))))
-        bbox = draw.multiline_textbbox((0, 0), wrapped, font=f, spacing=10)
-        if bbox[2] - bbox[0] <= max_w:
-            return f, wrapped
-        size -= 4
-    f = font_factory(min_size)
-    return f, textwrap.fill(text, width=max(12, int(max_w / (min_size * 0.55))))
+        wrapped = _wrap_to_width(draw, text, f, max_w, spacing)
+        bbox = draw.multiline_textbbox((0, 0), wrapped, font=f, spacing=spacing)
+        fits_w = bbox[2] - bbox[0] <= max_w
+        fits_h = max_h is None or bbox[3] - bbox[1] <= max_h
+        if (fits_w and fits_h) or size <= min_size:
+            break
+        size = max(min_size, size - 4)
+    if max_h is not None:
+        lines = wrapped.split("\n")
+        while len(lines) > 1 and draw.multiline_textbbox(
+                (0, 0), "\n".join(lines), font=f, spacing=spacing)[3] > max_h:
+            lines.pop()
+        wrapped = "\n".join(lines)
+    return f, wrapped
 
 
 def _alpha_text(base, xy, text, font, fill, alpha: float, spacing=10, align="center"):
@@ -155,7 +180,7 @@ def _draw_title(img, scene_text, style, res, p):
     w, h = res
     d = ImageDraw.Draw(img)
     font, wrapped = _fit_text(d, scene_text, lambda s: _font(s, True),
-                              int(w * 0.84), int(w * 0.11))
+                              int(w * 0.84), int(w * 0.09), max_h=int(h * 0.62), spacing=12)
     bbox = d.multiline_textbbox((0, 0), wrapped, font=font, spacing=12)
     tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
     a = _ease(min(1.0, p * 2.2))
@@ -181,21 +206,35 @@ def _draw_stat(img, scene_text, style, res, p):
         target = float(digits)
     except ValueError:
         target = 100.0
-    shown = target * _ease(min(1.0, p * 1.6))
+    is_year = not suffix and raw.isdigit() and len(raw) == 4 and 1000 <= target <= 2100
     label = re.sub(re.escape(raw), "", scene_text).strip(" ,.;:") or scene_text
+    label = re.sub(r"\s+(?:in|on|by|from|since|of)$", "", label, flags=re.I)
 
-    num = f"{shown:,.0f}{suffix}" if target >= 10 else f"{shown:,.1f}{suffix}"
-    nf = _font(int(w * 0.20), True)
-    nb = d.textbbox((0, 0), num, font=nf)
-    _alpha_text(img, ((w - (nb[2] - nb[0])) / 2, h * 0.34), num, nf, style.accent, 1.0)
-
+    if is_year:
+        # A year is a date, not a quantity: no thousands separator, no count-up.
+        num, num_alpha = raw, _ease(min(1.0, p * 2.2))
+    else:
+        shown = target * _ease(min(1.0, p * 1.6))
+        num = f"{shown:,.0f}{suffix}" if target >= 10 else f"{shown:,.1f}{suffix}"
+        num_alpha = 1.0
+    nf = _font(int(h * 0.26), True)
+    # Size the final number (not the counting one) so the layout doesn't jump.
+    final = raw if is_year else (f"{target:,.0f}{suffix}" if target >= 10
+                                 else f"{target:,.1f}{suffix}")
+    nb = d.textbbox((0, 0), final, font=nf)
     lf, wrapped = _fit_text(d, label, lambda s: _font(s, False),
-                            int(w * 0.8), int(w * 0.055))
+                            int(w * 0.8), int(w * 0.04), max_h=int(h * 0.16), spacing=8)
     lb = d.multiline_textbbox((0, 0), wrapped, font=lf, spacing=8)
-    _alpha_text(img, ((w - (lb[2] - lb[0])) / 2, h * 0.52), wrapped, lf,
-                style.muted, _ease(min(1.0, p * 2)), spacing=8)
+    gap, bar_gap, bar_h = h * 0.05, h * 0.06, 16
+    block = (nb[3] - nb[1]) + gap + (lb[3] - lb[1]) + bar_gap + bar_h
+    ny = (h - block) / 2 - nb[1]                   # whole block centred vertically
+    cur = d.textbbox((0, 0), num, font=nf)
+    _alpha_text(img, ((w - (cur[2] - cur[0])) / 2, ny), num, nf, style.accent, num_alpha)
+    below = ny + nb[3] + gap                       # label starts under the number
+    _alpha_text(img, ((w - (lb[2] - lb[0])) / 2, below), wrapped, lf,
+                style.muted, _ease(min(1.0, p * 2)), spacing=8, align="center")
 
-    bw = int(w * 0.62); bx = (w - bw) // 2; by = int(h * 0.62)
+    bw = int(w * 0.62); bx = (w - bw) // 2; by = int(below + (lb[3] - lb[1]) + bar_gap)
     d.rounded_rectangle([bx, by, bx + bw, by + 16], radius=8, fill=(60, 66, 88))
     d.rounded_rectangle([bx, by, bx + max(1, int(bw * _ease(min(1.0, p * 1.6)))), by + 16],
                         radius=8, fill=style.accent)
@@ -218,12 +257,25 @@ def _draw_timeline(img, scene_text, style, res, p):
         appear = _ease(max(0.0, min(1.0, (p - 0.15 * i) * 3)))
         if appear <= 0:
             continue
-        r = max(2, int(14 * appear))
+        r = max(2, int(h * 0.014 * appear))
         col = style.palette[i % len(style.palette)]
         d.ellipse([px - r, y0 - r, px + r, y0 + r], fill=col)
         f = _font(int(w * 0.045), True)
         tb = d.textbbox((0, 0), str(yr), font=f)
-        _alpha_text(img, (px - (tb[2] - tb[0]) / 2, y0 - 90), str(yr), f, style.ink, appear)
+        # Year sits clearly ABOVE its dot (it used to be drawn across the line).
+        _alpha_text(img, (px - (tb[2] - tb[0]) / 2, y0 - h * 0.05 - tb[3]), str(yr), f,
+                    style.ink, appear)
+    # What the dates are about, under the line.
+    about = re.sub(_YEAR_RE, "", scene_text)
+    about = re.sub(r"\s+", " ", re.sub(r"\b(?:from|to|and|between|in)\s+(?=\W|$)", "",
+                                       about, flags=re.I)).strip(" ,.;:-")
+    if about:
+        lf, wrapped = _fit_text(d, about, lambda s: _font(s, False), int(w * 0.76),
+                                int(w * 0.036), max_h=int(h * 0.2), spacing=8)
+        lb = d.multiline_textbbox((0, 0), wrapped, font=lf, spacing=8)
+        _alpha_text(img, ((w - (lb[2] - lb[0])) / 2, y0 + h * 0.07), wrapped, lf,
+                    style.muted, _ease(max(0.0, min(1.0, (p - 0.3) * 2.5))), spacing=8,
+                    align="center")
 
 
 def _draw_concept(img, scene_text, style, res, p):
@@ -245,8 +297,9 @@ def _draw_concept(img, scene_text, style, res, p):
         col = style.palette[i % len(style.palette)]
         d.rounded_rectangle([(w - box_w) // 2, by, (w + box_w) // 2, by + box_h],
                             radius=18, outline=col, width=max(2, int(4 * appear)))
-        f, wrapped = _fit_text(d, part[:90], lambda s: _font(s, False),
-                               int(box_w * 0.88), int(w * 0.045))
+        f, wrapped = _fit_text(d, part, lambda s: _font(s, False),
+                               int(box_w * 0.88), int(w * 0.04),
+                               max_h=int(box_h * 0.78), spacing=6)
         tb = d.multiline_textbbox((0, 0), wrapped, font=f, spacing=6)
         _alpha_text(img, ((w - (tb[2] - tb[0])) / 2, by + (box_h - (tb[3] - tb[1])) / 2),
                     wrapped, f, style.ink, appear, spacing=6)
@@ -264,15 +317,20 @@ def _draw_quote(img, scene_text, style, res, p):
     from PIL import ImageDraw
     w, h = res
     d = ImageDraw.Draw(img)
-    qf = _font(int(w * 0.26), True)
-    _alpha_text(img, (w * 0.09, h * 0.22), "“", qf, style.accent,
-                _ease(min(1.0, p * 3)))
-    body = scene_text.strip().strip('"')
+    body = scene_text.strip().strip('"“”')
     f, wrapped = _fit_text(d, body, lambda s: _font(s, False),
-                           int(w * 0.78), int(w * 0.07))
+                           int(w * 0.74), int(w * 0.06), max_h=int(h * 0.56))
     lines = wrapped.split("\n")
     lh = d.textbbox((0, 0), "Ag", font=f)[3] + 14
-    y = h * 0.40
+    block = len(lines) * lh
+    y = max(h * 0.30, (h - block) / 2 + h * 0.05)      # centred, below the mark
+    # The quote mark hangs just above-left of the text block, never on top of it.
+    block_left = min((w - (d.textbbox((0, 0), ln, font=f)[2])) / 2 for ln in lines)
+    qf = _font(max(48, int(min(h * 0.22, y - h * 0.06))), True)
+    qb = d.textbbox((0, 0), "“", font=qf)
+    _alpha_text(img, (max(w * 0.06, block_left - (qb[2] - qb[0]) * 0.8),
+                      y - (qb[3] - qb[1]) * 0.75 - qb[1]), "“", qf,
+                style.accent, _ease(min(1.0, p * 3)))
     for i, line in enumerate(lines):
         a = _ease(max(0.0, min(1.0, (p - 0.10 * i) * 3)))
         if a <= 0:
@@ -287,17 +345,26 @@ def _draw_bullets(img, scene_text, style, res, p):
     d = ImageDraw.Draw(img)
     parts = [s.strip() for s in re.split(r"[.;]", scene_text) if len(s.strip()) > 3][:4] \
         or [scene_text]
-    f = _font(int(w * 0.05), False)
-    lh = int(h * 0.09)
-    top = (h - len(parts) * lh) // 2
-    for i, part in enumerate(parts):
+    slot = int(h * 0.70 / len(parts))                  # vertical room per bullet
+    text_x, text_w = int(w * 0.18), int(w * 0.70)      # stays inside the frame
+    fitted = [_fit_text(d, part, lambda s: _font(s, False), text_w, int(w * 0.045),
+                        max_h=int(slot * 0.85), spacing=6) for part in parts]
+    # One font size for every bullet so the list reads as a set.
+    size = min(fo.size for fo, _ in fitted)
+    f = _font(size, False)
+    rows = [_fit_text(d, part, lambda s: _font(s, False), text_w, size, min_size=size,
+                      max_h=int(slot * 0.85), spacing=6)[1] for part in parts]
+    top = (h - len(parts) * slot) // 2
+    for i, wrapped in enumerate(rows):
         a = _ease(max(0.0, min(1.0, (p - 0.18 * i) * 2.8)))
         if a <= 0:
             continue
-        y = top + i * lh + (1 - a) * 26
+        y = top + i * slot + (1 - a) * 26
         col = style.palette[i % len(style.palette)]
-        d.ellipse([w * 0.12, y + 14, w * 0.12 + 16, y + 30], fill=col)
-        _alpha_text(img, (w * 0.18, y), part[:80], f, style.ink, a, align="left")
+        dot = max(12, size // 3)
+        cy = y + size * 0.55
+        d.ellipse([w * 0.13 - dot / 2, cy - dot / 2, w * 0.13 + dot / 2, cy + dot / 2], fill=col)
+        _alpha_text(img, (text_x, y), wrapped, f, style.ink, a, spacing=6, align="left")
 
 
 def _draw_ambient(img, scene_text, style, res, p, seed: int = 0):
@@ -312,7 +379,7 @@ def _draw_ambient(img, scene_text, style, res, p, seed: int = 0):
         r = int(w * (0.05 + 0.02 * ((i + seed) % 3)))
         d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=col, width=3)
     f, wrapped = _fit_text(d, scene_text, lambda s: _font(s, True),
-                           int(w * 0.8), int(w * 0.075))
+                           int(w * 0.8), int(w * 0.065), max_h=int(h * 0.5))
     tb = d.multiline_textbbox((0, 0), wrapped, font=f, spacing=10)
     _alpha_text(img, ((w - (tb[2] - tb[0])) / 2, (h - (tb[3] - tb[1])) / 2),
                 wrapped, f, style.ink, _ease(min(1.0, p * 2.5)))
@@ -338,7 +405,7 @@ def render_animated_segment(text: str, kind: str, out_path: Path, res, fps: int,
         return False
     style = style or Style()
     w, h = res
-    frames = max(2, int(max(0.8, duration) * fps))
+    frames = max(2, round(max(0.8, duration) * fps))
     renderer = _RENDERERS.get(kind)
 
     try:

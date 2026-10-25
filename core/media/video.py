@@ -90,7 +90,7 @@ def _clip_segment(ffmpeg: str, scene, dur: float, res, fps: int, part: Path) -> 
 def _kenburns_segment(ffmpeg: str, scene, i: int, dur: float, res, fps: int, part: Path) -> bool:
     """One segment from a still, with a slow Ken Burns move so it feels filmed."""
     w, h = res
-    frames = max(2, int(dur * fps))
+    frames = max(2, round(dur * fps))
     mode = i % 4
     if mode == 0:      # slow push in
         z = "zoom+0.0009"; x = "iw/2-(iw/zoom/2)"; y = "ih/2-(ih/zoom/2)"
@@ -115,6 +115,26 @@ def _kenburns_segment(ffmpeg: str, scene, i: int, dur: float, res, fps: int, par
     except Exception as exc:
         log.debug("Ken Burns segment failed (%s).", exc)
         return False
+
+
+# YouTube's recommended audio: AAC-LC, 48 kHz stereo (mono TTS is upmixed).
+_AUDIO_OUT = ["-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2"]
+
+
+def _frame_exact(scenes, fps: int) -> list[float]:
+    """Scene durations snapped to frame boundaries on the CUMULATIVE timeline.
+
+    Rounding each scene down on its own lost up to a frame per scene; over 93
+    scenes the video ended ~1.5 s before the narration and `-shortest` cut the
+    closing line. Snapping cumulative times keeps the total exact.
+    """
+    out, t, prev = [], 0.0, 0
+    for s in scenes:
+        t += max(0.8, s.duration)
+        edge = round(t * fps)
+        out.append(max(1, edge - prev) / fps)
+        prev = edge
+    return out
 
 
 def _render_part(job) -> str | None:
@@ -181,8 +201,9 @@ def _kenburns_build(scenes, audio: VoiceResult | None, out_path: Path, res, fps:
     with tempfile.TemporaryDirectory() as td:
         tdp = Path(td)
         brand = get_settings().brand.name
-        jobs = [(i, s, tdp / f"p{i:04d}.mp4", res, fps, brand, ffmpeg)
-                for i, s in enumerate(usable)]
+        jobs = [(i, s.model_copy(update={"duration": d}), tdp / f"p{i:04d}.mp4",
+                 res, fps, brand, ffmpeg)
+                for i, (s, d) in enumerate(zip(usable, _frame_exact(usable, fps)))]
         kinds = _render_parts(jobs)
         # Concatenate in scene order; a scene that failed every route is dropped.
         parts = [job[2] for job, kind in zip(jobs, kinds) if kind]
@@ -199,7 +220,7 @@ def _kenburns_build(scenes, audio: VoiceResult | None, out_path: Path, res, fps:
 
         if audio and Path(audio.audio_path).exists():
             cmd2 = [ffmpeg, "-y", "-i", str(silent), "-i", audio.audio_path,
-                    "-c:v", "copy", "-c:a", "aac", "-shortest", str(out_path)]
+                    "-c:v", "copy", *_AUDIO_OUT, "-shortest", str(out_path)]
         else:
             cmd2 = [ffmpeg, "-y", "-i", str(silent), "-c", "copy", str(out_path)]
         subprocess.run(cmd2, check=True, capture_output=True)
@@ -231,7 +252,7 @@ def _ffmpeg_build(scenes, audio: VoiceResult | None, out_path: Path, res) -> boo
 
         if audio and Path(audio.audio_path).exists():
             cmd2 = [ffmpeg, "-y", "-i", str(silent), "-i", audio.audio_path,
-                    "-c:v", "copy", "-c:a", "aac", "-shortest", str(out_path)]
+                    "-c:v", "copy", *_AUDIO_OUT, "-shortest", str(out_path)]
         else:
             cmd2 = [ffmpeg, "-y", "-i", str(silent), "-c", "copy", str(out_path)]
         subprocess.run(cmd2, check=True, capture_output=True)
@@ -326,12 +347,16 @@ def _mix_music(base: Path, out: Path, seconds: float, seed: str) -> bool:
     # Louder at the intro (t<io) and outro (t>end), quieter in the middle; then
     # sidechain-compress so the music dips whenever the narration is speaking.
     env = f"volume='if(lt(t,{io}),{vol*2.4}, if(gt(t,{end}),{vol*2.4},{vol}))':eval=frame"
-    fc = (f"[1:a]{env}[bed];"
-          f"[bed][0:a]sidechaincompress=threshold=0.04:ratio=8:attack=5:release=320[duck];"
-          f"[0:a][duck]amix=inputs=2:duration=first:dropout_transition=2[a]")
+    # Both inputs go to 48 kHz stereo first: amix adopts the first input's format,
+    # so the music bed used to be squashed to Piper's 22 kHz mono.
+    fmt = "aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo"
+    fc = (f"[0:a]{fmt},asplit=2[voice][key];"
+          f"[1:a]{fmt},{env}[bed];"
+          f"[bed][key]sidechaincompress=threshold=0.04:ratio=8:attack=5:release=320[duck];"
+          f"[voice][duck]amix=inputs=2:duration=first:dropout_transition=2[a]")
     cmd = [ffmpeg, "-y", "-i", str(base), "-stream_loop", "-1", "-i", bed,
            "-filter_complex", fc, "-map", "0:v", "-map", "[a]",
-           "-c:v", "copy", "-c:a", "aac", "-shortest", str(out)]
+           "-c:v", "copy", *_AUDIO_OUT, "-shortest", str(out)]
     # (video is stream-copied here, so only the base build + presenter pass encode)
     try:
         subprocess.run(cmd, check=True, capture_output=True)

@@ -213,3 +213,14 @@ def test_one_off_fallback_is_rewritten_then_rendered(monkeypatch):
     ctx = Orchestrator().produce(category="history", video_format="short")
     assert ctx.extra["precheck"]["passed"] is True
     assert ctx.video is not None
+
+
+def test_rerender_keeps_script_and_redoes_render():
+    orch = Orchestrator()
+    first = orch.produce(category="history", video_format="short")
+    assert first.video is not None
+    again = orch.rerender(first.run_id, "voice")
+    assert again.script.full_text == first.script.full_text      # script untouched
+    assert again.video is not None and "voice" in again.completed_stages
+    assert again.publish_results == [] or all(r.status != "published"
+                                              for r in again.publish_results)

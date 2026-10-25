@@ -40,6 +40,45 @@ _STOP = {
 }
 
 
+# Never on a family-friendly educational channel, whatever the topic.
+_UNSAFE = re.compile(
+    r"\bsex|offend|abuse|\bnude|naked|porn|erotic|fetish|\brap(?:e|ed|es|ist)\b|"
+    r"suicid|self-harm|\bgore\b|corpse|tortur|lingerie|bikini", re.I)
+# Charts, models and slides: Commons answers abstract topics with these, and a
+# diagram of an academic model is not a documentary image.
+_DIAGRAM = re.compile(
+    r"diagram|chart|graph|table|model|theory|triangle|wheel|infographic|flowchart|"
+    r"schema|figure|\bfig\.|plot|screenshot|logo|icon|slide|poster|meme|"
+    r"\.(?:png|svg|gif)$", re.I)
+# Fine for history (wars, crimes are history) but off-topic for psychology.
+_OFF_TOPIC = {"psychology": re.compile(
+    r"murder|terror|bomb|unabomb|weapon|\bguns?\b|nazi|war\b|massacre|execution", re.I)}
+MIN_WIDTH = 1600   # below this a 1440p frame is visibly upscaled
+
+
+def acceptable(hit: dict, category: str = "history") -> bool:
+    """Safety + relevance gate on an image's title (pixels are never inspected,
+    so this is a filter on what the source says the image is)."""
+    title = f"{hit.get('title', '')} {hit.get('tags', '')}"
+    if _UNSAFE.search(title) or _DIAGRAM.search(hit.get("title", "")):
+        return False
+    off = _OFF_TOPIC.get(category)
+    if off and off.search(title):
+        return False
+    w = hit.get("width") or 0
+    return not w or w >= MIN_WIDTH
+
+
+def search_queries(topic: str, category: str) -> list[str]:
+    """Queries for a coherent pool. Abstract psychology topics return diagrams
+    when searched literally, so they are paired with photographic subjects."""
+    kw3, kw2 = keywords_from(topic, 3), keywords_from(topic, 2)
+    if category == "psychology":
+        return [topic, f"{kw2} person", f"{kw2} portrait", "person thinking window",
+                "people city street", "human face emotion", kw3]
+    return [topic, kw3, kw2, f"{kw2} historical photograph"]
+
+
 def keywords_from(text: str, limit: int = 4) -> str:
     """Extract a compact, searchable phrase from narration/topic text."""
     words = re.findall(r"[A-Za-z][A-Za-z'-]{3,}", text or "")
@@ -60,9 +99,10 @@ def _commons_search(query: str, limit: int = 3) -> list[dict]:
 
     params = {
         "action": "query", "format": "json", "generator": "search",
-        "gsrsearch": f"{query} filetype:bitmap", "gsrnamespace": "6",
+        # JPEG = photographs; PNG/SVG on Commons are mostly diagrams.
+        "gsrsearch": f"{query} filetype:bitmap filemime:image/jpeg", "gsrnamespace": "6",
         "gsrlimit": str(limit), "prop": "imageinfo",
-        "iiprop": "url|extmetadata", "iiurlwidth": "3840",   # large enough for a 4K frame
+        "iiprop": "url|extmetadata|size", "iiurlwidth": "3840",   # large enough for a 4K frame
     }
     r = httpx.get("https://commons.wikimedia.org/w/api.php", params=params,
                   headers=_UA, timeout=20)
@@ -82,6 +122,7 @@ def _commons_search(query: str, limit: int = 3) -> list[dict]:
         out.append({
             "url": url,
             "title": (page.get("title") or "").replace("File:", ""),
+            "width": info.get("width") or 0,
             "license": lic or "see Commons",
             "credit": re.sub(r"<[^>]+>", "", (meta.get("Artist") or {}).get("value", ""))[:120],
             "source": "Wikimedia Commons",
@@ -94,8 +135,9 @@ def _openverse_search(query: str, limit: int = 3) -> list[dict]:
     import httpx
 
     r = httpx.get("https://api.openverse.org/v1/images/",
-                  params={"q": query, "page_size": str(limit),
-                          "license_type": "commercial", "mature": "false"},
+                  params={"q": query, "page_size": str(min(limit, 20)),
+                          "license_type": "commercial", "mature": "false",
+                          "category": "photograph", "size": "large"},
                   headers=_UA, timeout=20)
     r.raise_for_status()
     out = []
@@ -106,6 +148,8 @@ def _openverse_search(query: str, limit: int = 3) -> list[dict]:
         out.append({
             "url": url,
             "title": item.get("title") or query,
+            "tags": " ".join(tg.get("name", "") for tg in (item.get("tags") or [])[:12]),
+            "width": item.get("width") or 0,
             "license": (item.get("license") or "cc").upper(),
             "credit": item.get("creator") or "",
             "source": item.get("source") or "Openverse",
@@ -138,7 +182,7 @@ def fetch_pool(topic: str, count: int, dest_dir: Path, category: str = "history"
     far faster (one query, N downloads instead of N queries).
     """
     dest_dir.mkdir(parents=True, exist_ok=True)
-    queries = [topic, keywords_from(topic, 3), keywords_from(topic, 2)]
+    queries = search_queries(topic, category)
     providers = ([_commons_search, _openverse_search] if category == "history"
                  else [_openverse_search, _commons_search])
 
@@ -152,7 +196,7 @@ def fetch_pool(topic: str, count: int, dest_dir: Path, category: str = "history"
                 break
             try:
                 for hit in provider(q, limit=count):
-                    if hit["url"] in seen:
+                    if hit["url"] in seen or not acceptable(hit, category):
                         continue
                     seen.add(hit["url"])
                     hits.append(hit)

@@ -37,6 +37,11 @@ from core.schemas import PipelineContext
 log = get_logger("orchestrator")
 
 # Stages that only make sense once a script has passed the text gate.
+# Pipeline stage order (must match the list in Orchestrator._run).
+STAGE_ORDER = ("trend", "topic", "content_record", "research", "fact", "hook", "script",
+               "precheck", "visual", "voice", "presenter", "video", "quality", "approve",
+               "seo", "thumbnail", "review", "publish", "finalize")
+
 _RENDER_STAGES = {"visual", "voice", "presenter", "video", "quality",
                   "approve", "seo", "thumbnail"}
 
@@ -46,7 +51,8 @@ class Orchestrator:
         load_all_agents()
         self.settings = get_settings()
         self.ceo = AICEOAgent()
-        self._checkpoint_dir = ROOT_DIR / "storage" / "checkpoints"
+        # Under the configured storage root, so test runs never land among real ones.
+        self._checkpoint_dir = ROOT_DIR / self.settings.storage.root / "checkpoints"
         self._checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
     # ── public entry points ────────────────────────────────────────────────
@@ -68,6 +74,29 @@ class Orchestrator:
         if ctx is None:
             raise Mind_VaultError(f"No checkpoint found for run {run_id}")
         log.info("=== RESUME run %s from stages %s ===", run_id, ctx.completed_stages)
+        return self._run(ctx)
+
+    def rerender(self, run_id: str, from_stage: str = "visual") -> PipelineContext:
+        """Redo a finished run from `from_stage` onward, keeping everything before.
+
+        Used after a rendering fix: the (slow, LLM-written) script is kept and
+        narration, visuals and the review bundle are rebuilt. Nothing is
+        published: the publish stage stays behind the usual approval gate.
+        """
+        ctx = self._load_checkpoint(run_id)
+        if ctx is None:
+            raise Mind_VaultError(f"No checkpoint found for run {run_id}")
+        if from_stage not in STAGE_ORDER:
+            raise Mind_VaultError(f"Unknown stage {from_stage!r}; one of {STAGE_ORDER}")
+        keep = set(STAGE_ORDER[:STAGE_ORDER.index(from_stage)])
+        ctx.completed_stages = [s for s in ctx.completed_stages if s in keep]
+        for key in ("quality_failed", "failed_stage", "error", "approved", "review_dir",
+                    "review_status", "regenerations"):
+            ctx.extra.pop(key, None)
+        if "precheck" not in keep:
+            ctx.extra.pop("precheck_failed", None)
+        ctx.quality, ctx.publish_results = None, []
+        log.info("=== RERENDER run %s from '%s' ===", run_id, from_stage)
         return self._run(ctx)
 
     # ── the pipeline ───────────────────────────────────────────────────────
@@ -93,6 +122,7 @@ class Orchestrator:
             ("publish", self._stage_publish),
             ("finalize", self._stage_finalize),
         ]
+        assert tuple(n for n, _ in stages) == STAGE_ORDER, "update STAGE_ORDER"
         for name, fn in stages:
             if name in ctx.completed_stages:
                 continue

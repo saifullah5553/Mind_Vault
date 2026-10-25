@@ -11,6 +11,7 @@ from pathlib import Path
 
 from core.agents.base import BaseAgent
 from core.media.tts import synthesize_speech
+from core.media.spoken import spoken_text
 from core.registry import register_agent
 from core.schemas import Script, VoiceResult
 
@@ -25,7 +26,7 @@ class VoiceAgent(BaseAgent):
         run_id = payload.get("run_id", "run")
         out = Path(self.settings.storage_path("audio")) / f"{run_id}.wav"
 
-        text = script.full_text
+        text = spoken_text(script.full_text)   # no [MARKERS] read aloud
         prefix = self.config.get("narration_prefix", "")
         if prefix:
             text = f"{prefix} {text}"

@@ -92,6 +92,7 @@ class ImagesConfig(BaseModel):
     style: str = "cinematic documentary"
     width: int = 1080
     height: int = 1920
+    pool_max: int = 40              # most stock photos fetched per video
 
 
 class VideoConfig(BaseModel):

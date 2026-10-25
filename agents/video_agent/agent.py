@@ -96,9 +96,17 @@ class VideoAgent(BaseAgent):
         budget = max(1, int(round(len(scenes) * max_ratio)))
         used = 0
 
+        # Chapter headings always get a title card; they don't use the budget.
+        from core.media.spoken import CHAPTER_RE
+        for scene in scenes:
+            if CHAPTER_RE.match(scene.narration.strip()):
+                scene.animation_kind = "title"
+
         # Pass 1 — confident matches (a headline, a figure, a date range, a
         # cause->effect chain). These are the scenes animation renders best.
         for i, scene in enumerate(scenes):
+            if scene.animation_kind:
+                continue
             if used >= budget:
                 break
             kind = choose_kind(scene.narration, i, is_first=(i == 0))
@@ -125,8 +133,9 @@ class VideoAgent(BaseAgent):
                 gi += 1
                 used += 1
 
-        if used:
-            self.log.info("Animating %d/%d scene(s) as motion graphics.", used, len(scenes))
+        total = sum(1 for s in scenes if s.animation_kind)
+        if total:
+            self.log.info("Animating %d/%d scene(s) as motion graphics.", total, len(scenes))
 
     # ── real footage ────────────────────────────────────────────────────────
     def _attach_footage(self, scenes, out_dir: Path, topic: str, category: str, res) -> None:

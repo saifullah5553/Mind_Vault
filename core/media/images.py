@@ -199,7 +199,8 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
     if use_stock and topic:
         try:
             from core.media.stock import fetch_pool
-            want = min(len(scenes), int(cfg.style and 12 or 12))
+            # Roughly one photo per two scenes, so images rarely repeat.
+            want = min(len(scenes), max(12, len(scenes) // 2), cfg.pool_max)
             pool = fetch_pool(topic, max(4, want), out_dir, category=category)
         except Exception as exc:
             log.warning("Image pool fetch failed (%s); using cards.", exc)

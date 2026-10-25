@@ -20,7 +20,6 @@ from datetime import datetime, timezone
 from core.agents.base import BaseAgent
 from core.database.models import Analytics, CEOReport, Content
 from core.database.session import session_scope
-from core.llm.base import LLMMessage
 from core.registry import register_agent
 from core.schemas import QualityReport
 
@@ -87,11 +86,11 @@ class AICEOAgent(BaseAgent):
             "leader": max(cat_perf, key=cat_perf.get) if cat_perf else None,
         }
 
-        # Narrative summary (LLM if configured; deterministic otherwise).
-        try:
-            summary = self.llm.generate([LLMMessage("user", f"TASK: ceo_report\nTOPIC: weekly performance")])
-        except Exception:
-            summary = self._fallback_summary(findings)
+        # Built from the measured findings only. The LLM used to be asked for a
+        # "weekly performance" report WITHOUT being given any of these numbers,
+        # and a local model filled the gap with an invented company: revenue,
+        # product launches, supply-chain issues, for a channel with 0 videos.
+        summary = self._summary(findings)
 
         actions = self._recommend_actions(cat_perf)
         report = None
@@ -103,7 +102,7 @@ class AICEOAgent(BaseAgent):
         self.log.info("CEO weekly report %s written (%d videos).", period, totals["videos"])
         return report
 
-    def _fallback_summary(self, findings: dict) -> str:
+    def _summary(self, findings: dict) -> str:
         leader = findings.get("leader")
         if not leader:
             return "No published videos yet this period. Once content ships, this report will compare category retention, hook styles, and publishing times."

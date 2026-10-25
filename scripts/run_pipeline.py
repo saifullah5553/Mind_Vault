@@ -5,6 +5,7 @@ Usage:
     python -m scripts.run_pipeline --category psychology --format short
     python -m scripts.run_pipeline --category history --format long
     python -m scripts.run_pipeline --resume <run_id>
+    python -m scripts.run_pipeline --rerender <run_id> --from voice   # keep the script
 """
 
 from __future__ import annotations
@@ -53,6 +54,10 @@ def main() -> None:
                         help="content category (default: CEO chooses to balance the mix)")
     parser.add_argument("--format", dest="video_format", choices=["short", "long"], default="short")
     parser.add_argument("--resume", metavar="RUN_ID", default=None, help="resume a checkpointed run")
+    parser.add_argument("--rerender", metavar="RUN_ID", default=None,
+                        help="redo a finished run from --from onward, keeping its script")
+    parser.add_argument("--from", dest="from_stage", default="visual",
+                        help="first stage to redo with --rerender (default: visual)")
     parser.add_argument("--orientation", choices=["vertical", "landscape"], default=None,
                         help="vertical = Shorts/TikTok/Reels (9:16); landscape = normal "
                              "YouTube (16:9). Default: vertical for short, landscape for long.")
@@ -61,13 +66,21 @@ def main() -> None:
                              "1440/4k look sharper on YouTube but render slower.")
     args = parser.parse_args()
 
+    orch = Orchestrator()
+    if args.rerender:
+        # Render in the run's own format (a documentary stays landscape).
+        ckpt = orch._load_checkpoint(args.rerender)
+        if ckpt is not None:
+            args.video_format = ckpt.video_format
     _apply_output_format(args)
 
     init_db()  # ensure tables exist
-    orch = Orchestrator()
-
-    ctx = orch.resume(args.resume) if args.resume else orch.produce(
-        category=args.category, video_format=args.video_format)
+    if args.rerender:
+        ctx = orch.rerender(args.rerender, args.from_stage)
+    elif args.resume:
+        ctx = orch.resume(args.resume)
+    else:
+        ctx = orch.produce(category=args.category, video_format=args.video_format)
 
     print("\n" + "=" * 64)
     print(f"RUN {ctx.run_id}  |  {ctx.category}  |  {ctx.video_format}")

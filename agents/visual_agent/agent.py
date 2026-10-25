@@ -11,6 +11,7 @@ from __future__ import annotations
 import re
 
 from core.agents.base import BaseAgent
+from core.media.spoken import headline, spoken_text
 from core.registry import register_agent
 from core.schemas import Scene, ScenePlan, Script
 
@@ -47,8 +48,8 @@ class VisualAgent(BaseAgent):
         return plan
 
     def _split(self, text: str) -> list[str]:
-        # Sentence-ish split, keeping it robust to the section markers.
-        text = re.sub(r"\[[A-Z]+\]", " ", text)
+        # Split exactly what the narrator says, so scenes line up with the voice.
+        text = spoken_text(text)
         parts = re.split(r"(?<=[.!?])\s+", text.strip())
         return [p.strip() for p in parts if len(p.strip()) > 3]
 
@@ -58,6 +59,6 @@ class VisualAgent(BaseAgent):
         return ", ".join(words[:6]) or "abstract concept"
 
     def _overlay(self, sentence: str) -> str:
-        # A short on-screen caption (first ~8 words) — burned into the image.
-        words = sentence.split()
-        return " ".join(words[:8]) + ("…" if len(words) > 8 else "")
+        # A short phrase for the screen. The full sentence is in the captions;
+        # cutting it at 8 words with "..." produced fragments on every slide.
+        return headline(sentence)

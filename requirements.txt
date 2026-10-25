@@ -29,6 +29,9 @@ numpy>=1.26
 
 # Word-level captions from the narration (CPU, int8)
 faster-whisper>=1.2.1
+# IANA timezone data (pure data, PSF-maintained). Windows has no system tz
+# database, so without it the autopilot cannot resolve publishing.timezone.
+tzdata>=2025.2; sys_platform == "win32"
 
 # Testing
 pytest>=8.0

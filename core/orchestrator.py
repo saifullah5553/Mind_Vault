@@ -342,7 +342,10 @@ class Orchestrator:
             ctx.publish_results = []
             return
         ctx.publish_results = self._agent_output("publishing", ctx, ctx)
-        published = any(r.status in ("published", "dry_run") for r in ctx.publish_results)
+        # Only a real upload counts. Treating a dry run as "published" made the
+        # analytics agent simulate figures for videos nobody can see, and the
+        # learning loop then learned rules from those invented numbers.
+        published = any(r.status == "published" for r in ctx.publish_results)
         if published:
             self._update_content(ctx, status=ContentStatus.PUBLISHED.value,
                                  published_date=datetime.now(timezone.utc))

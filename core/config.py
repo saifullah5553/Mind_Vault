@@ -150,6 +150,15 @@ class ReliabilityConfig(BaseModel):
     checkpoint: bool = True
 
 
+class AutopilotConfig(BaseModel):
+    research_daily: bool = True     # trend/topic/competitor refresh every run
+    review_day: str = "sun"         # weekly analytics -> learning -> CEO report
+    min_free_gb: float = 10.0       # don't start a render with less disk than this
+    require_real_llm: bool = True   # refuse to render placeholder (stub) scripts
+    require_voice: bool = True      # refuse to render silent narration
+    stale_lock_hours: float = 12.0  # a lock older than this is from a crashed run
+
+
 class LoggingConfig(BaseModel):
     # `json_logs` maps to the YAML key `json` via alias (avoids shadowing
     # BaseModel.json). Both names work thanks to populate_by_name.
@@ -181,6 +190,7 @@ class Settings(BaseModel):
     dedup: DedupConfig = Field(default_factory=DedupConfig)
     storage: StorageConfig = Field(default_factory=StorageConfig)
     reliability: ReliabilityConfig = Field(default_factory=ReliabilityConfig)
+    autopilot: AutopilotConfig = Field(default_factory=AutopilotConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
 
     # Convenience -----------------------------------------------------------

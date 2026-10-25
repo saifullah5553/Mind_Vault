@@ -74,10 +74,16 @@ def main() -> None:
         results = get_agent("publishing").execute(ctx, run_id=run_id).output or []
         for r in results:
             print(f"  {run_id}  {r.platform:<10} {r.status}  {r.note}")
-        # Reflect state.
-        published = any(r.status in ("published", "dry_run") for r in results)
-        rec["status"] = "published" if published else "approved"
-        rec["published_at"] = datetime.now(timezone.utc).isoformat()
+        # Reflect state. A dry run is not a publish: the video stays approved so
+        # it can still be uploaded for real once dry_run is switched off.
+        published = any(r.status == "published" for r in results)
+        now = datetime.now(timezone.utc).isoformat()
+        if published:
+            rec["status"] = "published"
+            rec["published_at"] = now
+        else:
+            rec["status"] = "approved"
+            rec["last_dry_run_at"] = now
         (_review_root() / run_id / "review.json").write_text(json.dumps(rec, indent=2), encoding="utf-8")
         if published and ctx.content_id:
             with session_scope() as s:

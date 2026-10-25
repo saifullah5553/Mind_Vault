@@ -141,6 +141,17 @@ reliability:
   retry_backoff_seconds: 2
   checkpoint: true               # save partial pipeline state to resume on failure
 
+# ── Local autopilot (python -m scripts.autopilot) ───────────────────────────
+# Decides today's work from publishing.short_days / long_days and runs it on
+# this machine. Publishing stays governed by the publishing: block above.
+autopilot:
+  research_daily: true           # refresh trends/topics/competitors every run
+  review_day: "sun"              # weekly CEO report (+ learning once analytics is live)
+  min_free_gb: 10                # skip rendering if the disk is nearly full
+  require_real_llm: true         # never render stub scripts unattended
+  require_voice: true            # never render silent narration unattended
+  stale_lock_hours: 12           # older lock = crashed run, safe to take over
+
 # ── Logging ─────────────────────────────────────────────────────────────────
 logging:
   level: "INFO"

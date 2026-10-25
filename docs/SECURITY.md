@@ -66,13 +66,24 @@ third parties. Real credential-stealing nodes have shipped in the wild. Rules:
 official links are dead), which is why they are hash-pinned and scanned. Never
 add a checkpoint without running the audit.
 
-**Dependency hygiene.** Packages are currently installed into the **global**
-Python environment, shared with unrelated projects. A virtual environment would
-isolate this project:
+**Dependency isolation — DONE.** The project now runs from an isolated `.venv`.
+The before/after `pip-audit` comparison is the clearest result of this work:
+
+| Environment | Vulnerable packages |
+|---|---|
+| Global Python (shared with other projects) | **~20** — `pyjwt`, `pypdf`, `chromadb`, `gitpython`, `mcp`, `aiohttp`, ... |
+| **Project `.venv`** (Mind_Vault deps only) | **0 — "No known vulnerabilities found"** |
+
+Every CVE the audit had been reporting belonged to *other* projects sharing the
+interpreter. Isolation also stops another project from silently downgrading a
+package we pin as a security floor (see `requirements.txt`).
+
+**Use the venv** for all project work:
 
 ```bash
-python -m venv .venv && .venv\Scripts\activate && pip install -r requirements.txt
+.venv\Scriptsctivate
 ```
+New machines get one automatically: `python -m scripts.setup_machine`.
 
 **Downloaded media** (Internet Archive, Wikimedia) is processed by ffmpeg and
 never executed. The licence gate in `core/media/stock_video.py` is a *copyright*

@@ -138,6 +138,9 @@ def shot_offsets(length: float, shots: int, dur: float) -> list[float]:
 
     Unknown length: staggered guesses within a typical 10-minute short.
     """
+    if length and length <= dur * 2:
+        # Short stock clip: one shot from (near) the start; it loops if needed.
+        return [round(max(0.0, (length - dur) / 2), 1)]
     if length and length > dur * 2:
         lo, hi = length * 0.08, max(length * 0.08, length * 0.88 - dur)
         if shots == 1:
@@ -278,7 +281,11 @@ def _pexels_clips(query: str, limit: int) -> list[dict]:
     return out
 
 
-def _pixabay_clips(query: str, limit: int) -> list[dict]:
+def _pixabay_clips(query: str, limit: int, landscape: bool = True,
+                   min_height: int = 1080) -> list[dict]:
+    """HD stock video (free key). Picks the smallest rendition that is at least
+    `min_height` tall in the video's orientation; excerpts are range-read, so a
+    4K source costs only the seconds actually used."""
     key = os.getenv("PIXABAY_API_KEY")
     if not key:
         return []
@@ -287,20 +294,38 @@ def _pixabay_clips(query: str, limit: int) -> list[dict]:
     out: list[dict] = []
     try:
         r = httpx.get("https://pixabay.com/api/videos/",
-                      params={"key": key, "q": query, "per_page": str(max(3, limit))},
+                      params={"key": key, "q": query, "per_page": str(max(3, min(limit * 3, 50))),
+                              "safesearch": "true"},
                       headers=_UA, timeout=25)
         r.raise_for_status()
         for v in r.json().get("hits", []):
-            vids = v.get("videos") or {}
-            pick = vids.get("medium") or vids.get("small") or {}
-            if not pick.get("url"):
+            if not acceptable_title(str(v.get("tags", ""))):
                 continue
+            rends = [x for x in (v.get("videos") or {}).values() if x and x.get("url")]
+            # Right orientation only: a vertical clip cover-cropped into a
+            # landscape frame loses two thirds of the picture.
+            rends = [x for x in rends if (x.get("width", 0) > x.get("height", 0)) == landscape]
+            short_side = (lambda x: x.get("height", 0)) if landscape else (lambda x: x.get("width", 0))
+            good = sorted((x for x in rends if short_side(x) >= min_height), key=short_side)
+            if not good:
+                continue
+            pick = good[0]
             out.append({"url": pick["url"], "title": str(v.get("tags", ""))[:120],
-                        "license": "Pixabay (free commercial use)",
-                        "credit": v.get("user", ""), "source": "Pixabay"})
+                        "license": "Pixabay Content License (free commercial use)",
+                        "credit": v.get("user", ""), "source": "Pixabay",
+                        "stream": True, "length": float(v.get("duration") or 0),
+                        "width": pick.get("width"), "height": pick.get("height")})
+            if len(out) >= limit:
+                break
     except Exception as exc:
         log.debug("Pixabay search failed: %s", exc)
     return out
+
+
+def acceptable_title(text: str) -> bool:
+    """Same safety screen as stills (core.media.stock)."""
+    from core.media.stock import _UNSAFE
+    return not _UNSAFE.search(text or "")
 
 
 # ── Fetch (excerpt, not whole file) + pool ──────────────────────────────────
@@ -319,8 +344,10 @@ def _excerpt(url: str, dest: Path, start_s: float, dur: float) -> bool:
         return False
     dest.parent.mkdir(parents=True, exist_ok=True)
     cmd = [ffmpeg, "-y", "-ss", f"{start_s:.1f}", "-i", url, "-t", f"{dur:.1f}",
-           "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "26",
-           "-vf", "scale='min(1920,iw)':-2", str(dest)]
+           # Near-lossless intermediate: it is re-encoded once more in assembly.
+           # (Width used to be capped at 1920 and CRF 26, softening 1440p output.)
+           "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "16",
+           "-vf", "scale='min(3840,iw)':-2", str(dest)]
     try:
         subprocess.run(cmd, check=True, capture_output=True, timeout=180)
         return dest.exists() and dest.stat().st_size > 20_000
@@ -352,9 +379,36 @@ def _download(url: str, dest: Path) -> bool:
         return False
 
 
+def _themed_hits(count: int, providers, seen: set[str]) -> list[dict]:
+    """B-roll by MOOD for abstract topics (see core/media/themes.py): a beat
+    about striving gets a climber on a ridge, hope gets a real sunrise."""
+    from core.media.themes import THEMES
+    per_theme = max(1, -(-count // len(THEMES)))
+    hits: list[dict] = []
+    for theme, (_cue, queries) in THEMES.items():
+        got = 0
+        for q in queries:
+            for provider in providers:
+                if got >= per_theme:
+                    break
+                try:
+                    found = provider(q, per_theme)
+                except Exception as exc:
+                    log.debug("clip source failed for %r: %s", q, exc)
+                    continue
+                for hit in found:
+                    if got >= per_theme or hit["url"] in seen:
+                        continue
+                    seen.add(hit["url"])
+                    hits.append(dict(hit, theme=theme))
+                    got += 1
+    return hits
+
+
 def fetch_clip_pool(topic: str, count: int, dest_dir: Path,
                     category: str = "history", excerpt_seconds: float = 9.0,
-                    shots_per_film: int = 1) -> list[dict]:
+                    shots_per_film: int = 1, landscape: bool = True,
+                    min_height: int = 1080) -> list[dict]:
     """Build a pool of openly-licensed clips about `topic`.
 
     One topic-level search (not per-scene) keeps footage visually coherent and
@@ -371,8 +425,14 @@ def fetch_clip_pool(topic: str, count: int, dest_dir: Path,
     else:
         providers = [_pexels_clips, _pixabay_clips, _commons_clips, _ia_clips]
 
+    from functools import partial
+    providers = [partial(_pixabay_clips, landscape=landscape, min_height=min_height)
+                 if pr is _pixabay_clips else pr for pr in providers]
+
     hits: list[dict] = []
     seen: set[str] = set()
+    if category == "psychology":
+        hits = _themed_hits(count, providers, seen)
     for term in terms:
         if len(hits) >= count:
             break

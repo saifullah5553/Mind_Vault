@@ -159,10 +159,14 @@ class VideoAgent(BaseAgent):
         free = [s for s in scenes if not s.animation_kind]
         if not free:
             return
+        w, h = res
+        themed = category == "psychology"
         try:
-            want = int(self.config.get("footage_pool_size", 8))
+            want = int(self.config.get("footage_pool_size_themed" if themed
+                                       else "footage_pool_size", 8))
             pool = fetch_clip_pool(topic, want, out_dir, category=category,
-                                   shots_per_film=int(self.config.get("footage_shots_per_film", 4)))
+                                   shots_per_film=int(self.config.get("footage_shots_per_film", 4)),
+                                   landscape=w > h, min_height=min(w, h))
         except Exception as exc:
             self.log.warning("Footage fetch failed (%s); using stills.", exc)
             return
@@ -173,9 +177,12 @@ class VideoAgent(BaseAgent):
         shots = (pool * uses)[:len(free)]
         step = len(free) / len(shots)
         brand = self.settings.brand.name
-        w, h = res
-        for k, clip in enumerate(shots):
+        remaining = list(shots)
+        for k in range(len(shots)):
             scene = free[int(k * step)]
+            # Evenly spread positions; at each, the clip whose mood fits the line.
+            clip = self._best_clip(scene.narration, remaining)
+            remaining.remove(clip)
             scene.clip_path = clip["path"]
             if burn:
                 # Caption rendered once per scene as a transparent PNG.
@@ -185,6 +192,17 @@ class VideoAgent(BaseAgent):
         self.log.info("Footage: %d distinct shot(s) placed across %d scene(s).",
                       len(pool), len(shots))
         self._write_footage_credits(out_dir, pool)
+
+    @staticmethod
+    def _best_clip(text: str, clips: list[dict]) -> dict:
+        """A clip of the scene's theme if one is left, else the next clip."""
+        if any("theme" in c for c in clips):
+            from core.media.themes import theme_of
+            theme = theme_of(text)
+            for c in clips:
+                if c.get("theme") == theme:
+                    return c
+        return clips[0]
 
     def _write_footage_credits(self, out_dir: Path, pool: list[dict]) -> None:
         lines = ["Footage credits (openly licensed):"]

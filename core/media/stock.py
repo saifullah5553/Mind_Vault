@@ -172,6 +172,51 @@ def _pexels_photos(query: str, limit: int = 3) -> list[dict]:
     return out
 
 
+def fetch_named(name: str, dest: Path, category: str = "history") -> dict | None:
+    """The actual subject a line names ("Aristotle", "Edward Thorndike").
+
+    Title-matched on Commons (every word of the name in the file title), best
+    resolution first. Portraits of historical figures are often small, so the
+    floor is lower than for mood imagery; callers present small ones on a
+    blurred backdrop instead of upscaling them.
+    """
+    words = name.split()
+    # No surname-only fallback: "Edward Thorndike" -> "Thorndike" matched a
+    # memorial to George Thorndike Angell. A wrong person is worse than none;
+    # the scene then simply gets a mood picture.
+    try:
+        hits = _commons_search(" ".join(f"intitle:{w}" for w in words), 20)
+    except Exception as exc:
+        log.debug("named search failed for %r: %s", name, exc)
+        return None
+    ok = [h for h in hits if (h.get("width") or 0) >= 600
+          and not _UNSAFE.search(h["title"]) and not _DIAGRAM.search(h["title"])
+          # A lone name is ambiguous ("Thorndike" -> the Thorndike Hotel): it
+          # must START the title and the title must describe a likeness.
+          and (len(words) > 1 or (h["title"].lower().startswith(words[0].lower())
+                                  and _GOOD_SHOT.search(h["title"])))]
+    for hit in sorted(ok, key=lambda h: _named_rank(h, name)):
+        if _download(hit["url"], dest):
+            return dict(hit, path=str(dest), named=name)
+    return None
+
+
+_GOOD_SHOT = re.compile(r"portrait|bust|statue|sculpture|painting|photograph|\bphoto\b", re.I)
+_POOR_SHOT = re.compile(r"museum|bag|house|grave|tomb|plaque|signature|book|poetics|"
+                        r"edition|cover|stamp|coin|street|building|room|desk|exhibit", re.I)
+
+
+def _named_rank(hit: dict, name: str) -> tuple:
+    """Sort key: a portrait/bust/statue of the subject first, objects last."""
+    title = hit.get("title", "")
+    score = 0
+    score += 3 if _GOOD_SHOT.search(title) else 0
+    score -= 3 if _POOR_SHOT.search(title) else 0
+    score += 2 if title.lower().startswith(name.split()[0].lower()) else 0
+    score += 1 if all(w.lower() in title.lower() for w in name.split()) else 0
+    return (-score, -(hit.get("width") or 0))
+
+
 def fetch_themed_pool(topic: str, category: str, per_theme: int, dest_dir: Path,
                       themes: dict | None = None) -> list[dict]:
     """A pool of eye-catching pictures grouped by visual theme (see themes.py).

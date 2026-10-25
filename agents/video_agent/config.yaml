@@ -6,7 +6,8 @@
 # Optionally add free keys for better modern b-roll:
 #   PEXELS_API_KEY  / PIXABAY_API_KEY   (see docs/FOOTAGE.md)
 use_stock_footage: true
-footage_pool_size: 8       # films searched per video
+footage_pool_size: 8       # films searched per video (history: archival film)
+footage_pool_size_themed: 48  # psychology: HD b-roll clips by mood (needs PIXABAY_API_KEY)
 footage_shots_per_film: 4  # distinct excerpts cut from each film
 footage_max_uses: 1        # each shot appears once; other scenes get HD photos
 

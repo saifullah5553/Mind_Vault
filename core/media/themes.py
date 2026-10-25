@@ -42,6 +42,46 @@ THEMES: dict[str, tuple[str, list[str]]] = {
 _CUES = {name: re.compile(cue, re.I) for name, (cue, _) in THEMES.items() if cue}
 
 
+# Capitalised words that are just sentence openers, not names worth picturing.
+_NOT_NAMES = set("""
+a an the this that these those there here it its they them their we our us you your
+i he she his her him in on at to for from of by with as but and or so yet not no nor
+what when where why how who which whose while if then than though although because
+since after before during until once each every some many most more much few all any
+both either neither one two three four five six seven eight nine ten first second
+third last next chapter introduction conclusion follow consider imagine
+perhaps maybe still even just only also however indeed instead meanwhile today
+tomorrow yesterday now later soon ultimately finally together yes
+monday tuesday wednesday thursday friday saturday sunday january february march april
+may june july august september october november december
+""".split())
+_CAP = re.compile(r"\b[A-Z][a-zA-Z\-]{2,}(?:'s)?")
+# Fine inside a name ("New York", "Great Wall") but not a subject on their own.
+_LONE_SKIP = {"new", "old", "great", "modern", "ancient", "early", "late", "recent",
+              "young", "little", "big", "high", "low", "north", "south", "east", "west"}
+
+
+def named_subjects(text: str) -> list[str]:
+    """Proper names a line mentions ("Aristotle", "Edward Thorndike")."""
+    names: list[str] = []
+    run: list[str] = []
+    tokens = re.findall(r"[A-Za-z][A-Za-z'\-]*|[^\sA-Za-z]", text or "")
+    for tok in tokens + ["."]:
+        if _CAP.fullmatch(tok) and tok.lower().removesuffix("'s") not in _NOT_NAMES:
+            run.append(tok.removesuffix("'s"))
+            if tok.endswith("'s"):
+                tok = "."            # a possessive ends the name
+            else:
+                continue
+        if run:
+            name = " ".join(run)
+            lone = len(run) == 1 and run[0].lower() in _LONE_SKIP
+            if not lone and name not in names:
+                names.append(name)
+            run = []
+    return names
+
+
 def theme_of(text: str) -> str:
     """The theme whose cues appear most in `text` ('default' if none)."""
     best, hits = "default", 0

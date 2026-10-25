@@ -93,6 +93,7 @@ class ImagesConfig(BaseModel):
     width: int = 1080
     height: int = 1920
     pool_max: int = 40              # most stock photos fetched per video
+    named_max: int = 12             # named subjects looked up per video
 
 
 class VideoConfig(BaseModel):

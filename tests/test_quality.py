@@ -152,3 +152,27 @@ def test_each_footage_shot_is_used_once(monkeypatch, tmp_path):
     assert sorted(used) == ["shot0.mp4", "shot1.mp4", "shot2.mp4"]   # once each
     assert scenes[0].clip_path is None                                # cards stay cards
     assert all(s.overlay_png is None for s in scenes)                 # long-form: clean
+
+
+def test_named_subjects_are_extracted():
+    from core.media.themes import named_subjects as n
+    assert n("Aristotle believed in purpose.") == ["Aristotle"]
+    assert n("Edward Thorndike's cats learned quickly.") == ["Edward Thorndike"]
+    assert n("In 1911, Thorndike published in New York.") == ["Thorndike", "New York"]
+    assert n("New research shows habits matter.") == []
+    assert n("We must ask ourselves what drives us.") == []
+
+
+def test_named_image_never_shows_the_wrong_person(monkeypatch, tmp_path):
+    from core.media import stock
+    hits = [{"title": "George Thorndike Angell Memorial.jpg", "width": 3600, "url": "u1"},
+            {"title": "Thorndike Hotel, Rockland.jpg", "width": 3000, "url": "u2"},
+            {"title": "Aristotle poetics.jpg", "width": 4000, "url": "u3"},
+            {"title": "Aristotle with a Bust of Homer.jpg", "width": 3600, "url": "u4"}]
+    monkeypatch.setattr(stock, "_commons_search", lambda q, limit=3, curated=None:
+                        [h for h in hits if all(w.split(":")[1].lower() in h["title"].lower()
+                                                for w in q.split())])
+    monkeypatch.setattr(stock, "_download", lambda url, dest: True)
+    assert stock.fetch_named("Thorndike", tmp_path / "a") is None        # hotel, not him
+    assert stock.fetch_named("Edward Thorndike", tmp_path / "b") is None  # no surname guess
+    assert stock.fetch_named("Aristotle", tmp_path / "c")["url"] == "u4"  # the painting

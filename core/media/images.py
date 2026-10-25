@@ -14,6 +14,7 @@ centered text), so frames read as film rather than PowerPoint.
 
 from __future__ import annotations
 
+import re
 import textwrap
 from pathlib import Path
 
@@ -224,11 +225,22 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
         except Exception as exc:
             log.warning("Image pool fetch failed (%s); using cards.", exc)
 
+    named_cache: dict[str, dict | None] = {}
     for scene in scenes:
         out = out_dir / f"scene_{scene.index:03d}.jpg"
         done = False
 
-        if pool:
+        # A named person/place/work gets the actual subject, once per video.
+        # Only for scenes that will show a still (cards and footage don't).
+        if use_stock and not scene.animation_kind and not scene.clip_path:
+            meta = _named_image(scene.narration, named_cache, out_dir, category,
+                                width, height, cfg.named_max)
+            if meta and _cinematic_from_photo(Path(meta["path"]), scene, out, width,
+                                              height, brand, subtitle=subtitles):
+                credits.append(meta)
+                done = True
+
+        if pool and not done:
             if any("theme" in m for m in pool):
                 meta = pick(scene.narration, pool, used)     # by mood, no repeats
             else:
@@ -252,7 +264,7 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
         scene.image_path = str(out) if done else None
 
     # Clean the downloaded originals once they've been composited.
-    for p in out_dir.glob("_pool_*"):
+    for p in [*out_dir.glob("_pool_*"), *out_dir.glob("_named_*")]:
         try:
             p.unlink()
         except Exception:
@@ -263,6 +275,51 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
     log.info("Generated %d scene frame(s) (%d from real photos) in %s",
              len(scenes), len(credits), out_dir)
     return scenes
+
+
+def _named_image(text: str, cache: dict, out_dir: Path, category: str,
+                 width: int, height: int, limit: int) -> dict | None:
+    """Picture of the first not-yet-shown subject this line names, or None."""
+    from core.media.stock import fetch_named
+    from core.media.themes import named_subjects
+
+    for name in named_subjects(text):
+        if name in cache:
+            continue                      # shown already (or nothing found)
+        if len(cache) >= limit:
+            return None
+        safe = re.sub(r"[^A-Za-z0-9]+", "_", name)[:40]
+        meta = fetch_named(name, out_dir / f"_named_{safe}", category)
+        cache[name] = meta
+        if meta:
+            if (meta.get("width") or 0) < width:
+                # Too small to fill the frame sharply: present it on a blurred
+                # backdrop of itself rather than upscaling it into mush.
+                framed = out_dir / f"_named_{safe}_framed.jpg"
+                if _backdrop(Path(meta["path"]), framed, width, height):
+                    meta = dict(meta, path=str(framed))
+            return meta
+    return None
+
+
+def _backdrop(src: Path, out: Path, width: int, height: int) -> bool:
+    """Small image centred, at most 1.5x its own size, over a blurred fill."""
+    try:
+        from PIL import Image, ImageEnhance, ImageFilter
+        img = Image.open(src).convert("RGB")
+        r = max(width / img.width, height / img.height)
+        bg = img.resize((round(img.width * r) + 1, round(img.height * r) + 1), Image.BILINEAR)
+        bg = bg.crop(((bg.width - width) // 2, (bg.height - height) // 2,
+                      (bg.width - width) // 2 + width, (bg.height - height) // 2 + height))
+        bg = ImageEnhance.Brightness(bg.filter(ImageFilter.GaussianBlur(width / 50))).enhance(0.55)
+        s = min(width * 0.86 / img.width, height * 0.86 / img.height, 1.5)
+        fg = img.resize((round(img.width * s), round(img.height * s)), Image.LANCZOS)
+        bg.paste(fg, ((width - fg.width) // 2, (height - fg.height) // 2))
+        bg.save(out, "JPEG", quality=95, subsampling=0)
+        return True
+    except Exception as exc:
+        log.debug("backdrop failed (%s)", exc)
+        return False
 
 
 def _write_credits(out_dir: Path, credits: list[dict]) -> None:

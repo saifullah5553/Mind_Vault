@@ -17,11 +17,18 @@ jinja2>=3.1
 
 # HTTP (free data sources: Wikipedia, RSS, Reddit JSON, etc.)
 httpx>=0.27
+urllib3>=2.8.0        # SECURITY FLOOR (CVE fixes)
+certifi>=2026.10.19   # SECURITY FLOOR (TLS trust store)
 feedparser>=6.0
 
 # Media (all free / open source). Pillow is required (light); MoviePy optional.
-Pillow>=10.0
+# SECURITY FLOOR: Pillow <13 carries 37 known CVEs and we decode UNTRUSTED
+# downloaded images with it. Do not lower this. See docs/SECURITY.md.
+Pillow>=13.0.0
 numpy>=1.26
+
+# Word-level captions from the narration (CPU, int8)
+faster-whisper>=1.2.1
 
 # Testing
 pytest>=8.0

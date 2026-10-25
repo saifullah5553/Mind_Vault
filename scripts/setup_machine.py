@@ -91,10 +91,34 @@ def _importable(mod: str) -> bool:
         return False
 
 
+def venv_python() -> Path:
+    """Path to the project venv's interpreter (Windows or POSIX layout)."""
+    v = ROOT_DIR / ".venv"
+    win = v / "Scripts" / "python.exe"
+    return win if win.exists() or sys.platform == "win32" else v / "bin" / "python"
+
+
 def _install_deps() -> None:
-    print("1/5 Python dependencies")
-    _run([sys.executable, "-m", "pip", "install", "-q", *BASE_DEPS])
-    _run([sys.executable, "-m", "pip", "install", "-q", *EXTRA_DEPS])
+    """Install into an ISOLATED project venv, never the global interpreter.
+
+    Installing globally means this project shares a dependency tree with
+    everything else on the machine: unrelated projects' vulnerable packages show
+    up in our audit, and our pinned security floors (e.g. Pillow>=13) can be
+    silently downgraded by another project. A venv removes both problems.
+    """
+    print("1/5 Python dependencies (isolated .venv)")
+    vp = venv_python()
+    if not vp.exists():
+        print("    creating .venv ...")
+        _run([sys.executable, "-m", "venv", str(ROOT_DIR / ".venv")])
+    if not vp.exists():
+        print("    ! venv creation failed; falling back to the current interpreter")
+        vp = Path(sys.executable)
+    _run([str(vp), "-m", "pip", "install", "-q", "--upgrade", "pip"])
+    _run([str(vp), "-m", "pip", "install", "-q", *BASE_DEPS])
+    _run([str(vp), "-m", "pip", "install", "-q", *EXTRA_DEPS])
+    print(f"    using: {vp}")
+    print(r"    activate with:  .venvScriptsctivate   (Windows)")
 
 
 def _download_voice() -> None:
@@ -139,12 +163,14 @@ def _pull_model() -> None:
 
 def _setup_lipsync() -> None:
     print("4/5 Lip-sync (Wav2Lip, ~500 MB)")
-    _run([sys.executable, "-m", "scripts.setup_lipsync"], cwd=str(ROOT_DIR))
+    _run([str(venv_python() if venv_python().exists() else Path(sys.executable)),
+          "-m", "scripts.setup_lipsync"], cwd=str(ROOT_DIR))
 
 
 def _init_db() -> None:
     print("5/5 Database")
-    _run([sys.executable, "-m", "scripts.init_db"], cwd=str(ROOT_DIR))
+    _run([str(venv_python() if venv_python().exists() else Path(sys.executable)),
+          "-m", "scripts.init_db"], cwd=str(ROOT_DIR))
 
 
 def main() -> None:

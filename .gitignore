@@ -58,3 +58,6 @@ tools/kokoro-env/
 
 # Test output (isolated from real storage)
 storage/_test/
+
+# Project virtual environment (recreate: python -m scripts.setup_machine)
+.venv/

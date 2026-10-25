@@ -162,7 +162,10 @@ def choose_kind(text: str, index: int = 0, is_first: bool = False) -> str | None
         return None
     if is_first:
         return "title"
-    if '"' in t or "“" in t:
+    # A quote card needs an actual quoted PHRASE: a stray quote mark made a
+    # "quote" card reading just "In ancient Greece".
+    q = re.search(r"[\"“]([^\"”]{6,90})[\"”]", t)
+    if q and len(q.group(1).split()) >= 2:
         return "quote"
     years = _YEAR_RE.findall(t)
     if len(years) >= 2:

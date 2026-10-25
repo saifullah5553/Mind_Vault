@@ -78,7 +78,7 @@ def _clip_segment(ffmpeg: str, scene, dur: float, res, fps: int, part: Path) -> 
         fc = f"{base}[out]"
     cmd = inputs + ["-filter_complex", fc, "-map", "[out]", "-an",
                     "-r", str(fps), "-c:v", "libx264", "-preset", _preset(),
-                    "-crf", str(_crf()), str(part)]
+                    "-crf", str(_crf()), "-threads", "2", str(part)]
     try:
         subprocess.run(cmd, check=True, capture_output=True)
         return part.exists()

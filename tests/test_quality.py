@@ -176,3 +176,41 @@ def test_named_image_never_shows_the_wrong_person(monkeypatch, tmp_path):
     assert stock.fetch_named("Thorndike", tmp_path / "a") is None        # hotel, not him
     assert stock.fetch_named("Edward Thorndike", tmp_path / "b") is None  # no surname guess
     assert stock.fetch_named("Aristotle", tmp_path / "c")["url"] == "u4"  # the painting
+
+
+def test_quote_card_needs_a_quoted_phrase():
+    from core.media.animation import choose_kind
+    assert choose_kind('He called it "the law of effect" in 1911.', 3) == "quote"
+    assert choose_kind('In ancient Greece, the word "Makrothumia" meant patience.', 3) != "quote"
+
+
+def test_named_line_keeps_its_still_instead_of_b_roll(monkeypatch, tmp_path):
+    from core.registry import get_agent, load_all_agents
+    from core.schemas import Scene
+    load_all_agents()
+    agent = get_agent("video")
+    shots = [{"path": f"s{i}.mp4", "url": f"u{i}", "title": "t", "source": "Pixabay",
+              "license": "x"} for i in range(5)]
+    monkeypatch.setattr("core.media.stock_video.fetch_clip_pool", lambda *a, **k: shots)
+    lines = ["Plain line.", "Aristotle believed in purpose.", "Another plain line.",
+             "Aristotle said more.", "Last plain line."]
+    scenes = [Scene(index=i, narration=t, visual_prompt="x", duration=3)
+              for i, t in enumerate(lines)]
+    agent._attach_footage(scenes, tmp_path, "t", "psychology", (640, 360), burn=False)
+    assert scenes[1].clip_path is None          # first mention: his picture
+    assert scenes[3].clip_path is not None      # later mention: b-roll is fine
+
+
+def test_near_black_shots_are_dropped(tmp_path):
+    import subprocess
+    from core.media.stock_video import _too_dark
+    from core.media.video import _ffmpeg_exe
+    ff = _ffmpeg_exe()
+    if not ff:
+        import pytest
+        pytest.skip("ffmpeg not available")
+    for name, colour in (("dark.mp4", "0x050505"), ("lit.mp4", "0x808080")):
+        subprocess.run([ff, "-v", "error", "-y", "-f", "lavfi", "-i",
+                        f"color=c={colour}:s=160x90:d=3:r=30", str(tmp_path / name)], check=True)
+    assert _too_dark(tmp_path / "dark.mp4") and not (tmp_path / "dark.mp4").exists()
+    assert not _too_dark(tmp_path / "lit.mp4")

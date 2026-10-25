@@ -156,7 +156,18 @@ class VideoAgent(BaseAgent):
         from core.media.images import render_subtitle_overlay
         from core.media.stock_video import fetch_clip_pool
 
-        free = [s for s in scenes if not s.animation_kind]
+        # The first line naming a person/place keeps its still: the actual
+        # subject (Rembrandt's Aristotle) beats generic b-roll there.
+        from core.media.themes import named_subjects
+        seen_names: set[str] = set()
+        free = []
+        for s in scenes:
+            if s.animation_kind:
+                continue
+            new = [n for n in named_subjects(s.narration) if n not in seen_names]
+            seen_names.update(new)
+            if not new:
+                free.append(s)
         if not free:
             return
         w, h = res

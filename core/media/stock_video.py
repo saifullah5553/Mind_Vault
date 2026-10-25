@@ -356,6 +356,34 @@ def _excerpt(url: str, dest: Path, start_s: float, dur: float) -> bool:
         return False
 
 
+def _too_dark(clip: Path, floor: float = 28.0) -> bool:
+    """True if the shot is nearly black (a night clip reads as a dropout).
+
+    Samples three frames at thumbnail size; mean luma 0-255 below `floor`.
+    """
+    from core.media.video import _ffmpeg_exe
+    import subprocess
+
+    ffmpeg = _ffmpeg_exe()
+    if not ffmpeg:
+        return False
+    try:
+        raw = subprocess.run(
+            [ffmpeg, "-v", "error", "-i", str(clip), "-vf",
+             "select='not(mod(n\\,60))',scale=64:36", "-frames:v", "3",
+             "-f", "rawvideo", "-pix_fmt", "gray", "-"],
+            capture_output=True, timeout=60).stdout
+    except Exception:
+        return False
+    if not raw:
+        return False
+    dark = sum(raw) / len(raw) < floor
+    if dark:
+        log.debug("Dropping near-black shot %s", clip.name)
+        clip.unlink(missing_ok=True)
+    return dark
+
+
 def _download(url: str, dest: Path) -> bool:
     """Plain download for small keyed-provider clips (Pexels/Pixabay)."""
     import httpx
@@ -433,6 +461,10 @@ def fetch_clip_pool(topic: str, count: int, dest_dir: Path,
     seen: set[str] = set()
     if category == "psychology":
         hits = _themed_hits(count, providers, seen)
+        # Mood b-roll found: don't pad with keyword-matched archive reels (that
+        # is how a 1920s silent-film title card got into a psychology video).
+        if len(hits) >= count // 2:
+            terms = []
     for term in terms:
         if len(hits) >= count:
             break
@@ -454,12 +486,14 @@ def fetch_clip_pool(topic: str, count: int, dest_dir: Path,
     n = 0
     for hit in hits:
         if hit.get("stream"):
-            # Several distinct shots spread across the film's running time.
-            for start in shot_offsets(hit.get("length") or 0.0, shots_per_film,
-                                      excerpt_seconds):
+            # Several shots per ARCHIVAL film (long, varied reels). A stock clip
+            # is one continuous scene: four cuts of the same misty hill read as
+            # repetition, so stock gets one shot.
+            shots = shots_per_film if hit.get("source") == "Internet Archive" else 1
+            for start in shot_offsets(hit.get("length") or 0.0, shots, excerpt_seconds):
                 dest = dest_dir / f"_clip_{n:03d}.mp4"
                 n += 1
-                if _excerpt(hit["url"], dest, start, excerpt_seconds):
+                if _excerpt(hit["url"], dest, start, excerpt_seconds) and not _too_dark(dest):
                     pool.append(dict(hit, path=str(dest), start=start))
         else:
             dest = dest_dir / f"_clip_{n:03d}.mp4"

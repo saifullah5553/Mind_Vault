@@ -34,6 +34,23 @@ so a silently swapped model or a trojanised tool file is caught.
 - `s3fd.pth` — **SAFE** (restricted load succeeded)
 - ComfyUI — cloned from the **official** `comfyanonymous/ComfyUI`;
   `custom_nodes/` contains only shipped examples.
+- Dependencies — project-critical packages patched (see below); no CVEs
+  outstanding in anything this project imports.
+
+### Patched: Pillow (the one that actually mattered)
+
+`pip-audit` found **37 vulnerabilities in Pillow 12.3.0**. That was not
+theoretical for us: the pipeline downloads **untrusted images** from Wikimedia,
+Openverse and flickr and decodes them with Pillow, so a malicious image was a
+real attack path. Upgraded to **Pillow 13.0.0** (a major version bump), then
+re-verified: 34 tests pass and all three render paths — animation, subtitle
+overlay, presenter badge — still work.
+
+Also upgraded: `urllib3` 2.8.0, `certifi` 2026.10.23, `filelock`, `setuptools`.
+
+**Untrusted input rule:** anything downloaded from the internet (images, video,
+audio) is untrusted. Keep Pillow and ffmpeg current, since they are the two
+components that parse it.
 
 ## Standing risks and rules
 

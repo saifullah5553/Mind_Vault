@@ -1,9 +1,13 @@
+# SCHEDULE DISABLED (manual trigger only).
+# GitHub-hosted runners have no Ollama server, no Piper voice model and no
+# GPU, so a scheduled run here would publish placeholder scripts with silent
+# narration. Real production runs on your own machine via scripts.autopilot
+# (see docs/AUTOPILOT.md). Re-add a `schedule:` block only if you point
+# OLLAMA_HOST at a reachable LLM server and provision a voice model.
 name: Weekly AI CEO Review
 
 # Sunday-night strategy review: analyze performance, learn, adjust strategy.
 on:
-  schedule:
-    - cron: "0 22 * * 0"    # 22:00 UTC Sunday
   workflow_dispatch: {}
 
 jobs:

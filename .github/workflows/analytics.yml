@@ -1,9 +1,13 @@
+# SCHEDULE DISABLED (manual trigger only).
+# GitHub-hosted runners have no Ollama server, no Piper voice model and no
+# GPU, so a scheduled run here would publish placeholder scripts with silent
+# narration. Real production runs on your own machine via scripts.autopilot
+# (see docs/AUTOPILOT.md). Re-add a `schedule:` block only if you point
+# OLLAMA_HOST at a reachable LLM server and provision a voice model.
 name: Daily Analytics
 
 # Collects performance data and updates the learning database daily.
 on:
-  schedule:
-    - cron: "0 5 * * *"     # 05:00 UTC daily
   workflow_dispatch: {}
 
 jobs:

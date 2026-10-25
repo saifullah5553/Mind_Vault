@@ -19,6 +19,7 @@ from pathlib import Path
 
 from core.config import get_settings
 from core.logging_setup import get_logger
+from core.media.themes import pick
 from core.schemas import Scene
 
 log = get_logger("media.images")
@@ -116,15 +117,20 @@ def _cinematic_from_photo(src: Path, scene: Scene, out: Path, width: int, height
             img = img.crop((0, (h - nh) // 2, w, (h - nh) // 2 + nh))
         img = img.resize((width, height), Image.LANCZOS)
 
-        # Grade: slight contrast + desaturation for a documentary look.
-        img = ImageEnhance.Color(img).enhance(0.82)
-        img = ImageEnhance.Contrast(img).enhance(1.12)
+        # Grade. With a subtitle the frame is muted and darkened at the bottom
+        # so text reads; without one the picture keeps its colour (eye-catching
+        # imagery is the point) and only gets a light edge vignette.
+        img = ImageEnhance.Color(img).enhance(0.82 if subtitle else 1.0)
+        img = ImageEnhance.Contrast(img).enhance(1.12 if subtitle else 1.05)
 
-        # Vignette + bottom gradient so subtitles always read.
         grad = Image.new("L", (1, height), 0)
         for y in range(height):
             t = y / max(1, height - 1)
-            grad.putpixel((0, y), int(30 + 165 * max(0.0, (t - 0.55) / 0.45) ** 1.4))
+            if subtitle:
+                v = 30 + 165 * max(0.0, (t - 0.55) / 0.45) ** 1.4
+            else:
+                v = 70 * max(0.0, (t - 0.80) / 0.20) ** 2     # soft floor for the brand mark
+            grad.putpixel((0, y), int(v))
         grad = grad.resize((width, height))
         dark = Image.new("RGB", (width, height), (0, 0, 0))
         img = Image.composite(dark, img, grad.point(lambda v: v))
@@ -133,7 +139,8 @@ def _cinematic_from_photo(src: Path, scene: Scene, out: Path, width: int, height
         base = Image.open(src).convert("RGB")
         if base.size != (width, height):
             base = img  # already processed
-        img = Image.blend(img, img.filter(ImageFilter.SMOOTH), 0.15)
+        if subtitle:
+            img = Image.blend(img, img.filter(ImageFilter.SMOOTH), 0.15)
 
         if subtitle:
             _draw_subtitle(img, scene.text_overlay or scene.narration, width, height)
@@ -141,7 +148,7 @@ def _cinematic_from_photo(src: Path, scene: Scene, out: Path, width: int, height
         d = ImageDraw.Draw(img)
         d.text((30, height - 46), brand, font=_font(max(16, width // 60)), fill=(210, 210, 220))
         out.parent.mkdir(parents=True, exist_ok=True)
-        img.save(out, "JPEG", quality=88)
+        img.save(out, "JPEG", quality=92, subsampling=0)
         return True
     except Exception as exc:
         log.warning("Photo composite failed (%s); falling back to card.", exc)
@@ -182,8 +189,13 @@ def _try_stable_diffusion(scene: Scene, out_path: Path) -> bool:  # pragma: no c
 
 
 def generate_images(scenes: list[Scene], run_dir: str | Path,
-                    topic: str = "", category: str = "history") -> list[Scene]:
-    """Render one frame per scene. Sets `scene.image_path`. Never raises."""
+                    topic: str = "", category: str = "history",
+                    subtitles: bool = True) -> list[Scene]:
+    """Render one frame per scene. Sets `scene.image_path`. Never raises.
+
+    `subtitles=False` (long-form: captions ship as a caption track) leaves the
+    picture clean and keeps its colour instead of darkening it for text.
+    """
     cfg = get_settings().images
     brand = get_settings().brand.name
     out_dir = Path(run_dir)
@@ -192,16 +204,23 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
     width, height = cfg.width, cfg.height
 
     credits: list[dict] = []
+    used: dict[str, int] = {}
     use_stock = provider in ("auto", "stock")
 
     # One coherent, on-topic image pool for the whole video (see stock.fetch_pool).
     pool: list[dict] = []
     if use_stock and topic:
         try:
-            from core.media.stock import fetch_pool
+            from core.media.stock import fetch_pool, fetch_themed_pool
             # Roughly one photo per two scenes, so images rarely repeat.
             want = min(len(scenes), max(12, len(scenes) // 2), cfg.pool_max)
-            pool = fetch_pool(topic, max(4, want), out_dir, category=category)
+            if category == "psychology":
+                # Abstract subjects: pick by mood from curated libraries.
+                from core.media.themes import THEMES
+                per_theme = max(2, -(-want // len(THEMES)))
+                pool = fetch_themed_pool(topic, category, per_theme, out_dir)
+            if len(pool) < 4:
+                pool = fetch_pool(topic, max(4, want), out_dir, category=category)
         except Exception as exc:
             log.warning("Image pool fetch failed (%s); using cards.", exc)
 
@@ -210,9 +229,13 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
         done = False
 
         if pool:
-            # Cycle the pool so consecutive scenes differ but stay on-subject.
-            meta = pool[scene.index % len(pool)]
-            done = _cinematic_from_photo(Path(meta["path"]), scene, out, width, height, brand)
+            if any("theme" in m for m in pool):
+                meta = pick(scene.narration, pool, used)     # by mood, no repeats
+            else:
+                # Cycle the pool so consecutive scenes differ but stay on-subject.
+                meta = pool[scene.index % len(pool)]
+            done = _cinematic_from_photo(Path(meta["path"]), scene, out, width, height,
+                                         brand, subtitle=subtitles)
             if done:
                 credits.append(meta)
 

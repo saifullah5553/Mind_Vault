@@ -49,6 +49,7 @@ _UNSAFE = re.compile(
 _DIAGRAM = re.compile(
     r"diagram|chart|graph|table|model|theory|triangle|wheel|infographic|flowchart|"
     r"schema|figure|\bfig\.|plot|screenshot|logo|icon|slide|poster|meme|"
+    r"letter|lettre|manuscript|document|\bpage\b|\bscan|certificate|map of|"
     r"\.(?:png|svg|gif)$", re.I)
 # Fine for history (wars, crimes are history) but off-topic for psychology.
 _OFF_TOPIC = {"psychology": re.compile(
@@ -94,13 +95,25 @@ def keywords_from(text: str, limit: int = 4) -> str:
 
 
 # ── Wikimedia Commons ───────────────────────────────────────────────────────
-def _commons_search(query: str, limit: int = 3) -> list[dict]:
+# Hand-reviewed Commons collections: technically excellent, high-resolution and
+# visually striking (the "Featured" set is the best few thousand on Commons).
+CURATED = ("Featured_pictures_on_Wikimedia_Commons", "Quality_images")
+
+
+def _commons_search(query: str, limit: int = 3, curated: str | None = None) -> list[dict]:
     import httpx
 
+    within = ""
+    if curated:
+        # Every word must be in the TITLE: plain search matches any word anywhere,
+        # so "The Thinker Rodin" returned a cathedral and a Chinese scroll.
+        query = " ".join(f"intitle:{w}" for w in query.split())
+        within = f' incategory:"{curated}"'
     params = {
         "action": "query", "format": "json", "generator": "search",
         # JPEG = photographs; PNG/SVG on Commons are mostly diagrams.
-        "gsrsearch": f"{query} filetype:bitmap filemime:image/jpeg", "gsrnamespace": "6",
+        "gsrsearch": f"{query} filetype:bitmap filemime:image/jpeg{within}",
+        "gsrnamespace": "6",
         "gsrlimit": str(limit), "prop": "imageinfo",
         "iiprop": "url|extmetadata|size", "iiurlwidth": "3840",   # large enough for a 4K frame
     }
@@ -128,6 +141,79 @@ def _commons_search(query: str, limit: int = 3) -> list[dict]:
             "source": "Wikimedia Commons",
         })
     return out
+
+
+# ── Pexels (optional free key) ──────────────────────────────────────────────
+def _pexels_photos(query: str, limit: int = 3) -> list[dict]:
+    """Professional stock photos; free for commercial use, attribution optional.
+    Used only when PEXELS_API_KEY is set (free account at pexels.com/api)."""
+    import os
+
+    import httpx
+
+    key = os.getenv("PEXELS_API_KEY")
+    if not key:
+        return []
+    r = httpx.get("https://api.pexels.com/v1/search", headers={"Authorization": key},
+                  params={"query": query, "per_page": str(min(limit, 40)),
+                          "orientation": "landscape", "size": "large"}, timeout=20)
+    r.raise_for_status()
+    out = []
+    for p in r.json().get("photos", []):
+        src = p.get("src") or {}
+        url = src.get("original") or src.get("large2x")
+        if not url:
+            continue
+        out.append({
+            "url": url, "title": p.get("alt") or query, "width": p.get("width") or 0,
+            "license": "Pexels License", "credit": p.get("photographer") or "",
+            "source": "Pexels",
+        })
+    return out
+
+
+def fetch_themed_pool(topic: str, category: str, per_theme: int, dest_dir: Path,
+                      themes: dict | None = None) -> list[dict]:
+    """A pool of eye-catching pictures grouped by visual theme (see themes.py).
+
+    Sources in order of visual quality: Pexels (if a key is set), Commons
+    Featured pictures, Commons Quality images, Openverse large photographs.
+    Every hit passes the same safety / diagram / HD filter as fetch_pool.
+    """
+    from core.media.themes import THEMES
+    themes = themes or THEMES
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    sources = [_pexels_photos,
+               lambda q, limit: _commons_search(q, limit, CURATED[0]),
+               lambda q, limit: _commons_search(q, limit, CURATED[1]),
+               _openverse_search]
+    seen: set[str] = set()
+    pool: list[dict] = []
+    for theme, (_cue, queries) in themes.items():
+        got = 0
+        for q in queries:
+            for source in sources:
+                if got >= per_theme:
+                    break
+                try:
+                    hits = source(q, per_theme * 2)
+                except Exception as exc:
+                    log.debug("image source failed for %r: %s", q, exc)
+                    continue
+                for hit in hits:
+                    if got >= per_theme:
+                        break
+                    if hit["url"] in seen or not acceptable(hit, category):
+                        continue
+                    seen.add(hit["url"])
+                    dest = dest_dir / f"_pool_{len(pool):03d}"
+                    if _download(hit["url"], dest):
+                        pool.append(dict(hit, path=str(dest), theme=theme))
+                        got += 1
+    log.info("Themed image pool for '%s': %d picture(s) across %d themes from %s",
+             topic[:40], len(pool), len({p["theme"] for p in pool}),
+             ", ".join(sorted({p["source"] for p in pool})) or "none")
+    return pool
 
 
 # ── Openverse ───────────────────────────────────────────────────────────────

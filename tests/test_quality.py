@@ -93,3 +93,62 @@ def test_chapter_headings_get_title_cards():
     agent.config["animation_max_ratio"] = 0.0
     agent._mark_animated(scenes)
     assert scenes[2].animation_kind == "title"
+
+
+# ── eye-catching imagery ────────────────────────────────────────────────────
+def test_scenes_get_imagery_by_mood_without_repeats():
+    from core.media.themes import pick, theme_of
+    assert theme_of("They kept striving toward the summit of their goals") == "ambition"
+    assert theme_of("Doubt and fear made them quit") == "struggle"
+    assert theme_of("A plain sentence") == "default"
+    pool = [{"path": f"a{i}", "theme": "ambition"} for i in range(2)] + \
+           [{"path": f"d{i}", "theme": "default"} for i in range(3)]
+    used: dict = {}
+    picks = [pick("achieve your goals", pool, used)["path"] for _ in range(4)]
+    assert picks[:2] == ["a0", "a1"]               # on-theme first
+    assert len(set(picks)) == 4                    # then unused pictures, no repeats
+
+
+def test_shots_are_spread_across_the_film():
+    from core.media.stock_video import _seconds, shot_offsets
+    assert _seconds("10:12") == 612 and _seconds("612.5") == 612.5 and _seconds(None) == 0
+    offs = shot_offsets(600, 4, 9)
+    assert len(set(offs)) == 4 and offs[0] >= 600 * 0.08 and offs[-1] + 9 <= 600 * 0.88
+    assert len(set(shot_offsets(0, 3, 9))) == 3    # unknown length still distinct
+
+
+def test_modern_uploads_are_not_archival_footage(monkeypatch):
+    from core.media import stock_video as sv
+
+    def meta(title, year, coll="prelinger"):
+        return {"metadata": {"title": title, "year": year, "collection": [coll]},
+                "files": [{"name": "a.mp4", "height": "480", "width": "640"}]}
+
+    class R:
+        def __init__(self, d): self.d = d
+        def raise_for_status(self): pass
+        def json(self): return self.d
+
+    for m, ok in [(meta("Motivation and Reward in Learning", "1948"), True),
+                  (meta("Roguelike Celebration 2023", ""), False),
+                  (meta("Some Film", "2011"), False),
+                  (meta("Old Film", "1950", coll="opensource_movies"), False)]:
+        monkeypatch.setattr("httpx.get", lambda *a, _m=m, **k: R(_m))
+        assert (sv._ia_file("x") is not None) == ok, m["metadata"]["title"]
+
+
+def test_each_footage_shot_is_used_once(monkeypatch, tmp_path):
+    from core.registry import get_agent, load_all_agents
+    from core.schemas import Scene
+    load_all_agents()
+    agent = get_agent("video")
+    shots = [{"path": f"shot{i}.mp4", "url": f"u{i}", "title": "t", "source": "IA",
+              "license": "pd"} for i in range(3)]
+    monkeypatch.setattr("core.media.stock_video.fetch_clip_pool", lambda *a, **k: shots)
+    scenes = [Scene(index=i, narration="x", visual_prompt="x", duration=3) for i in range(9)]
+    scenes[0].animation_kind = "title"
+    agent._attach_footage(scenes, tmp_path, "topic", "history", (640, 360), burn=False)
+    used = [s.clip_path for s in scenes if s.clip_path]
+    assert sorted(used) == ["shot0.mp4", "shot1.mp4", "shot2.mp4"]   # once each
+    assert scenes[0].clip_path is None                                # cards stay cards
+    assert all(s.overlay_png is None for s in scenes)                 # long-form: clean

@@ -55,7 +55,7 @@ def headline(sentence: str, max_words: int = 8) -> str:
     if m:
         return f"Chapter {m.group(1)}: {m.group(2)}"
     q = re.search(r"[\"“]([^\"”]{6,90})[\"”]", s)
-    if q:
+    if q and len(q.group(1).split()) >= 2:        # a phrase, not one foreign word
         s = q.group(1)
     for _ in range(3):
         s2 = _FILLER.sub("", s)

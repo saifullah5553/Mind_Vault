@@ -46,24 +46,30 @@ class VideoAgent(BaseAgent):
         topic = payload.get("topic", "")
         category = payload.get("category", "history")
 
-        # 1) REAL HD FOOTAGE first — the biggest quality lever we have, and it
-        #    needs no GPU. Falls back silently to stills when nothing matches.
-        import os
-        skip_footage = os.getenv("MIND_VAULT_SKIP_FOOTAGE") == "1"
-        if self.config.get("use_stock_footage", True) and topic and not skip_footage:
-            self._attach_footage(plan.scenes, img_dir, topic, category, fmt.resolution)
+        # Burned-in captions only where they earn their place: Shorts autoplay
+        # muted, so on-screen words matter. Long-form ships a caption track and
+        # keeps the picture clean.
+        burn = bool(self.config.get("burn_captions", True)) and (
+            video_format == "short" or bool(self.config.get("burn_captions_long", False)))
 
-        # 2) HYBRID: mark the beats that are better ANIMATED than filmed — the
-        #    hook, figures, date ranges, cause->effect. These need no footage at
-        #    all, so they also cover topics with no archival film.
+        # 1) HYBRID: mark the beats that are better ANIMATED than filmed (title,
+        #    chapter cards, figures, quotes, date ranges). Decided first, so
+        #    footage and photos are spread over the remaining scenes.
         if self.config.get("use_animation", True):
             self._mark_animated(plan.scenes)
 
-        # 3) Stills for any scene without footage (rendered at the video's own
-        #    resolution so nothing is letterboxed).
+        # 2) REAL FOOTAGE: each shot used once, spread through the video.
+        import os
+        skip_footage = os.getenv("MIND_VAULT_SKIP_FOOTAGE") == "1"
+        if self.config.get("use_stock_footage", True) and topic and not skip_footage:
+            self._attach_footage(plan.scenes, img_dir, topic, category, fmt.resolution, burn)
+
+        # 3) Eye-catching stills for every other scene (rendered at the video's
+        #    own resolution so nothing is letterboxed).
         if self.config.get("generate_images", True):
             self.settings.images.width, self.settings.images.height = fmt.resolution
-            generate_images(plan.scenes, img_dir, topic=topic, category=category)
+            generate_images(plan.scenes, img_dir, topic=topic, category=category,
+                            subtitles=burn)
 
         out = Path(self.settings.storage_path("videos")) / f"{run_id}.mp4"
         presenter_overlay = payload.get("presenter_overlay")
@@ -104,16 +110,17 @@ class VideoAgent(BaseAgent):
 
         # Pass 1 — confident matches (a headline, a figure, a date range, a
         # cause->effect chain). These are the scenes animation renders best.
+        shown = {s.text_overlay.lower() for s in scenes if s.animation_kind}
         for i, scene in enumerate(scenes):
             if scene.animation_kind:
                 continue
             if used >= budget:
                 break
             kind = choose_kind(scene.narration, i, is_first=(i == 0))
-            if kind is None and not scene.clip_path and not scene.image_path:
-                kind = "ambient"     # nothing else to show this beat
-            if kind:
+            # The same card twice in one video looks like a mistake.
+            if kind and scene.text_overlay.lower() not in shown:
                 scene.animation_kind = kind
+                shown.add(scene.text_overlay.lower())
                 used += 1
 
         # Pass 2 — fill the remaining budget with generic kinds. Without this,
@@ -138,30 +145,45 @@ class VideoAgent(BaseAgent):
             self.log.info("Animating %d/%d scene(s) as motion graphics.", total, len(scenes))
 
     # ── real footage ────────────────────────────────────────────────────────
-    def _attach_footage(self, scenes, out_dir: Path, topic: str, category: str, res) -> None:
-        """Download an on-topic clip pool and assign clips + caption overlays."""
+    def _attach_footage(self, scenes, out_dir: Path, topic: str, category: str, res,
+                        burn: bool = True) -> None:
+        """Download distinct shots and give each to ONE scene, spread evenly.
+
+        Cycling a 7-clip pool across ~80 scenes showed every SD shot about 12
+        times. Now each shot is used once (footage_max_uses) and the scenes in
+        between get HD photos.
+        """
         from core.media.images import render_subtitle_overlay
         from core.media.stock_video import fetch_clip_pool
 
+        free = [s for s in scenes if not s.animation_kind]
+        if not free:
+            return
         try:
             want = int(self.config.get("footage_pool_size", 8))
-            pool = fetch_clip_pool(topic, want, out_dir, category=category)
+            pool = fetch_clip_pool(topic, want, out_dir, category=category,
+                                   shots_per_film=int(self.config.get("footage_shots_per_film", 4)))
         except Exception as exc:
             self.log.warning("Footage fetch failed (%s); using stills.", exc)
             return
         if not pool:
             return
 
+        uses = max(1, int(self.config.get("footage_max_uses", 1)))
+        shots = (pool * uses)[:len(free)]
+        step = len(free) / len(shots)
         brand = self.settings.brand.name
         w, h = res
-        for scene in scenes:
-            clip = pool[scene.index % len(pool)]
+        for k, clip in enumerate(shots):
+            scene = free[int(k * step)]
             scene.clip_path = clip["path"]
-            # Caption rendered once per scene as a transparent PNG.
-            scene.overlay_png = render_subtitle_overlay(
-                scene.text_overlay or scene.narration, w, h,
-                out_dir / f"cap_{scene.index:03d}.png", brand=brand)
-
+            if burn:
+                # Caption rendered once per scene as a transparent PNG.
+                scene.overlay_png = render_subtitle_overlay(
+                    scene.text_overlay or scene.narration, w, h,
+                    out_dir / f"cap_{scene.index:03d}.png", brand=brand)
+        self.log.info("Footage: %d distinct shot(s) placed across %d scene(s).",
+                      len(pool), len(shots))
         self._write_footage_credits(out_dir, pool)
 
     def _write_footage_credits(self, out_dir: Path, pool: list[dict]) -> None:

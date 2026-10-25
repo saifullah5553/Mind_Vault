@@ -30,10 +30,35 @@ Everything used is credited in `footage_credits.txt` beside the rendered video.
 - **One topic-level search per video** (not per scene), so the footage stays
   visually coherent and on-subject.
 - Archive films are hundreds of MB, so we never download them. `ffmpeg -ss`
-  pulls a **~9 second excerpt straight from the URL** using HTTP range requests,
-  at staggered offsets so several excerpts from one film look different.
-- Clips are cover-cropped to frame, captioned with a transparent PNG overlay
-  (avoids ffmpeg `drawtext` escaping problems), and looped if short.
+  pulls **~9 second excerpts straight from the URL** using HTTP range requests:
+  several shots per film, spread across its running time.
+- **Each shot is used once**, spread evenly through the video; the scenes in
+  between get eye-catching photos (below). Films are interleaved so consecutive
+  footage scenes come from different films.
+- Only provably clearable, period-appropriate film: items must be in a curated
+  public-domain collection or carry an explicit PD/CC licence (community uploads
+  in `opensource_movies` no longer count as safe by default), dated 1990 or
+  earlier, and not titled like a modern talk, stream or screencast.
+- Clips are cover-cropped to frame. Shorts get a burned-in caption overlay;
+  long-form keeps a clean picture and ships captions as a track.
+
+## Eye-catching photos
+
+Psychology topics are abstract, so photos are chosen by **mood**, not keyword
+(`core/media/themes.py`): narration about goals gets summits and marathons,
+hope gets sunrises, the mind gets *The Thinker* or *The School of Athens*,
+doubt gets fog and storms, and so on. Each scene takes an unused picture of its
+theme. Sources, best first:
+
+1. **Pexels** (if `PEXELS_API_KEY` is set): professional stock, free for
+   commercial use.
+2. **Wikimedia Commons Featured pictures**, then **Quality images**: hand-reviewed,
+   high-resolution, free; matched on the picture's title.
+3. **Openverse** large photographs.
+
+Every picture passes a safety filter (nothing sexual, self-harm or gore), a
+no-diagrams/no-scans filter, and a 1600 px minimum width. History topics use
+literal search, which works well for concrete people, places and events.
 
 ## Adding the optional free keys
 
@@ -44,15 +69,18 @@ Both are free and need no card:
 2. Pixabay — https://pixabay.com/api/docs/ → add to `.env`:
    `PIXABAY_API_KEY=your_key`
 
-This noticeably improves coverage for psychology/modern topics, where archival
-film is thin.
+Pexels adds professional modern photos and b-roll, the biggest visual upgrade
+for psychology topics. Pixabay adds video b-roll (its free API serves photos only
+up to 1280 px, below the HD floor, so it is not used for stills).
 
 ## Tuning
 
 `agents/video_agent/config.yaml`:
 ```yaml
 use_stock_footage: true
-footage_pool_size: 8     # clips per video, cycled across scenes
+footage_pool_size: 8       # films searched per video
+footage_shots_per_film: 4  # distinct excerpts cut from each film
+footage_max_uses: 1        # each shot appears once
 ```
 Set `use_stock_footage: false` to go back to stills only.
 Tests set `MIND_VAULT_SKIP_FOOTAGE=1` so they never hit the network.

@@ -6,7 +6,9 @@
 # Optionally add free keys for better modern b-roll:
 #   PEXELS_API_KEY  / PIXABAY_API_KEY   (see docs/FOOTAGE.md)
 use_stock_footage: true
-footage_pool_size: 8       # clips fetched per video, cycled across scenes
+footage_pool_size: 8       # films searched per video
+footage_shots_per_film: 4  # distinct excerpts cut from each film
+footage_max_uses: 1        # each shot appears once; other scenes get HD photos
 
 # HYBRID ANIMATION: motion-graphics scenes (kinetic titles, stat counters,
 # timelines, cause->effect diagrams) generated in code. Free, CPU-only, always
@@ -20,4 +22,5 @@ animation_max_ratio: 0.35  # 1.0 = animation-led; 0 = footage/photos only
 animation_fill: false      # true = pad the ratio with generic text slides
 
 generate_images: true      # stills for any scene without footage
-burn_captions: true        # captions are baked in (overlay PNG over footage)
+burn_captions: true        # Shorts: captions baked in (they autoplay muted)
+burn_captions_long: false  # long-form: clean picture, captions ship as a track

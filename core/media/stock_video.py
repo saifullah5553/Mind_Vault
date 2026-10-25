@@ -75,8 +75,17 @@ def search_terms(topic: str, limit: int = 3) -> str:
 _CLEAR_RE = re.compile(
     r"creativecommons\.org|publicdomain|public[ _-]?domain|cc0|cc[- ]by|"
     r"no known copyright|not in copyright", re.I)
-_SAFE_COLLECTIONS = ("prelinger", "publicmovies", "opensource_movies",
-                     "universallibrary", "nasa", "usnationalarchives")
+# Collections whose items are public domain by curation. "opensource_movies" is
+# NOT here: it is the open community-upload bucket (a 2023 games-conference
+# recording came through it as "public domain"). Its items now need an explicit
+# PD/CC licence like any other.
+_SAFE_COLLECTIONS = ("prelinger", "publicmovies", "universallibrary", "nasa",
+                     "usnationalarchives")
+# Archival look: modern uploads (talks, streams, screen recordings) don't fit.
+_MODERN_RE = re.compile(r"conference|celebration|webinar|zoom|lecture|livestream|"
+                        r"podcast|stream|vlog|gameplay|screencast|tutorial|program(?:s)?\b|"
+                        r"\b20[0-2]\d\b", re.I)
+_LATEST_YEAR = 1990
 
 
 def _is_clearable(meta: dict) -> tuple[bool, str]:
@@ -99,8 +108,10 @@ def _ia_search(query: str, limit: int) -> list[str]:
     import httpx
 
     # Bias the query itself toward provably-clearable material.
-    safe = " OR ".join(f"collection:({c})" for c in _SAFE_COLLECTIONS)
-    q = f'({query}) AND mediatype:(movies) AND ({safe})'
+    safe = " OR ".join(f"collection:({c})" for c in (*_SAFE_COLLECTIONS, "opensource_movies"))
+    # Title/subject only: matching anywhere in a description pulled in WWII
+    # propaganda for "motivation".
+    q = f'(title:({query}) OR subject:({query})) AND mediatype:(movies) AND ({safe})'
     r = httpx.get("https://archive.org/advancedsearch.php",
                   params={"q": q, "fl[]": "identifier", "rows": str(limit),
                           "page": "1", "output": "json", "sort[]": "downloads desc"},
@@ -108,6 +119,31 @@ def _ia_search(query: str, limit: int) -> list[str]:
     r.raise_for_status()
     docs = ((r.json().get("response") or {}).get("docs")) or []
     return [d["identifier"] for d in docs if d.get("identifier")]
+
+
+def _seconds(value) -> float:
+    """IA 'length' is seconds ("612.4") or clock time ("10:12"); 0 if unknown."""
+    try:
+        parts = [float(p) for p in str(value).split(":")]
+    except (TypeError, ValueError):
+        return 0.0
+    total = 0.0
+    for p in parts:
+        total = total * 60 + p
+    return total
+
+
+def shot_offsets(length: float, shots: int, dur: float) -> list[float]:
+    """Start times for `shots` excerpts spread over a film (skips titles/credits).
+
+    Unknown length: staggered guesses within a typical 10-minute short.
+    """
+    if length and length > dur * 2:
+        lo, hi = length * 0.08, max(length * 0.08, length * 0.88 - dur)
+        if shots == 1:
+            return [round((lo + hi) / 2, 1)]
+        return [round(lo + (hi - lo) * k / (shots - 1), 1) for k in range(shots)]
+    return [45.0 + 110.0 * k for k in range(shots)]
 
 
 def _ia_file(identifier: str) -> dict | None:
@@ -125,6 +161,11 @@ def _ia_file(identifier: str) -> dict | None:
     ok, lic = _is_clearable(meta)
     if not ok:
         return None
+    title = str(meta.get("title") or identifier)
+    year = re.search(r"\b(1[89]\d\d|20\d\d)\b", str(meta.get("year") or meta.get("date") or ""))
+    if _MODERN_RE.search(title) or (year and int(year.group(1)) > _LATEST_YEAR):
+        log.debug("%s: modern upload (%s); skipping.", identifier, title[:60])
+        return None
 
     # Pick the HIGHEST-resolution derivative. File size is irrelevant because we
     # only range-read a few seconds; picking the smallest file (as an earlier
@@ -140,7 +181,7 @@ def _ia_file(identifier: str) -> dict | None:
         except (TypeError, ValueError):
             fw = fh = 0
         if best is None or fh > best[1]:
-            best = (name, fh, fw)
+            best = (name, fh, fw, _seconds(f.get("length")))
     if not best:
         return None
     # Refuse sources too small to survive upscaling to the output frame.
@@ -156,6 +197,7 @@ def _ia_file(identifier: str) -> dict | None:
         "stream": True,
         "height": best[1],
         "width": best[2],
+        "length": best[3],
     }
 
 
@@ -311,7 +353,8 @@ def _download(url: str, dest: Path) -> bool:
 
 
 def fetch_clip_pool(topic: str, count: int, dest_dir: Path,
-                    category: str = "history", excerpt_seconds: float = 9.0) -> list[dict]:
+                    category: str = "history", excerpt_seconds: float = 9.0,
+                    shots_per_film: int = 1) -> list[dict]:
     """Build a pool of openly-licensed clips about `topic`.
 
     One topic-level search (not per-scene) keeps footage visually coherent and
@@ -348,18 +391,31 @@ def fetch_clip_pool(topic: str, count: int, dest_dir: Path,
                 log.debug("%s failed: %s", getattr(provider, "__name__", "?"), exc)
 
     pool: list[dict] = []
-    for i, hit in enumerate(hits):
-        dest = dest_dir / f"_clip_{i:03d}.mp4"
+    n = 0
+    for hit in hits:
         if hit.get("stream"):
-            # Stagger the seek so several excerpts from one film differ.
-            ok = _excerpt(hit["url"], dest, 45.0 + 37.0 * i, excerpt_seconds)
+            # Several distinct shots spread across the film's running time.
+            for start in shot_offsets(hit.get("length") or 0.0, shots_per_film,
+                                      excerpt_seconds):
+                dest = dest_dir / f"_clip_{n:03d}.mp4"
+                n += 1
+                if _excerpt(hit["url"], dest, start, excerpt_seconds):
+                    pool.append(dict(hit, path=str(dest), start=start))
         else:
-            ok = _download(hit["url"], dest)
-        if ok:
-            pool.append(dict(hit, path=str(dest)))
+            dest = dest_dir / f"_clip_{n:03d}.mp4"
+            n += 1
+            if _download(hit["url"], dest):
+                pool.append(dict(hit, path=str(dest)))
+    # Interleave films so consecutive footage scenes come from different films.
+    by_film: dict[str, list[dict]] = {}
+    for clip in pool:
+        by_film.setdefault(clip["url"], []).append(clip)
+    rounds = max((len(v) for v in by_film.values()), default=0)
+    pool = [v[r] for r in range(rounds) for v in by_film.values() if r < len(v)]
 
     if pool:
-        log.info("Footage pool for '%s': %d clip(s) from %s", topic[:40], len(pool),
+        log.info("Footage pool for '%s': %d shot(s) from %d film(s) via %s", topic[:40],
+                 len(pool), len({h["url"] for h in pool}),
                  ", ".join(sorted({h["source"] for h in pool})))
     else:
         log.info("No clearable stock footage for '%s'; using stills.", topic[:40])

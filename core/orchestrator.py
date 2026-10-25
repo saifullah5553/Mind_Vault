@@ -29,6 +29,7 @@ from core.config import ROOT_DIR, get_settings
 from core.database.models import Content, ContentMemory, ContentStatus
 from core.database.session import session_scope
 from core.errors import Mind_VaultError
+from core.llm.factory import fallback_count
 from core.logging_setup import get_logger
 from core.registry import get_agent, load_all_agents
 from core.schemas import PipelineContext
@@ -114,7 +115,11 @@ class Orchestrator:
 
     # ── individual stages ──────────────────────────────────────────────────
     def _agent_output(self, name: str, payload, ctx: PipelineContext):
+        before = fallback_count()
         res = get_agent(name).execute(payload, run_id=ctx.run_id)
+        if (used := fallback_count() - before) > 0:
+            # Kept in ctx (not just the process counter) so it survives --resume.
+            ctx.extra["llm_fallbacks"] = ctx.extra.get("llm_fallbacks", 0) + used
         if res.status != "success":
             raise Mind_VaultError(f"{name}: {res.error}")
         return res.output
@@ -190,12 +195,23 @@ class Orchestrator:
         rendered — a failure now costs seconds instead of a full render.
         """
         qa = get_agent("quality")
-        reasons, scores = qa.precheck(ctx)
+        reasons, scores = self._text_gate(qa, ctx)
         rewrites = self.settings.reliability.max_retries
         retopics = self.settings.reliability.max_retopics
         while reasons:
             needs_new_topic = any(r.startswith(("originality", "fact_score")) for r in reasons)
-            if needs_new_topic and retopics > 0:
+            if any(r.startswith("llm_fallback") for r in reasons) and rewrites > 0:
+                # Part of the text is stub placeholder. Same topic, fresh text:
+                # Ollama may only have timed out once.
+                rewrites -= 1
+                log.warning("Pre-render gate failed (%s); rewriting research, hook "
+                            "and script with the real LLM.", reasons)
+                ctx.extra["llm_fallbacks"] = 0
+                self._stage_research(ctx)
+                self._stage_fact(ctx)
+                self._stage_hook(ctx)
+                self._stage_script(ctx)
+            elif needs_new_topic and retopics > 0:
                 retopics -= 1
                 log.warning("Pre-render gate failed (%s); choosing a different topic.", reasons)
                 if not self._retopic(ctx):
@@ -206,7 +222,7 @@ class Orchestrator:
                 self._rehook(ctx)
             else:
                 break
-            reasons, scores = qa.precheck(ctx)
+            reasons, scores = self._text_gate(qa, ctx)
 
         ctx.extra["precheck"] = {"passed": not reasons, "reasons": reasons, "scores": scores}
         if reasons:
@@ -216,6 +232,14 @@ class Orchestrator:
             log.warning("Skipping render: text gates not met (%s).", reasons)
         else:
             log.info("Pre-render gate passed %s.", scores)
+
+    def _text_gate(self, qa, ctx) -> tuple[list[str], dict]:
+        reasons, scores = qa.precheck(ctx)
+        fallbacks = ctx.extra.get("llm_fallbacks", 0)
+        if fallbacks and not self.settings.quality.allow_llm_fallback:
+            reasons.append(f"llm_fallback: {fallbacks} call(s) answered by the offline stub")
+        scores["llm_fallbacks"] = fallbacks
+        return reasons, scores
 
     def _rehook(self, ctx) -> None:
         """Try for a stronger hook, rewriting only as much script as it touches.

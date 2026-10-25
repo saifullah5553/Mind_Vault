@@ -111,6 +111,9 @@ quality:
   fact_score_min: 90
   originality_score_min: 85
   hook_score_min: 80
+  # If Ollama fails mid-run, that call is answered by the offline stub. false =
+  # such a script is rewritten (and never rendered if Ollama stays down).
+  allow_llm_fallback: false
   duplicate_similarity_max: 0.80   # reject topics/scripts ≥ 80% similar
   audio_check: true
   visual_check: true

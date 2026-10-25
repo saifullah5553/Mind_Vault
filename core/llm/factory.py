@@ -21,6 +21,15 @@ from core.logging_setup import get_logger
 
 log = get_logger("llm.factory")
 
+# Process-wide count of calls answered by the fallback instead of the primary.
+# The orchestrator compares it before/after writing a script: placeholder text
+# from the offline stub must never be narrated and rendered as if it were real.
+_fallbacks = 0
+
+
+def fallback_count() -> int:
+    return _fallbacks
+
 
 class ResilientLLM(LLMProvider):
     """Wraps a primary provider and falls back to a secondary on failure."""
@@ -30,13 +39,25 @@ class ResilientLLM(LLMProvider):
         self.fallback = fallback
         self.name = f"{primary.name}->{fallback.name}"
 
-    def generate(self, messages: list[LLMMessage], *, temperature=None, max_tokens=None) -> str:
+    def _call(self, method: str, messages, temperature, max_tokens):
         try:
-            return self.primary.generate(messages, temperature=temperature, max_tokens=max_tokens)
+            return getattr(self.primary, method)(
+                messages, temperature=temperature, max_tokens=max_tokens)
         except ProviderError as exc:
+            global _fallbacks
+            _fallbacks += 1
             log.warning("LLM '%s' failed (%s); falling back to '%s'.",
                         self.primary.name, exc, self.fallback.name)
-            return self.fallback.generate(messages, temperature=temperature, max_tokens=max_tokens)
+            return getattr(self.fallback, method)(
+                messages, temperature=temperature, max_tokens=max_tokens)
+
+    def generate(self, messages: list[LLMMessage], *, temperature=None, max_tokens=None) -> str:
+        return self._call("generate", messages, temperature, max_tokens)
+
+    def generate_json(self, messages: list[LLMMessage], *, temperature=None, max_tokens=None):
+        # Delegate explicitly: the inherited version would call generate() and
+        # bypass the primary's native JSON mode (Ollama format="json").
+        return self._call("generate_json", messages, temperature, max_tokens)
 
 
 def _build_primary() -> LLMProvider:

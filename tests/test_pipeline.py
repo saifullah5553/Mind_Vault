@@ -153,3 +153,62 @@ def test_stronger_hook_is_spliced_into_documentary_intro(monkeypatch):
     assert ctx.script.full_text.count(better.text) == 1
     assert old.text not in ctx.script.full_text
     assert ctx.script.body == chapters_before
+
+
+def test_resilient_llm_counts_fallbacks_and_keeps_native_json():
+    from core.errors import ProviderError
+    from core.llm import factory
+    from core.llm.stub_provider import StubLLM
+
+    class Down:
+        name = "down"
+        def generate(self, *a, **k): raise ProviderError("offline")
+        def generate_json(self, *a, **k): raise ProviderError("offline")
+
+    class JsonOnly:
+        name = "json"
+        def generate(self, *a, **k): raise AssertionError("must use native JSON mode")
+        def generate_json(self, *a, **k): return {"ok": True}
+
+    assert factory.ResilientLLM(JsonOnly(), StubLLM()).generate_json([]) == {"ok": True}
+    before = factory.fallback_count()
+    factory.ResilientLLM(Down(), StubLLM()).generate([])
+    try:
+        factory.ResilientLLM(Down(), StubLLM()).generate_json([])
+    except ValueError:
+        pass  # the stub has no JSON to give for an empty prompt; only the count matters
+    assert factory.fallback_count() == before + 2
+
+
+def _fallback_during_script(monkeypatch, times: int):
+    """Pretend the first `times` script-writing calls fell back to the stub."""
+    import core.orchestrator as orch_mod
+    from core.registry import get_agent, load_all_agents
+    load_all_agents()
+    counter = {"n": 0, "left": times}
+    cls = type(get_agent("script"))
+    real = cls.run
+
+    def run(self, payload):
+        if counter["left"] > 0:
+            counter["left"] -= 1
+            counter["n"] += 1
+        return real(self, payload)
+
+    monkeypatch.setattr(cls, "run", run)
+    monkeypatch.setattr(orch_mod, "fallback_count", lambda: counter["n"])
+
+
+def test_stub_written_script_is_never_rendered(monkeypatch):
+    _fallback_during_script(monkeypatch, times=99)
+    ctx = Orchestrator().produce(category="history", video_format="short")
+    assert ctx.extra.get("precheck_failed") is True
+    assert any("llm_fallback" in r for r in ctx.extra["precheck"]["reasons"])
+    assert ctx.video is None and ctx.voice is None
+
+
+def test_one_off_fallback_is_rewritten_then_rendered(monkeypatch):
+    _fallback_during_script(monkeypatch, times=1)
+    ctx = Orchestrator().produce(category="history", video_format="short")
+    assert ctx.extra["precheck"]["passed"] is True
+    assert ctx.video is not None

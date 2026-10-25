@@ -122,6 +122,7 @@ class QualityConfig(BaseModel):
     fact_score_min: int = 90
     originality_score_min: int = 85
     hook_score_min: int = 80
+    allow_llm_fallback: bool = False   # render text the offline stub wrote?
     duplicate_similarity_max: float = 0.80
     audio_check: bool = True
     visual_check: bool = True

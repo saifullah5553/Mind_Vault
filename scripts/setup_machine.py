@@ -118,7 +118,7 @@ def _install_deps() -> None:
     _run([str(vp), "-m", "pip", "install", "-q", *BASE_DEPS])
     _run([str(vp), "-m", "pip", "install", "-q", *EXTRA_DEPS])
     print(f"    using: {vp}")
-    print(r"    activate with:  .venvScriptsctivate   (Windows)")
+    print(r"    activate with:  .venv\Scripts\activate   (Windows)")
 
 
 def _download_voice() -> None:

@@ -81,7 +81,7 @@ package we pin as a security floor (see `requirements.txt`).
 **Use the venv** for all project work:
 
 ```bash
-.venv\Scriptsctivate
+.venv\Scripts\activate
 ```
 New machines get one automatically: `python -m scripts.setup_machine`.
 

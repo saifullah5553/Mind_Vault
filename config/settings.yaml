@@ -86,6 +86,11 @@ video:
   preset: "medium"
   frame_quality: 95              # JPEG quality of generated animation frames
   min_footage_height: 400        # skip stock sources too low-res to upscale
+  # Captions timed from the ACTUAL narration (faster-whisper, CPU) instead of
+  # estimated scene durations - more accurate, and enables short karaoke cues.
+  caption_source: "auto"         # auto | audio | scenes
+  caption_model: "base"          # tiny|base|small|medium (bigger = slower, better)
+  caption_compute: "int8"
   background_music: true         # procedural bed by default; drop royalty-free tracks in music_dir
   music_dir: "storage/music"
   music_volume: 0.18             # bed level under narration (ducks automatically)

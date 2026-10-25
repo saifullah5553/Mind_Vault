@@ -48,3 +48,26 @@ def build_srt(scenes: list[Scene], out_path: str | Path) -> str | None:
     out.write_text("\n".join(lines), encoding="utf-8")
     log.info("Wrote %d caption cues -> %s", idx - 1, out.name)
     return str(out)
+
+
+def build_srt_from_audio(audio_path, out_path: str | Path) -> str | None:
+    """SRT timed from the ACTUAL narration audio (word-level), not scene estimates.
+
+    Returns None if transcription is unavailable so the caller can fall back.
+    """
+    from core.media.transcribe import group_words, transcribe_words
+
+    words = transcribe_words(audio_path)
+    if not words:
+        return None
+    cues = group_words(words)
+    if not cues:
+        return None
+    out = Path(out_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    lines: list[str] = []
+    for i, (start, end, text) in enumerate(cues, 1):
+        lines += [str(i), f"{_ts(start)} --> {_ts(max(end, start + 0.3))}", text, ""]
+    out.write_text("\n".join(lines), encoding="utf-8")
+    log.info("Wrote %d word-timed caption cues -> %s", len(cues), out.name)
+    return str(out)

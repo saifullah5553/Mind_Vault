@@ -72,8 +72,15 @@ class VideoAgent(BaseAgent):
 
         # Synced SRT captions (platforms reward them; used by the uploaders).
         if self.settings.video.captions:
-            from core.media.captions import build_srt
-            srt = build_srt(plan.scenes, Path(self.settings.storage_path("videos")) / f"{run_id}.srt")
+            from core.media.captions import build_srt, build_srt_from_audio
+            srt_out = Path(self.settings.storage_path("videos")) / f"{run_id}.srt"
+            srt = None
+            # Word-level timings from the rendered narration are far more accurate
+            # than durations estimated from the scene plan.
+            if voice and self.settings.video.caption_source in ("auto", "audio"):
+                srt = build_srt_from_audio(voice.audio_path, srt_out)
+            if not srt:
+                srt = build_srt(plan.scenes, srt_out)
             result.srt_path = srt
         self.log.info("Final video: %s via %s (%.1fs)",
                       Path(result.video_path).name, result.engine, result.duration)

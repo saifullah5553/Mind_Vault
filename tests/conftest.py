@@ -35,6 +35,7 @@ def _fresh_db():
     s.tts.provider = "silence"   # instant, deterministic audio in tests (real Piper is slow)
     s.images.provider = "pillow"  # no network image fetching in tests (hermetic + fast)
     s.video.ken_burns = False     # skip per-scene ffmpeg encodes in tests
+    s.video.caption_source = "scenes"  # skip slow whisper transcription in tests
     # Skip real Wav2Lip inference in tests (~75s/run); the presenter still returns
     # its portrait + badge, which is what the presenter tests assert on.
     os.environ["MIND_VAULT_SKIP_LIPSYNC"] = "1"

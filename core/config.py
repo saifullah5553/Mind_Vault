@@ -104,6 +104,9 @@ class VideoConfig(BaseModel):
     preset: str = "medium"          # slower preset = better quality per bitrate
     frame_quality: int = 95         # JPEG quality for animation frames
     min_footage_height: int = 400   # don't upscale sources smaller than this
+    caption_source: str = "auto"    # auto | audio (word-level) | scenes (estimated)
+    caption_model: str = "base"     # faster-whisper model: tiny|base|small|medium
+    caption_compute: str = "int8"   # int8 keeps it fast on CPU
     music_dir: str = "storage/music"
     music_volume: float = 0.18          # bed level under narration
     music_intro_outro_seconds: float = 4.0  # bed swells louder at start/end

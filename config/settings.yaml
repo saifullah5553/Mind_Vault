@@ -91,6 +91,9 @@ video:
   caption_source: "auto"         # auto | audio | scenes
   caption_model: "base"          # tiny|base|small|medium (bigger = slower, better)
   caption_compute: "int8"
+  # Scenes render in parallel processes. 0 = auto (CPU threads - 2, so the
+  # desktop stays usable). 1 = serial, the old behaviour.
+  render_workers: 0
   background_music: true         # procedural bed by default; drop royalty-free tracks in music_dir
   music_dir: "storage/music"
   music_volume: 0.18             # bed level under narration (ducks automatically)

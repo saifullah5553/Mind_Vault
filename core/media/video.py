@@ -117,6 +117,59 @@ def _kenburns_segment(ffmpeg: str, scene, i: int, dur: float, res, fps: int, par
         return False
 
 
+def _render_part(job) -> str | None:
+    """Render one scene segment. Returns 'anim' | 'clip' | 'still', or None."""
+    i, s, part, res, fps, brand, ffmpeg = job
+    dur = max(0.8, s.duration)
+    # 1) Motion-graphics animation when this beat suits it (a headline, a
+    #    number, a date range, a cause->effect chain). Always on-topic and
+    #    copyright-free, and covers subjects with no archival footage.
+    if s.animation_kind:
+        from core.media.animation import render_animated_segment
+        if render_animated_segment(s.text_overlay or s.narration, s.animation_kind,
+                                   part, res, fps, dur, brand=brand, seed=i):
+            return "anim"
+    # 2) Real archival footage.
+    if s.clip_path and Path(s.clip_path).exists() and _clip_segment(ffmpeg, s, dur, res, fps, part):
+        return "clip"
+    # 3) Cinematic still with a Ken Burns move.
+    if s.image_path and _kenburns_segment(ffmpeg, s, i, dur, res, fps, part):
+        return "still"
+    return None
+
+
+def _init_worker(settings_dump: dict) -> None:
+    """Give a worker process the parent's live settings, not a fresh YAML read
+    (runtime overrides such as test fixtures would otherwise be lost)."""
+    from core.config import Settings
+    live, snap = get_settings(), Settings.model_validate(settings_dump)
+    for name in Settings.model_fields:
+        setattr(live, name, getattr(snap, name))
+
+
+def _render_workers(n_jobs: int) -> int:
+    import os
+    configured = get_settings().video.render_workers
+    auto = max(1, (os.cpu_count() or 2) - 2)   # leave headroom for the desktop
+    return max(1, min(n_jobs, configured or auto))
+
+
+def _render_parts(jobs: list) -> list[str | None]:
+    """Segments are independent, so render them in parallel across CPU cores.
+    Drawing frames is pure-Python Pillow work on one core per segment; at 1440p
+    a 12-minute documentary took ~28 min serially on a 12-thread laptop CPU."""
+    workers = _render_workers(len(jobs))
+    if workers > 1:
+        from concurrent.futures import ProcessPoolExecutor
+        try:
+            with ProcessPoolExecutor(max_workers=workers, initializer=_init_worker,
+                                     initargs=(get_settings().model_dump(),)) as ex:
+                return list(ex.map(_render_part, jobs))
+        except Exception as exc:  # e.g. a broken pool: finish the job serially
+            log.warning("Parallel render failed (%s); rendering serially.", str(exc)[:160])
+    return [_render_part(j) for j in jobs]
+
+
 def _kenburns_build(scenes, audio: VoiceResult | None, out_path: Path, res, fps: int = 30) -> bool:
     """Assemble the video scene-by-scene: REAL FOOTAGE where we have it, a
     Ken Burns still otherwise. Segments are concatenated, then the narration is
@@ -127,37 +180,16 @@ def _kenburns_build(scenes, audio: VoiceResult | None, out_path: Path, res, fps:
         return False
     with tempfile.TemporaryDirectory() as td:
         tdp = Path(td)
-        parts: list[Path] = []
-        n_clips = 0
-        n_anim = 0
-        for i, s in enumerate(usable):
-            dur = max(0.8, s.duration)
-            part = tdp / f"p{i:04d}.mp4"
-            ok = False
-            # 1) Motion-graphics animation when this beat suits it (a headline, a
-            #    number, a date range, a cause->effect chain). Always on-topic and
-            #    copyright-free, and covers subjects with no archival footage.
-            if s.animation_kind:
-                from core.media.animation import render_animated_segment
-                ok = render_animated_segment(
-                    s.text_overlay or s.narration, s.animation_kind, part, res, fps,
-                    dur, brand=get_settings().brand.name, seed=i)
-                if ok:
-                    n_anim += 1
-            # 2) Real archival footage.
-            if not ok and s.clip_path and Path(s.clip_path).exists():
-                ok = _clip_segment(ffmpeg, s, dur, res, fps, part)
-                if ok:
-                    n_clips += 1
-            # 3) Cinematic still with a Ken Burns move.
-            if not ok and s.image_path:
-                ok = _kenburns_segment(ffmpeg, s, i, dur, res, fps, part)
-            if ok:
-                parts.append(part)
+        brand = get_settings().brand.name
+        jobs = [(i, s, tdp / f"p{i:04d}.mp4", res, fps, brand, ffmpeg)
+                for i, s in enumerate(usable)]
+        kinds = _render_parts(jobs)
+        # Concatenate in scene order; a scene that failed every route is dropped.
+        parts = [job[2] for job, kind in zip(jobs, kinds) if kind]
         if not parts:
             return False
         log.info("Assembled %d segment(s): %d animated, %d real footage, %d stills.",
-                 len(parts), n_anim, n_clips, len(parts) - n_anim - n_clips)
+                 len(parts), kinds.count("anim"), kinds.count("clip"), kinds.count("still"))
 
         lst = tdp / "list.txt"
         lst.write_text("\n".join(f"file '{p.as_posix()}'" for p in parts), encoding="utf-8")

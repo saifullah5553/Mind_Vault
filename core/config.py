@@ -108,6 +108,7 @@ class VideoConfig(BaseModel):
     caption_source: str = "auto"    # auto | audio (word-level) | scenes (estimated)
     caption_model: str = "base"     # faster-whisper model: tiny|base|small|medium
     caption_compute: str = "int8"   # int8 keeps it fast on CPU
+    render_workers: int = 0         # parallel scene renders; 0 = CPU threads - 2
     music_dir: str = "storage/music"
     music_volume: float = 0.18          # bed level under narration
     music_intro_outro_seconds: float = 4.0  # bed swells louder at start/end

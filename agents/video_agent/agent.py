@@ -177,7 +177,10 @@ class VideoAgent(BaseAgent):
                                        else "footage_pool_size", 8))
             pool = fetch_clip_pool(topic, want, out_dir, category=category,
                                    shots_per_film=int(self.config.get("footage_shots_per_film", 4)),
-                                   landscape=w > h, min_height=min(w, h))
+                                   # 1080p stock is plentiful and upscales cleanly
+                                   # to 1440p (1.33x); demanding 1440p left gaps
+                                   # that 480p archive reels filled.
+                                   landscape=w > h, min_height=min(1080, w, h))
         except Exception as exc:
             self.log.warning("Footage fetch failed (%s); using stills.", exc)
             return

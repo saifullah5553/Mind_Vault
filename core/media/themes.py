@@ -30,7 +30,9 @@ THEMES: dict[str, tuple[str, list[str]]] = {
                  ["fog forest", "storm", "lone tree", "wilderness"]),
     "people": (r"people|society|social|others|group|together|crowd|culture|community|"
                r"human|everyone|we\b",
-               ["crowd", "street market", "festival"]),
+               # Not "crowd": Featured "crowd" pictures are historic events
+               # (the 1944 Liberation of Paris), off-topic for psychology.
+               ["street market", "festival", "friends laughing", "city people walking"]),
     "reward": (r"reward|pleasure|joy|happ|satisf|celebrat|prize|praise|enjoy",
                ["fireworks", "lantern festival", "celebration"]),
     "habit": (r"habit|routine|daily|repeat|practice|work|learn|school|train|skill|"

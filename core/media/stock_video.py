@@ -461,9 +461,10 @@ def fetch_clip_pool(topic: str, count: int, dest_dir: Path,
     seen: set[str] = set()
     if category == "psychology":
         hits = _themed_hits(count, providers, seen)
-        # Mood b-roll found: don't pad with keyword-matched archive reels (that
-        # is how a 1920s silent-film title card got into a psychology video).
-        if len(hits) >= count // 2:
+        # Mood b-roll found: never pad with keyword-matched archive reels (that
+        # is how silent-film title cards and a chimp in a tuxedo got into a
+        # psychology documentary).
+        if hits:
             terms = []
     for term in terms:
         if len(hits) >= count:

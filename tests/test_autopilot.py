@@ -60,6 +60,14 @@ def test_lock_prevents_overlap_and_recovers_when_stale():
         assert recovered.held
 
 
+def test_research_job_runs_for_every_category():
+    s = get_settings()
+    res = autopilot.run_job("research", s)
+    assert res["status"] == "ok"
+    assert set(res["topics"]) == set(s.strategy.category_mix)
+    assert all(res["topics"].values())
+
+
 def test_blocked_job_reports_and_exits_nonzero():
     rc = autopilot.main(["--job", "short", "--date", "2026-01-05"])
     assert rc == 1

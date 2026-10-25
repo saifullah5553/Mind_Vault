@@ -180,9 +180,10 @@ def _job_research(s: Settings) -> dict:
     out = {}
     for cat in s.strategy.category_mix:
         trends = get_agent("trend").execute({"category": cat}).output
-        topics = get_agent("topic").execute({"category": cat, "trends": trends}).output
+        # The topic agent scores candidates and returns the single best one.
+        best = get_agent("topic").execute({"category": cat, "trends": trends}).output
         get_agent("competitor").execute({"category": cat})
-        out[cat] = len(topics or [])
+        out[cat] = getattr(best, "angle", None)
     return {"status": "ok", "topics": out}
 
 

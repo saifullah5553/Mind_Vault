@@ -52,3 +52,6 @@ tools/Wav2Lip/
 
 # Third-party tool clones (recreate with their own setup scripts)
 tools/ComfyUI/
+
+# Isolated Kokoro environment (recreate: see docs/SETUP_AI.md)
+tools/kokoro-env/

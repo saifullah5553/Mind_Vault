@@ -89,6 +89,42 @@ def _try_piper(text: str, path: Path) -> bool:  # pragma: no cover - needs voice
         return False
 
 
+def _try_kokoro(text: str, path: Path) -> bool:  # pragma: no cover - isolated env
+    """Kokoro TTS via the ISOLATED Python 3.12 env (tools/kokoro-env).
+
+    OPT-IN ONLY (`tts.provider: kokoro`), never in `auto`: on this machine Kokoro
+    currently fails inside spaCy's tokenizer with
+    `OverflowError: Python int too large to convert to C ssize_t` — an upstream
+    Windows/Python-3.12 bug reproduced on spaCy 3.7.5 and 3.8.16 and on numpy
+    1.26.4 and 2.5.4. Putting it in `auto` would cost ~75s per video before
+    falling through, so it stays opt-in until the upstream bug clears.
+    """
+    import subprocess
+
+    runner = ROOT_DIR / "tools" / "kokoro_tts.py"
+    py = ROOT_DIR / "tools" / "kokoro-env" / "Scripts" / "python.exe"
+    if not (runner.exists() and py.exists()):
+        return False
+    cfg = get_settings().tts
+    txt = path.with_suffix(".kokoro.txt")
+    try:
+        txt.write_text(text, encoding="utf-8")
+        proc = subprocess.run(
+            [str(py), str(runner), "--text-file", str(txt), "--out", str(path),
+             "--voice", getattr(cfg, "kokoro_voice", "af_heart")],
+            capture_output=True, text=True, timeout=1800)
+        if proc.returncode != 0:
+            log.warning("Kokoro failed (%s); falling back.",
+                        " ".join((proc.stderr or "").split())[:160])
+            return False
+        return path.exists() and path.stat().st_size > 0
+    except Exception as exc:
+        log.warning("Kokoro runner error (%s).", str(exc)[:160])
+        return False
+    finally:
+        txt.unlink(missing_ok=True)
+
+
 def _try_coqui(text: str, path: Path) -> bool:  # pragma: no cover - heavy optional
     try:
         import torch  # type: ignore
@@ -148,14 +184,16 @@ def synthesize_speech(text: str, out_path: str | Path) -> VoiceResult:
     used = "silence"
 
     order = {
-        "auto": ["piper", "coqui", "pyttsx3"],
+        "auto": ["piper", "coqui", "pyttsx3"],   # kokoro excluded: see _try_kokoro
+        "kokoro": ["kokoro", "piper"],
         "piper": ["piper"],
         "coqui": ["coqui"],
         "pyttsx3": ["pyttsx3"],
         "silence": [],
     }.get(provider, ["piper", "coqui", "pyttsx3"])
 
-    runners = {"piper": _try_piper, "coqui": _try_coqui, "pyttsx3": _try_pyttsx3}
+    runners = {"kokoro": _try_kokoro, "piper": _try_piper,
+               "coqui": _try_coqui, "pyttsx3": _try_pyttsx3}
     for name in order:
         if runners[name](text, out):
             used = name

@@ -84,6 +84,7 @@ class TTSConfig(BaseModel):
     words_per_minute: int = 155
     piper_model: str = ""           # path to a Piper .onnx voice (female recommended)
     coqui_speaker: str = "Ana Florence"
+    kokoro_voice: str = "af_heart"   # used only when provider=kokoro
 
 
 class ImagesConfig(BaseModel):

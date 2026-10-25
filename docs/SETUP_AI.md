@@ -124,3 +124,51 @@ Both slot behind the existing interfaces; nothing else changes.
 | Natural voice | `pip install piper-tts` + voice `.onnx` | `tts.provider: piper` |
 | Photoreal face | `pip install diffusers torch` (GPU) | `avatar_provider: stable_diffusion` |
 | Talking head | SadTalker repo + checkpoints (GPU) | `lipsync_provider: sadtalker` + `sadtalker_cmd` |
+
+---
+
+## Kokoro TTS (attempted, currently blocked on this machine)
+
+[Kokoro](https://github.com/hexgrad/kokoro) (Apache-2.0, 82M params) sounds more
+natural than Piper and runs on CPU, so it was worth trying. It cannot be
+installed into the project's Python 3.13: it pins `numpy==1.26.4` (no 3.13
+wheel) and pulls `misaki` → `spacy`, which also lacks a 3.13 wheel, so pip tries
+to compile and fails without MSVC.
+
+An isolated Python 3.12 environment was therefore created with `uv`:
+
+```bash
+uv python install 3.12
+```
+```bash
+uv venv tools/kokoro-env --python 3.12
+```
+```bash
+uv pip install --python tools/kokoro-env/Scripts/python.exe kokoro soundfile
+```
+```bash
+uv pip install --python tools/kokoro-env/Scripts/python.exe "en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
+```
+
+Kokoro imports and loads its model there, but synthesis still dies inside
+spaCy's tokenizer:
+
+```
+OverflowError: Python int too large to convert to C ssize_t
+  spacy/tokenizer.pyx ... Tokenizer._flush_specials
+```
+
+Reproduced on **spaCy 3.7.5 and 3.8.16**, and on **numpy 1.26.4 and 2.5.4** — an
+upstream Windows/Python-3.12 issue, not a configuration mistake.
+
+**Status:** `tools/kokoro_tts.py` and the `kokoro` TTS provider are wired and
+ready. It is **opt-in only** (`tts.provider: kokoro`) and never used by `auto`,
+because a failed attempt costs ~75 s per video before falling back.
+
+**Piper remains the working natural voice** and is what `auto` selects. Retry
+Kokoro after a spaCy update, or on Linux/macOS where this bug does not occur:
+
+```bash
+# set tts.provider: kokoro in config/settings.yaml, then
+python -m scripts.run_pipeline --category history
+```

@@ -8,6 +8,8 @@ installed, a word-accurate track can replace this behind the same function.
 
 from __future__ import annotations
 
+import re
+from difflib import SequenceMatcher
 from pathlib import Path
 
 from core.logging_setup import get_logger
@@ -50,16 +52,63 @@ def build_srt(scenes: list[Scene], out_path: str | Path) -> str | None:
     return str(out)
 
 
-def build_srt_from_audio(audio_path, out_path: str | Path) -> str | None:
+def align_to_script(heard: list, script: str) -> list:
+    """Word timings from speech recognition, word text from the script.
+
+    Recognition mishears names ("Deci" as "Dessie"), but we know exactly what was
+    said. Matched words take the heard timing; words between matches are spread
+    evenly across the gap.
+    """
+    from core.media.transcribe import Word
+
+    tokens = script.split()
+    if not tokens or not heard:
+        return heard
+
+    def norm(w: str) -> str:
+        return re.sub(r"[^a-z0-9]", "", w.lower())
+
+    match = SequenceMatcher(None, [norm(w.text) for w in heard],
+                            [norm(t) for t in tokens], autojunk=False)
+    timed: dict[int, tuple[float, float]] = {}
+    for block in match.get_matching_blocks():
+        for k in range(block.size):
+            w = heard[block.a + k]
+            timed[block.b + k] = (w.start, w.end)
+    anchors = sorted(timed)
+    if not anchors:
+        return heard
+    out: list = []
+    for i, token in enumerate(tokens):
+        if i in timed:
+            start, end = timed[i]
+        else:
+            before = max((a for a in anchors if a < i), default=None)
+            after = min((a for a in anchors if a > i), default=None)
+            t0 = timed[before][1] if before is not None else heard[0].start
+            t1 = timed[after][0] if after is not None else heard[-1].end
+            lo = before if before is not None else -1
+            hi = after if after is not None else len(tokens)
+            step = max(0.0, t1 - t0) / max(1, hi - lo - 1)
+            start = t0 + step * (i - lo - 1)
+            end = start + step
+        out.append(Word(token, start, max(end, start + 0.05)))
+    return out
+
+
+def build_srt_from_audio(audio_path, out_path: str | Path, script: str = "") -> str | None:
     """SRT timed from the ACTUAL narration audio (word-level), not scene estimates.
 
-    Returns None if transcription is unavailable so the caller can fall back.
+    With `script`, the caption text is the exact script, not what recognition
+    heard. Returns None if transcription is unavailable so the caller can fall back.
     """
     from core.media.transcribe import group_words, transcribe_words
 
     words = transcribe_words(audio_path)
     if not words:
         return None
+    if script:
+        words = align_to_script(words, script)
     cues = group_words(words)
     if not cues:
         return None

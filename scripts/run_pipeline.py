@@ -6,6 +6,8 @@ Usage:
     python -m scripts.run_pipeline --category history --format long
     python -m scripts.run_pipeline --resume <run_id>
     python -m scripts.run_pipeline --rerender <run_id> --from voice   # keep the script
+    python -m scripts.run_pipeline --rerender <run_id> --script-file my_script.txt
+    python -m scripts.run_pipeline --derive <run_id> --format short --script-file clip.txt
 """
 
 from __future__ import annotations
@@ -58,6 +60,10 @@ def main() -> None:
                         help="redo a finished run from --from onward, keeping its script")
     parser.add_argument("--from", dest="from_stage", default="visual",
                         help="first stage to redo with --rerender (default: visual)")
+    parser.add_argument("--script-file", default=None,
+                        help="use this human-edited script (see core/script_file.py)")
+    parser.add_argument("--derive", metavar="RUN_ID", default=None,
+                        help="new video from RUN_ID's research using --script-file and --format")
     parser.add_argument("--orientation", choices=["vertical", "landscape"], default=None,
                         help="vertical = Shorts/TikTok/Reels (9:16); landscape = normal "
                              "YouTube (16:9). Default: vertical for short, landscape for long.")
@@ -76,7 +82,11 @@ def main() -> None:
 
     init_db()  # ensure tables exist
     if args.rerender:
-        ctx = orch.rerender(args.rerender, args.from_stage)
+        ctx = orch.rerender(args.rerender, args.from_stage, args.script_file)
+    elif args.derive:
+        if not args.script_file:
+            parser.error("--derive needs --script-file")
+        ctx = orch.derive(args.derive, args.script_file, args.video_format)
     elif args.resume:
         ctx = orch.resume(args.resume)
     else:

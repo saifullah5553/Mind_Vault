@@ -16,6 +16,10 @@ from core.logging_setup import get_logger
 from core.schemas import PublishPackage, PublishResult
 
 
+# Meta Graph API version used by the Facebook and Instagram uploaders.
+GRAPH_VERSION = "v27.0"
+
+
 class PlatformPublisher(ABC):
     platform: str = "base"
     required_env: list[str] = []

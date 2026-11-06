@@ -170,7 +170,9 @@ def choose_kind(text: str, index: int = 0, is_first: bool = False) -> str | None
     years = _YEAR_RE.findall(t)
     if len(years) >= 2:
         return "timeline"
-    if _NUM_RE.search(t) or years:
+    # A figure card needs one short sentence: "In 1898, a young American
+    # researcher..." has no clean label, so a long line stays a picture.
+    if (_NUM_RE.search(t) or years) and len(t.split()) <= 12:
         return "stat"
     if _CAUSE_RE.search(t):
         return "concept"
@@ -210,7 +212,10 @@ def _draw_stat(img, scene_text, style, res, p):
     except ValueError:
         target = 100.0
     is_year = not suffix and raw.isdigit() and len(raw) == 4 and 1000 <= target <= 2100
-    label = re.sub(re.escape(raw), "", scene_text).strip(" ,.;:") or scene_text
+    label = re.sub(r"^(?:in|by|since|from|around|about)?\s*" + re.escape(raw) + r"\s*,?\s*", "",
+                   scene_text, flags=re.I)
+    label = re.sub(re.escape(raw), "", label).strip(" ,.;:") or scene_text
+    label = label[:1].upper() + label[1:]
     label = re.sub(r"\s+(?:in|on|by|from|since|of)$", "", label, flags=re.I)
 
     if is_year:

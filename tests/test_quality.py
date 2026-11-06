@@ -147,11 +147,10 @@ def test_each_footage_shot_is_used_once(monkeypatch, tmp_path):
     monkeypatch.setattr("core.media.stock_video.fetch_clip_pool", lambda *a, **k: shots)
     scenes = [Scene(index=i, narration="x", visual_prompt="x", duration=3) for i in range(9)]
     scenes[0].animation_kind = "title"
-    agent._attach_footage(scenes, tmp_path, "topic", "history", (640, 360), burn=False)
+    agent._attach_footage(scenes, tmp_path, "topic", "history", (640, 360))
     used = [s.clip_path for s in scenes if s.clip_path]
     assert sorted(used) == ["shot0.mp4", "shot1.mp4", "shot2.mp4"]   # once each
     assert scenes[0].clip_path is None                                # cards stay cards
-    assert all(s.overlay_png is None for s in scenes)                 # long-form: clean
 
 
 def test_named_subjects_are_extracted():
@@ -196,7 +195,7 @@ def test_named_line_keeps_its_still_instead_of_b_roll(monkeypatch, tmp_path):
              "Aristotle said more.", "Last plain line."]
     scenes = [Scene(index=i, narration=t, visual_prompt="x", duration=3)
               for i, t in enumerate(lines)]
-    agent._attach_footage(scenes, tmp_path, "t", "psychology", (640, 360), burn=False)
+    agent._attach_footage(scenes, tmp_path, "t", "psychology", (640, 360))
     assert scenes[1].clip_path is None          # first mention: his picture
     assert scenes[3].clip_path is not None      # later mention: b-roll is fine
 

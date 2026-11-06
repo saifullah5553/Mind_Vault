@@ -15,10 +15,10 @@ import os
 import httpx
 
 from core.errors import ProviderError
-from core.publishing.base import PlatformPublisher
+from core.publishing.base import GRAPH_VERSION, PlatformPublisher
 from core.schemas import PublishPackage, PublishResult
 
-_GRAPH = "https://graph.facebook.com/v20.0"
+_GRAPH = f"https://graph.facebook.com/{GRAPH_VERSION}"
 
 
 class InstagramPublisher(PlatformPublisher):

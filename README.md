@@ -216,7 +216,7 @@ See inline `# DESIGN:` comments throughout the code and the dedicated section in
 | Image generation | ✅ Free fallback (Pillow slide cards) | Stable Diffusion / ComfyUI + GPU |
 | Video assembly | ✅ Real **.mp4** via bundled ffmpeg (`pip install imageio-ffmpeg`), GIF fallback | richer motion graphics later |
 | Captions | ✅ Synced `.srt` generated + attached to uploads | — |
-| Long-form documentaries (8–15 min) | ✅ Chaptered generator; can weave related shorts into one doc | — |
+| Long-form documentaries (5 to under 10 min) | ✅ Chaptered generator; can weave related shorts into one doc | — |
 | Background music | ✅ Procedural royalty-safe bed (or your tracks) + narration ducking + intro/outro swell | drop royalty-free tracks in `storage/music/` (optional) |
 | Batch production | ✅ `scripts.batch` produces N videos from the calendar with schedule | — |
 | Quality scorecard | ✅ hook / storytelling / fact / originality / retention / copyright-risk | — |

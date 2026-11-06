@@ -60,22 +60,16 @@ def _have_moviepy() -> bool:
 
 
 def _clip_segment(ffmpeg: str, scene, dur: float, res, fps: int, part: Path) -> bool:
-    """One segment cut from REAL stock footage, captioned via a PNG overlay.
+    """One segment cut from REAL stock footage.
 
-    The clip is looped if shorter than the scene, cover-cropped to the frame (no
-    letterboxing), and the caption is overlaid as a pre-rendered transparent PNG
-    (avoids ffmpeg drawtext escaping issues with quotes/colons in narration).
+    The clip is looped if shorter than the scene and cover-cropped to the frame
+    (no letterboxing).
     """
     w, h = res
     inputs = [ffmpeg, "-y", "-stream_loop", "-1", "-t", f"{dur:.3f}", "-i", scene.clip_path]
     base = (f"[0:v]scale={w}:{h}:force_original_aspect_ratio=increase,"
             f"crop={w}:{h},setsar=1,fps={fps},format=yuv420p")
-    overlay = scene.overlay_png
-    if overlay and Path(overlay).exists():
-        inputs += ["-i", str(overlay)]
-        fc = f"{base}[v];[v][1:v]overlay=0:0:format=auto,format=yuv420p[out]"
-    else:
-        fc = f"{base}[out]"
+    fc = f"{base}[out]"
     cmd = inputs + ["-filter_complex", fc, "-map", "[out]", "-an",
                     "-r", str(fps), "-c:v", "libx264", "-preset", _preset(),
                     "-crf", str(_crf()), "-threads", "2", str(part)]
@@ -167,6 +161,30 @@ def _frame_exact(scenes, fps: int) -> list[float]:
         out.append(max(1, edge - prev) / fps)
         prev = edge
     return out
+
+
+def burn_captions(video_path: str, srt_path: str) -> str:
+    """Burn the word-timed captions into a Short. Returns the path to use.
+
+    Large, bold, outlined text above the platforms' bottom UI. Falls back to the
+    clean video if ffmpeg can't do it, since the SRT still ships alongside.
+    """
+    ffmpeg = _ffmpeg_exe()
+    src, srt = Path(video_path), Path(srt_path)
+    out = src.with_name(f"{src.stem}_captioned{src.suffix}")
+    style = ("FontName=Arial,Bold=1,FontSize=13,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,"
+             "BorderStyle=1,Outline=2,Shadow=0,Alignment=2,MarginV=70")
+    # Filter arguments can't hold a Windows path, so run beside the .srt.
+    cmd = [ffmpeg, "-y", "-i", str(src.resolve()), "-vf",
+           f"subtitles={srt.name}:force_style='{style}'",
+           "-c:v", "libx264", "-preset", _preset(), "-crf", str(_crf()),
+           "-pix_fmt", "yuv420p", "-c:a", "copy", str(out.resolve())]
+    try:
+        subprocess.run(cmd, check=True, capture_output=True, cwd=str(srt.parent))
+        return str(out)
+    except Exception as exc:
+        log.warning("Caption burn-in failed (%s); keeping the clean video.", str(exc)[:200])
+        return str(src)
 
 
 def _render_part(job) -> str | None:

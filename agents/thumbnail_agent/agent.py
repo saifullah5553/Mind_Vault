@@ -33,13 +33,16 @@ class ThumbnailAgent(BaseAgent):
         size = (self.config.get("short_size", [1080, 1920]) if video_format == "short"
                 else self.config.get("long_size", [1280, 720]))
         styles = self.config.get("styles", [])[: self.config.get("variants", 3)]
-        punchy = self._punchy_text(title)
+        punchy = (payload.get("text") or self._punchy_text(title)).upper()
+        photos = self._best_photos(run_id, len(styles))
 
         out_dir = Path(self.settings.storage_path("thumbnails"))
         variants: list[str] = []
         for i, style in enumerate(styles):
             path = out_dir / f"{run_id}_v{i}.png"
-            ok = self._render(punchy, path, tuple(size), style)
+            photo = photos[i] if i < len(photos) else None
+            ok = (photo and self._render_photo(punchy, path, tuple(size), style, photo)) \
+                or self._render(punchy, path, tuple(size), style)
             if ok:
                 variants.append(str(path))
 
@@ -53,8 +56,84 @@ class ThumbnailAgent(BaseAgent):
 
     # ── rendering ──────────────────────────────────────────────────────────
     def _punchy_text(self, title: str) -> str:
-        words = title.split()
+        # The part before a colon is the headline; never cut mid-phrase.
+        words = title.split(":")[0].split()
         return " ".join(words[: self.config.get("max_words", 6)]).upper()
+
+    def _best_photos(self, run_id: str, count: int) -> list[Path]:
+        """The video's most striking stills: colourful, bright enough, all different."""
+        try:
+            import numpy as np
+            from PIL import Image
+
+            scored = []
+            folder = Path(self.settings.storage_path("images")) / run_id
+            for path in folder.glob("scene_*.jpg"):
+                a = np.asarray(Image.open(path).convert("RGB").resize((160, 90)), dtype="float32")
+                rg = a[..., 0] - a[..., 1]
+                yb = (a[..., 0] + a[..., 1]) / 2 - a[..., 2]
+                colour = float(np.hypot(rg.std(), yb.std()) + 0.3 * np.hypot(rg.mean(), yb.mean()))
+                light = float(a.mean())
+                key = tuple(int(c) // 12 for c in a.mean(axis=(0, 1)))   # same photo, same key
+                scored.append((colour * (1.0 if light > 55 else 0.5), key, path))
+            picked, seen = [], set()
+            for _score, key, path in sorted(scored, key=lambda s: -s[0]):
+                if key not in seen:
+                    seen.add(key)
+                    picked.append(path)
+                if len(picked) >= count:
+                    break
+            return picked
+        except Exception as exc:
+            self.log.debug("No photo for the thumbnail (%s).", exc)
+            return []
+
+    def _render_photo(self, text: str, out: Path, size, style: dict, photo: Path) -> bool:
+        """Full-bleed photo with a short, complete headline that always fits."""
+        try:
+            from PIL import Image, ImageDraw, ImageEnhance
+
+            from core.media.animation import _fit_text, _font
+
+            w, h = size
+            img = Image.open(photo).convert("RGB")
+            r = max(w / img.width, h / img.height)
+            img = img.resize((round(img.width * r) + 1, round(img.height * r) + 1), Image.LANCZOS)
+            x, y = (img.width - w) // 2, (img.height - h) // 2
+            img = img.crop((x, y, x + w, y + h))
+            img = ImageEnhance.Contrast(ImageEnhance.Color(img).enhance(1.2)).enhance(1.1)
+
+            where = style.get("text", "center")
+            draw = ImageDraw.Draw(img)
+            font, wrapped = _fit_text(draw, text, lambda s: _font(s, True), int(w * 0.88),
+                                      int(h * 0.24), min_size=int(h * 0.07),
+                                      max_h=int(h * 0.52), spacing=int(h * 0.02))
+            box = draw.multiline_textbbox((0, 0), wrapped, font=font, spacing=int(h * 0.02))
+            tw, th = box[2] - box[0], box[3] - box[1]
+            top = {"top": h * 0.08, "bottom": h * 0.9 - th}.get(where, (h - th) / 2)
+
+            # Darken behind the words so they read on any picture.
+            shade = Image.new("L", (1, h), 0)
+            for row in range(h):
+                dist = 0.0 if top - 40 <= row <= top + th + 40 else min(
+                    abs(row - (top - 40)), abs(row - (top + th + 40))) / (h * 0.25)
+                shade.putpixel((0, row), int(170 * max(0.0, 1.0 - dist)))
+            img = Image.composite(Image.new("RGB", (w, h), (0, 0, 0)), img, shade.resize((w, h)))
+
+            draw = ImageDraw.Draw(img)
+            accent = tuple(style.get("palette", [[0, 0, 0], [255, 214, 10]])[1])
+            draw.multiline_text(((w - tw) / 2 - box[0], top - box[1]), wrapped, font=font,
+                                fill=(255, 255, 255), spacing=int(h * 0.02), align="center",
+                                stroke_width=max(3, h // 140), stroke_fill=(0, 0, 0))
+            bar = top + th + h * 0.03
+            draw.rectangle([(w - tw * 0.5) / 2, bar, (w + tw * 0.5) / 2, bar + h * 0.012], fill=accent)
+            draw.text((int(w * 0.025), int(h * 0.93)), self.settings.brand.name,
+                      font=_font(max(18, h // 26), True), fill=(255, 255, 255))
+            img.save(out, "PNG")
+            return True
+        except Exception as exc:
+            self.log.warning("Photo thumbnail failed (%s).", exc)
+            return False
 
     def _render(self, text: str, out: Path, size, style: dict) -> bool:
         try:

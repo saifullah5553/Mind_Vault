@@ -38,12 +38,17 @@ class PublishingAgent(BaseAgent):
 
         results: list[PublishResult] = []
         packages: list[PublishPackage] = []
+        pub = self.settings.publishing
+        allowed = pub.short_platforms if payload.video_format == "short" else pub.long_platforms
         for meta in payload.metadata:
+            if meta.platform not in allowed:
+                continue
             pkg = PublishPackage(
                 platform=meta.platform, video_path=video_path,
                 title=meta.title, description=meta.description,
                 tags=meta.tags, hashtags=meta.hashtags, category=meta.category,
                 thumbnail_path=thumbnail, srt_path=srt_path, privacy=privacy,
+                duration=payload.video.duration if payload.video else 0.0,
             )
             packages.append(pkg)
             results.append(self._dispatch(pkg, dry_run))

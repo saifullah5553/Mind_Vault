@@ -23,5 +23,5 @@ animation_max_ratio: 0.35  # 1.0 = animation-led; 0 = footage/photos only
 animation_fill: false      # true = pad the ratio with generic text slides
 
 generate_images: true      # stills for any scene without footage
-burn_captions: true        # Shorts: captions baked in (they autoplay muted)
+burn_captions: true        # Shorts: word-timed captions burned in (they autoplay muted)
 burn_captions_long: false  # long-form: clean picture, captions ship as a track

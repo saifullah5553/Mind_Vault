@@ -301,6 +301,8 @@ def _pixabay_clips(query: str, limit: int, landscape: bool = True,
         for v in r.json().get("hits", []):
             if not acceptable_title(str(v.get("tags", ""))):
                 continue
+            if float(v.get("duration") or 0) < 8:
+                continue                     # shorter than a scene: it would loop
             rends = [x for x in (v.get("videos") or {}).values() if x and x.get("url")]
             # Right orientation only: a vertical clip cover-cropped into a
             # landscape frame loses two thirds of the picture.
@@ -313,7 +315,7 @@ def _pixabay_clips(query: str, limit: int, landscape: bool = True,
             out.append({"url": pick["url"], "title": str(v.get("tags", ""))[:120],
                         "license": "Pixabay Content License (free commercial use)",
                         "credit": v.get("user", ""), "source": "Pixabay",
-                        "stream": True, "length": float(v.get("duration") or 0),
+                        "page": v.get("pageURL", ""), "stream": True, "length": float(v.get("duration") or 0),
                         "width": pick.get("width"), "height": pick.get("height")})
             if len(out) >= limit:
                 break
@@ -434,7 +436,7 @@ def _themed_hits(count: int, providers, seen: set[str]) -> list[dict]:
 
 
 def fetch_clip_pool(topic: str, count: int, dest_dir: Path,
-                    category: str = "history", excerpt_seconds: float = 9.0,
+                    category: str = "history", excerpt_seconds: float = 12.0,
                     shots_per_film: int = 1, landscape: bool = True,
                     min_height: int = 1080) -> list[dict]:
     """Build a pool of openly-licensed clips about `topic`.

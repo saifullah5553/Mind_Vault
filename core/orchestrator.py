@@ -76,12 +76,14 @@ class Orchestrator:
         log.info("=== RESUME run %s from stages %s ===", run_id, ctx.completed_stages)
         return self._run(ctx)
 
-    def rerender(self, run_id: str, from_stage: str = "visual") -> PipelineContext:
+    def rerender(self, run_id: str, from_stage: str = "visual",
+                 script_file: str | None = None) -> PipelineContext:
         """Redo a finished run from `from_stage` onward, keeping everything before.
 
         Used after a rendering fix: the (slow, LLM-written) script is kept and
-        narration, visuals and the review bundle are rebuilt. Nothing is
-        published: the publish stage stays behind the usual approval gate.
+        narration, visuals and the review bundle are rebuilt, or `script_file`
+        replaces the script with a human-edited one. Nothing is published: the
+        publish stage stays behind the usual approval gate.
         """
         ctx = self._load_checkpoint(run_id)
         if ctx is None:
@@ -96,8 +98,38 @@ class Orchestrator:
         if "precheck" not in keep:
             ctx.extra.pop("precheck_failed", None)
         ctx.quality, ctx.publish_results = None, []
+        if script_file:
+            self._use_script(ctx, script_file)
         log.info("=== RERENDER run %s from '%s' ===", run_id, from_stage)
         return self._run(ctx)
+
+    def derive(self, run_id: str, script_file: str, video_format: str = "short") -> PipelineContext:
+        """A new video from a finished run's topic and research, with its own
+        script: e.g. the vertical clip cut down from a documentary."""
+        ctx = self._load_checkpoint(run_id)
+        if ctx is None:
+            raise Mind_VaultError(f"No checkpoint found for run {run_id}")
+        keep = STAGE_ORDER[:STAGE_ORDER.index("visual")]
+        new = ctx.model_copy(deep=True, update={
+            "run_id": uuid.uuid4().hex[:12], "video_format": video_format,
+            "completed_stages": list(keep), "scene_plan": None, "voice": None, "video": None,
+            "quality": None, "metadata": [], "publish_results": [], "presenter_path": None})
+        for key in ("quality_failed", "failed_stage", "error", "approved", "review_dir",
+                    "review_status", "regenerations", "thumbnail", "thumbnails"):
+            new.extra.pop(key, None)
+        self._stage_content_record(new)
+        self._use_script(new, script_file)
+        log.info("=== DERIVE %s run %s from %s ===", video_format, new.run_id, run_id)
+        return self._run(new)
+
+    def _use_script(self, ctx: PipelineContext, script_file: str) -> None:
+        from core.script_file import load
+        ctx.script, head = load(script_file)
+        ctx.extra["title_locked"] = True
+        for field, key in (("description", "description"), ("thumbnail", "thumbnail_text")):
+            if head.get(field):
+                ctx.extra[key] = head[field]
+        self._update_content(ctx, title=ctx.script.title, script=ctx.script.full_text)
 
     # ── the pipeline ───────────────────────────────────────────────────────
     def _run(self, ctx: PipelineContext) -> PipelineContext:
@@ -399,7 +431,7 @@ class Orchestrator:
         title = ctx.script.title if ctx.script else (ctx.topic.angle if ctx.topic else "")
         result = self._agent_output("thumbnail", {
             "title": title, "run_id": ctx.run_id, "content_id": ctx.content_id,
-            "video_format": ctx.video_format,
+            "video_format": ctx.video_format, "text": ctx.extra.get("thumbnail_text"),
         }, ctx)
         ctx.extra["thumbnails"] = result.get("variants", [])
         ctx.extra["thumbnail"] = result.get("selected")

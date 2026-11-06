@@ -99,8 +99,8 @@ class Scene(BaseModel):
     text_overlay: str = ""
     image_path: str | None = None
     clip_path: str | None = None      # real HD stock footage for this scene, if found
-    overlay_png: str | None = None    # transparent caption layer used over footage
     animation_kind: str | None = None  # motion-graphics kind, when this beat is animated
+    sentences: int = 1                # spoken sentences in this scene (voice alignment)
 
 
 class ScenePlan(BaseModel):
@@ -113,6 +113,9 @@ class VoiceResult(BaseModel):
     duration: float
     provider: str
     voice: str
+    # Per-sentence timing when the voice is performed line by line:
+    # [{"text", "start", "end"}], `end` including the pause after the line.
+    segments: list[dict] = Field(default_factory=list)
 
 
 class VideoResult(BaseModel):
@@ -162,6 +165,7 @@ class PublishPackage(BaseModel):
     thumbnail_path: str | None = None
     srt_path: str | None = None
     privacy: str = "private"                 # start PRIVATE for safety; flip to public later
+    duration: float = 0.0
 
 
 class PublishResult(BaseModel):

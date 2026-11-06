@@ -62,3 +62,6 @@ storage/_test/
 
 # Project virtual environment (recreate: python -m scripts.setup_machine)
 .venv/
+
+# Paste-ready upload folders (large videos)
+upload_ready/

@@ -15,6 +15,7 @@ Choosing a specific provider / voice is config (`tts.*`), never a code change.
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import wave
@@ -87,6 +88,101 @@ def _try_piper(text: str, path: Path) -> bool:  # pragma: no cover - needs voice
     except Exception as exc:
         log.warning("Piper TTS failed (%s).", exc)
         return False
+
+
+_ONES = ("", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+         "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen",
+         "eighteen", "nineteen")
+_TENS = ("", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety")
+_TENS_PLURAL = {"twenty": "twenties", "thirty": "thirties", "forty": "forties",
+                "fifty": "fifties", "sixty": "sixties", "seventy": "seventies",
+                "eighty": "eighties", "ninety": "nineties"}
+
+
+def _two_digits(n: int) -> str:
+    return _ONES[n] if n < 20 else f"{_TENS[n // 10]} {_ONES[n % 10]}".strip()
+
+
+def _year_words(match: re.Match) -> str:
+    """1898 -> "eighteen ninety eight", 1940s -> "nineteen forties".
+
+    Left alone, the voice reads "one thousand eight hundred ninety eight".
+    """
+    year, plural = int(match.group(1)), match.group(2)
+    head, tail = divmod(year, 100)
+    if 2000 <= year < 2010:
+        return "two thousand" + (f" {_ONES[tail]}" if tail else "")
+    if tail == 0:
+        return f"{_two_digits(head)} hundred" + ("s" if plural else "")
+    if tail < 10:
+        return f"{_two_digits(head)} oh {_ONES[tail]}"
+    words = _two_digits(tail)
+    return f"{_two_digits(head)} {_TENS_PLURAL.get(words, words) if plural else words}"
+
+
+def _say(text: str, pronunciations: dict[str, str]) -> str:
+    """Text as the voice should read it. Captions keep the real spelling."""
+    text = re.sub(r"\b(1[0-9]{3}|20[0-9]{2})(s?)\b", _year_words, text)
+    for word, sound in pronunciations.items():
+        text = re.sub(rf"\b{re.escape(word)}\b", sound, text)
+    return text
+
+
+def _try_piper_expressive(text: str, path: Path) -> list[dict] | None:
+    """Perform the script line by line (see core/media/delivery.py).
+
+    Returns one timing per sentence, [{"text", "start", "end"}], where `end`
+    includes the pause after the line, so scenes can cut exactly on the voice.
+    None if Piper is unavailable, so the caller falls back to a plain read.
+    """
+    model = _piper_model()
+    if not model:
+        return None
+    try:
+        import numpy as np
+        from piper import PiperVoice, SynthesisConfig  # type: ignore
+
+        from core.media.delivery import length_scale_for, perform, plan, trim_silence
+        from core.media.spoken import sentences
+
+        cfg = get_settings().tts
+        voice = PiperVoice.load(model)
+        sr = voice.config.sample_rate
+        lines = sentences(text)
+        audio = [np.zeros(int(0.25 * sr), dtype="float32")]
+        clock = 0.25
+        segments: list[dict] = []
+        prev_short = False
+        for i, (line, para_end) in enumerate(lines):
+            d = plan(line, first=i == 0, last=i == len(lines) - 1,
+                     para_end=para_end, prev_short=prev_short)
+            prev_short = len(line.split()) <= 5
+            syn = SynthesisConfig(length_scale=length_scale_for(d, cfg.pace),
+                                  noise_scale=cfg.expressiveness, noise_w_scale=0.9)
+            chunks = [c.audio_float_array for c in voice.synthesize(
+                _say(line, cfg.pronunciations), syn_config=syn)]
+            if not chunks:
+                continue
+            spoken = perform(trim_silence(np.concatenate(chunks), sr), sr, d)
+            if d.pause_before and segments:       # the beat before a turn
+                audio.append(np.zeros(int(d.pause_before * sr), dtype="float32"))
+                clock += d.pause_before
+                segments[-1]["end"] = round(clock, 3)
+            start = clock
+            audio += [spoken, np.zeros(int(d.pause_after * sr), dtype="float32")]
+            clock += len(spoken) / sr + d.pause_after
+            segments.append({"text": line, "start": round(start, 3), "end": round(clock, 3)})
+        peak = max(float(np.abs(a).max()) for a in audio) or 1.0
+        pcm = (np.concatenate(audio) * min(1.0, 0.97 / peak) * 32767).astype("<i2")
+        with wave.open(str(path), "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(sr)
+            wf.writeframes(pcm.tobytes())
+        return segments
+    except Exception as exc:
+        log.warning("Expressive narration failed (%s); using a plain read.", str(exc)[:160])
+        return None
 
 
 def _try_kokoro(text: str, path: Path) -> bool:  # pragma: no cover - isolated env
@@ -192,7 +288,17 @@ def synthesize_speech(text: str, out_path: str | Path) -> VoiceResult:
         "silence": [],
     }.get(provider, ["piper", "coqui", "pyttsx3"])
 
-    runners = {"kokoro": _try_kokoro, "piper": _try_piper,
+    segments: list[dict] = []
+
+    def piper(text: str, path: Path) -> bool:
+        nonlocal segments
+        if cfg.expressive:
+            segments = _try_piper_expressive(text, path) or []
+            if segments:
+                return True
+        return _try_piper(text, path)
+
+    runners = {"kokoro": _try_kokoro, "piper": piper,
                "coqui": _try_coqui, "pyttsx3": _try_pyttsx3}
     for name in order:
         if runners[name](text, out):
@@ -213,4 +319,5 @@ def synthesize_speech(text: str, out_path: str | Path) -> VoiceResult:
         log.info("TTS: no natural voice available -> silent-timed track. "
                  "Install Piper (pip install piper-tts + a voice model) for a natural voice.")
     log.info("TTS via %s -> %s (%.1fs)", used, out.name, duration)
-    return VoiceResult(audio_path=str(out), duration=round(duration, 2), provider=used, voice=cfg.voice)
+    return VoiceResult(audio_path=str(out), duration=round(duration, 2), provider=used,
+                       voice=cfg.voice, segments=segments)

@@ -1,6 +1,6 @@
 # Visual Planning Agent — configuration
-max_scene_seconds: 6.0
-min_scene_seconds: 2.5
+max_scene_seconds: 9.0
+min_scene_seconds: 3.0
 animations: ["slow-zoom", "pan-left", "pan-right", "fade", "parallax"]
 # The style string is prepended to every scene's image prompt for consistency.
 style_prefix: "cinematic documentary still, muted palette, dramatic lighting"

@@ -53,6 +53,8 @@ class PublishingConfig(BaseModel):
     short_days: list[str] = Field(default_factory=lambda: ["mon", "wed", "fri"])
     long_days: list[str] = Field(default_factory=lambda: ["sun"])
     platforms: list[str] = Field(default_factory=lambda: ["youtube", "tiktok", "instagram", "facebook"])
+    long_platforms: list[str] = Field(default_factory=lambda: ["youtube", "facebook"])
+    short_platforms: list[str] = Field(default_factory=lambda: ["youtube", "tiktok", "instagram", "facebook"])
     timezone: str = "UTC"
     review_dir: str = "storage/review"
 
@@ -65,7 +67,7 @@ class FormatSpec(BaseModel):
 
 class FormatsConfig(BaseModel):
     short: FormatSpec = Field(default_factory=FormatSpec)
-    long: FormatSpec = Field(default_factory=lambda: FormatSpec(duration_seconds=[480, 900], resolution=[1920, 1080]))
+    long: FormatSpec = Field(default_factory=lambda: FormatSpec(duration_seconds=[300, 570], resolution=[1920, 1080]))
 
 
 class LLMConfig(BaseModel):
@@ -85,6 +87,10 @@ class TTSConfig(BaseModel):
     piper_model: str = ""           # path to a Piper .onnx voice (female recommended)
     coqui_speaker: str = "Ana Florence"
     kokoro_voice: str = "af_heart"   # used only when provider=kokoro
+    expressive: bool = True         # perform line by line: pace, pitch, pauses
+    pace: float = 1.0               # overall length multiplier (above 1 = slower)
+    expressiveness: float = 0.75    # Piper noise_scale: higher = more varied intonation
+    pronunciations: dict[str, str] = Field(default_factory=dict)  # word -> respelling
 
 
 class ImagesConfig(BaseModel):
@@ -126,6 +132,8 @@ class QualityConfig(BaseModel):
     originality_score_min: int = 85
     hook_score_min: int = 80
     allow_llm_fallback: bool = False   # render text the offline stub wrote?
+    max_video_seconds: int = 600       # hard limit for any video
+    narration_wpm: int = 130           # performed voice, including pauses
     duplicate_similarity_max: float = 0.80
     audio_check: bool = True
     visual_check: bool = True

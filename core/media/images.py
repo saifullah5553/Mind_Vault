@@ -20,6 +20,7 @@ from pathlib import Path
 
 from core.config import get_settings
 from core.logging_setup import get_logger
+from core.media import credits
 from core.media.themes import pick
 from core.schemas import Scene
 
@@ -72,32 +73,6 @@ def _draw_subtitle(img, text: str, width: int, height: int) -> None:
                             spacing=8, align="center")
     draw.multiline_text((x, y), wrapped, font=fnt, fill=(250, 250, 252),
                         spacing=8, align="center")
-
-
-def render_subtitle_overlay(text: str, width: int, height: int, out: Path,
-                            brand: str = "") -> str | None:
-    """Transparent PNG carrying just the subtitle (+ brand mark).
-
-    Used to caption real video footage: rendering the text with Pillow reuses the
-    exact styling we use on stills and avoids ffmpeg `drawtext` escaping problems
-    with apostrophes, colons and quotes in narration.
-    """
-    try:
-        from PIL import Image, ImageDraw
-
-        layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-        if text.strip():
-            _draw_subtitle(layer, text, width, height)
-        if brand:
-            ImageDraw.Draw(layer).text((30, height - 46), brand,
-                                       font=_font(max(16, width // 60)),
-                                       fill=(225, 225, 235, 220))
-        out.parent.mkdir(parents=True, exist_ok=True)
-        layer.save(out, "PNG")
-        return str(out)
-    except Exception as exc:
-        log.warning("Subtitle overlay failed (%s).", exc)
-        return None
 
 
 def _cinematic_from_photo(src: Path, scene: Scene, out: Path, width: int, height: int,
@@ -204,7 +179,7 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
     provider = cfg.provider.lower()
     width, height = cfg.width, cfg.height
 
-    credits: list[dict] = []
+    shown: list[dict] = []
     used: dict[str, int] = {}
     use_stock = provider in ("auto", "stock")
 
@@ -237,7 +212,7 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
                                 width, height, cfg.named_max)
             if meta and _cinematic_from_photo(Path(meta["path"]), scene, out, width,
                                               height, brand, subtitle=subtitles):
-                credits.append(meta)
+                shown.append(meta)
                 done = True
 
         if pool and not done:
@@ -248,8 +223,9 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
                 meta = pool[scene.index % len(pool)]
             done = _cinematic_from_photo(Path(meta["path"]), scene, out, width, height,
                                          brand, subtitle=subtitles)
-            if done:
-                credits.append(meta)
+            # Every scene gets a still as a fallback; only credit what will show.
+            if done and not scene.animation_kind and not scene.clip_path:
+                shown.append(meta)
 
         if not done and provider == "stable_diffusion":
             done = _try_stable_diffusion(scene, out)
@@ -270,10 +246,10 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
         except Exception:
             pass
 
-    if credits:
-        _write_credits(out_dir, credits)
+    if shown:
+        credits.add(out_dir, shown, "image")
     log.info("Generated %d scene frame(s) (%d from real photos) in %s",
-             len(scenes), len(credits), out_dir)
+             len(scenes), len(shown), out_dir)
     return scenes
 
 
@@ -320,17 +296,3 @@ def _backdrop(src: Path, out: Path, width: int, height: int) -> bool:
     except Exception as exc:
         log.debug("backdrop failed (%s)", exc)
         return False
-
-
-def _write_credits(out_dir: Path, credits: list[dict]) -> None:
-    """Save attribution so it can be appended to the video description."""
-    lines = ["Image credits (openly licensed):"]
-    seen = set()
-    for c in credits:
-        key = (c.get("title"), c.get("source"))
-        if key in seen:
-            continue
-        seen.add(key)
-        who = f" by {c['credit']}" if c.get("credit") else ""
-        lines.append(f"- {c.get('title','')}{who} — {c.get('source','')} ({c.get('license','')})")
-    (out_dir / "credits.txt").write_text("\n".join(lines), encoding="utf-8")

@@ -24,6 +24,8 @@ strategy:
 # ── Publishing cadence ──────────────────────────────────────────────────────
 publishing:
   dry_run: true                 # true = generate metadata but DO NOT upload
+  long_platforms: ["youtube", "facebook"]   # where documentaries go
+  short_platforms: ["youtube", "tiktok", "instagram", "facebook"]  # vertical clips
   require_manual_approval: true # hold every video in the review folder until approved
   short_days: ["mon", "wed", "fri"]
   long_days: ["sun"]
@@ -38,7 +40,7 @@ formats:
     resolution: [1080, 1920]     # vertical
     fps: 30
   long:
-    duration_seconds: [480, 900] # 8–15 min
+    duration_seconds: [300, 570] # 5–9.5 min target; quality.max_video_seconds is the hard cap
     # 2560x1440 landscape: YouTube gives 1440p a higher bitrate allocation than
     # 1080p, so the upload looks noticeably cleaner. Override per run with
     #   --orientation landscape --resolution 1080|1440|4k
@@ -64,6 +66,16 @@ tts:
   # storage/voices/ (e.g. en_US-amy-medium) or set the path here / $PIPER_MODEL.
   piper_model: ""
   coqui_speaker: "Ana Florence"  # a female XTTS preset (used when provider=coqui)
+  # Line-by-line performance: questions lift, reveals slow and drop, dark moments
+  # sit lower, bright ones move quicker, with narrator pauses (core/media/delivery.py).
+  expressive: true
+  pace: 1.0                      # above 1 = slower overall
+  expressiveness: 0.75           # intonation variety (Piper noise_scale)
+  pronunciations:                # names the voice gets wrong (captions keep the spelling)
+    Deci: "Deesee"
+    eudaimonia: "yoo-dye-moh-nee-ah"
+    Haifa: "Hyfa"
+    rhesus: "reesus"
 
 # ── Image generation (pluggable, free-first) ────────────────────────────────
 images:
@@ -117,6 +129,8 @@ quality:
   # If Ollama fails mid-run, that call is answered by the offline stub. false =
   # such a script is rewritten (and never rendered if Ollama stays down).
   allow_llm_fallback: false
+  max_video_seconds: 600         # hard limit: no video over 10 minutes
+  narration_wpm: 130             # measured pace of the performed voice, incl. pauses
   duplicate_similarity_max: 0.80   # reject topics/scripts ≥ 80% similar
   audio_check: true
   visual_check: true

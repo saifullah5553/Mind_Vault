@@ -15,6 +15,7 @@ Returns: {"review_dir": path, "status": "pending"}
 from __future__ import annotations
 
 import json
+import re
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
@@ -23,6 +24,8 @@ from core.agents.base import BaseAgent
 from core.config import ROOT_DIR
 from core.database.models import Content, ContentStatus
 from core.database.session import session_scope
+from core.media.spoken import CHAPTER_RE, sentences, spoken_text
+from core.media.themes import named_subjects
 from core.registry import register_agent
 from core.schemas import PipelineContext
 
@@ -31,6 +34,19 @@ from core.schemas import PipelineContext
 class ReviewAgent(BaseAgent):
     name = "review"
     folder = "review_agent"
+
+    @staticmethod
+    def _write_claims(script: str, out: Path) -> None:
+        """Every line naming a person or a figure, for the reviewer to verify.
+
+        The automated fact check passed invented claims with high confidence
+        (a misattributed Greek term, a made-up 1912 concept), so a person reads
+        these before anything goes public.
+        """
+        claims = [s for s, _ in sentences(spoken_text(script))
+                  if not CHAPTER_RE.match(s) and (named_subjects(s) or re.search(r"\d", s))]
+        out.write_text("CHECK THESE BEFORE APPROVING (names, dates, figures):\n\n"
+                       + "\n".join(f"[ ] {c}" for c in claims) + "\n", encoding="utf-8")
 
     def run(self, payload: PipelineContext) -> dict:
         review_root = ROOT_DIR / self.settings.publishing.review_dir
@@ -62,6 +78,13 @@ class ReviewAgent(BaseAgent):
         if payload.script:
             (rdir / "script.txt").write_text(
                 f"TITLE: {payload.script.title}\n\n{payload.script.full_text}", encoding="utf-8")
+
+            self._write_claims(payload.script.full_text, rdir / "claims_to_check.txt")
+
+        # 4b) Full credits, with source links.
+        credit_file = Path(self.settings.storage_path("images")) / payload.run_id / "credits.txt"
+        if credit_file.exists():
+            shutil.copy2(credit_file, rdir / "credits.txt")
 
         # 5) Metadata (per platform).
         (rdir / "metadata.json").write_text(

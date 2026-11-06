@@ -1,4 +1,4 @@
-"""Long-form Documentary Agent (8–15 minutes).
+"""Long-form Documentary Agent (5 to under 10 minutes).
 
 Builds a cohesive, chaptered documentary script. Chapters come from one of:
   - `chapters`: explicit themes passed in (e.g. the topics of several related
@@ -20,6 +20,7 @@ from core.agents.base import BaseAgent
 from core.database.models import Content
 from core.database.session import session_scope
 from core.llm.base import LLMMessage
+from core.media.spoken import sentences
 from core.prompts import render
 from core.registry import register_agent
 from core.schemas import Script
@@ -42,22 +43,33 @@ class DocumentaryAgent(BaseAgent):
         fact_lines = "\n".join(f"- {f.claim}" for f in facts[:12]) or "- (general knowledge)"
 
         # Intro.
-        intro = (f"{hook}\n\n" if hook else "") + (
-            f"This is the story of {topic}. To understand it, we have to look past "
-            f"the familiar version and follow the threads that actually connect the events, "
-            f"the people, and the choices that shaped what came next.")
+        lead = (f"This is the story of {topic}. To understand it, we have to look past the "
+                f"familiar version and follow the people and choices that shaped what came next."
+                if category == "history" else
+                f"This is a story about {topic}. And it may change how you see yourself.")
+        intro = (f"{hook}\n\n" if hook else "") + lead
 
         # Chapters.
+        # A hard word budget keeps every documentary under the length limit, and
+        # each chapter sees what came before: written blind, all five chapters
+        # retold the same three facts.
+        budget = self.config.get("target_words", [800, 1150])[1]
+        per_chapter = max(90, (budget - 120) // max(1, len(chapters)))
         chapter_blocks: list[str] = []
+        covered = "(nothing yet)"
         for name in chapters:
-            body = self._write_chapter(topic, category, name, fact_lines)
+            body = self._write_chapter(topic, category, name, fact_lines, covered, per_chapter)
+            body = self._trim(body, per_chapter)
             chapter_blocks.append(f"[CHAPTER: {name}]\n{body}")
+            covered = " ".join(b.split("\n", 1)[-1][:220] for b in chapter_blocks)
 
         # Conclusion.
         conclusion = (
-            f"So what does {topic} leave us with? Not just a sequence of events, but a pattern — "
-            f"one that still echoes in how we live, decide, and remember. "
-            f"That is the real reason this story matters.")
+            f"So what does {topic} leave us with? " + (
+                "Not just a sequence of events, but a pattern, one that still echoes in how we "
+                "live, decide, and remember." if category == "history" else
+                "Not a list of facts, but a mirror. Once you see the pattern in yourself, "
+                "you can start to change it."))
         cta = self.settings.brand.cta
 
         full = "\n\n".join([f"[INTRODUCTION]\n{intro}", *chapter_blocks,
@@ -97,9 +109,23 @@ class DocumentaryAgent(BaseAgent):
                 out.append(t.title())
         return out
 
-    def _write_chapter(self, topic: str, category: str, chapter: str, facts: str) -> str:
+    @staticmethod
+    def _trim(text: str, max_words: int) -> str:
+        """Cut at a sentence boundary so a chapter can't overrun its budget."""
+        kept: list[str] = []
+        count = 0
+        for sentence, _ in sentences(text):
+            count += len(sentence.split())
+            if kept and count > max_words:
+                break
+            kept.append(sentence)
+        return " ".join(kept)
+
+    def _write_chapter(self, topic: str, category: str, chapter: str, facts: str,
+                       covered: str = "(nothing yet)", words: int = 200) -> str:
         try:
-            prompt = render("chapter", topic=topic, category=category, chapter=chapter, facts=facts)
+            prompt = render("chapter", topic=topic, category=category, chapter=chapter,
+                            facts=facts, covered=covered, words=words)
             text = self.llm.generate([LLMMessage("user", prompt)],
                                      max_tokens=self.settings.llm.max_tokens).strip()
             return text or self._fallback_chapter(topic, chapter)

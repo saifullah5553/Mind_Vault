@@ -35,6 +35,19 @@ def spoken_text(full_text: str) -> str:
     return re.sub(r"\n{3,}", "\n\n", text).strip()
 
 
+def sentences(text: str) -> list[tuple[str, bool]]:
+    """Spoken sentences in order, as (sentence, ends_paragraph).
+
+    The single definition of a "sentence": the voice performs these one at a
+    time and scene planning groups the same list, so timings line up exactly.
+    """
+    out: list[tuple[str, bool]] = []
+    for para in re.split(r"\n\s*\n", (text or "").strip()):
+        parts = [p.strip() for p in re.split(r"(?<=[.!?])\s+", para.strip()) if p.strip()]
+        out += [(p, i == len(parts) - 1) for i, p in enumerate(parts)]
+    return out
+
+
 # ── on-screen text ──────────────────────────────────────────────────────────
 _FILLER = re.compile(
     r"^(?:and|but|so|now|yet|also|then|still|indeed|in fact|of course|"

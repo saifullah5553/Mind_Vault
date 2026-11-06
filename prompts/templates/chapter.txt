@@ -5,9 +5,19 @@ CHAPTER: {chapter}
 FACTS:
 {facts}
 
+ALREADY COVERED IN EARLIER CHAPTERS:
+{covered}
+
 You are writing ONE chapter of a premium Mind_Vault documentary about the topic
-above. Write the chapter titled "{chapter}" as 250–350 words of flowing
-documentary narration (no headings, no bullet points, no "in this chapter").
-Use only verified facts; never invent quotes, dates, or statistics. Maintain
-suspense and a clear through-line, and end on a beat that pulls the viewer into
-the next chapter. Write in a warm, articulate narrator's voice.
+above. Write the chapter titled "{chapter}" as at most {words} words of spoken
+narration (no headings, no bullet points, no "in this chapter").
+
+Rules:
+- Say something NEW. Never repeat a person, fact or idea from the earlier chapters.
+- Use only the facts given; never invent quotes, dates, terms or statistics.
+- Short, plain sentences written for the ear. Vary their length. Use a real
+  question where it helps.
+- Tell a concrete story: who, where, what happened.
+- Never use these phrases: "in the realm of", "delve", "journey", "intricate",
+  "tapestry", "profound", "multifaceted", "fast-forward", "as we navigate".
+- End on a beat that pulls the viewer into the next chapter.

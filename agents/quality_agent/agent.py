@@ -80,6 +80,10 @@ class QualityAgent(BaseAgent):
         if q.visual_check and not visual_ok:
             reasons.append("visual check failed")
 
+        if payload.video and payload.video.duration > q.max_video_seconds:
+            reasons.append(f"video {payload.video.duration:.0f}s over the "
+                           f"{q.max_video_seconds}s limit")
+
         # 7) Copyright risk — all assets self-generated; only user-supplied music
         #    could add risk (and we require it be royalty-free).
         copyright_risk_score = self._copyright_risk(payload)
@@ -140,6 +144,10 @@ class QualityAgent(BaseAgent):
             reasons.append(f"originality {orig} < {q.originality_score_min}")
         if hook < q.hook_score_min:
             reasons.append(f"hook_score {hook} < {q.hook_score_min}")
+        # Caught here so an over-long script never reaches the render.
+        spoken = ctx.script.word_count / max(1, q.narration_wpm) * 60 if ctx.script else 0
+        if spoken > q.max_video_seconds:
+            reasons.append(f"too_long: ~{spoken:.0f}s of narration, limit {q.max_video_seconds}s")
         return reasons, {"fact_confidence": fact, "originality": orig, "hook": hook}
 
     def _fact_score(self, ctx: PipelineContext) -> float:

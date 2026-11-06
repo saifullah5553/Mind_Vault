@@ -136,6 +136,7 @@ def _commons_search(query: str, limit: int = 3, curated: str | None = None) -> l
             "url": url,
             "title": (page.get("title") or "").replace("File:", ""),
             "width": info.get("width") or 0,
+            "page": info.get("descriptionurl") or "",
             "license": lic or "see Commons",
             "credit": re.sub(r"<[^>]+>", "", (meta.get("Artist") or {}).get("value", ""))[:120],
             "source": "Wikimedia Commons",
@@ -166,6 +167,7 @@ def _pexels_photos(query: str, limit: int = 3) -> list[dict]:
             continue
         out.append({
             "url": url, "title": p.get("alt") or query, "width": p.get("width") or 0,
+            "page": p.get("url") or "",
             "license": "Pexels License", "credit": p.get("photographer") or "",
             "source": "Pexels",
         })
@@ -267,7 +269,9 @@ def _openverse_search(query: str, limit: int = 3) -> list[dict]:
 
     r = httpx.get("https://api.openverse.org/v1/images/",
                   params={"q": query, "page_size": str(min(limit, 20)),
-                          "license_type": "commercial", "mature": "false",
+                          # commercial + modification: we crop and grade, so
+                          # no-derivatives licences are out.
+                          "license_type": "commercial,modification", "mature": "false",
                           "category": "photograph", "size": "large"},
                   headers=_UA, timeout=20)
     r.raise_for_status()
@@ -280,6 +284,7 @@ def _openverse_search(query: str, limit: int = 3) -> list[dict]:
             "url": url,
             "title": item.get("title") or query,
             "tags": " ".join(tg.get("name", "") for tg in (item.get("tags") or [])[:12]),
+            "page": item.get("foreign_landing_url") or "",
             "width": item.get("width") or 0,
             "license": (item.get("license") or "cc").upper(),
             "credit": item.get("creator") or "",

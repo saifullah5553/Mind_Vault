@@ -10,8 +10,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from core.agents.base import BaseAgent
+from core.media import credits
 from core.media.images import generate_images
-from core.media.video import assemble_video
+from core.media.video import assemble_video, burn_captions
 from core.registry import register_agent
 from core.schemas import ScenePlan, VideoResult, VoiceResult
 
@@ -27,30 +28,14 @@ class VideoAgent(BaseAgent):
         run_id = payload.get("run_id", "run")
         video_format = payload.get("video_format", "short")
 
-        # Match total video length to the ACTUAL narration length so nothing gets
-        # cut off (critical for long-form, where capped scene durations otherwise
-        # sum to less than the ~11 min of narration and ffmpeg -shortest truncates).
-        if voice and voice.duration and plan.scenes:
-            total = sum(max(0.8, s.duration) for s in plan.scenes)
-            if total > 0 and abs(total - voice.duration) > 1.0:
-                factor = voice.duration / total
-                for s in plan.scenes:
-                    s.duration = round(max(0.8, s.duration) * factor, 2)
-                plan.total_duration = round(sum(s.duration for s in plan.scenes), 2)
-                self.log.info("Scaled %d scenes to match narration (%.1fs, x%.2f).",
-                              len(plan.scenes), voice.duration, factor)
+        self._match_narration(plan, voice)
 
         img_dir = Path(self.settings.storage_path("images")) / run_id
         fmt = (self.settings.formats.short if video_format == "short"
                else self.settings.formats.long)
         topic = payload.get("topic", "")
         category = payload.get("category", "history")
-
-        # Burned-in captions only where they earn their place: Shorts autoplay
-        # muted, so on-screen words matter. Long-form ships a caption track and
-        # keeps the picture clean.
-        burn = bool(self.config.get("burn_captions", True)) and (
-            video_format == "short" or bool(self.config.get("burn_captions_long", False)))
+        credits.reset(img_dir)
 
         # 1) HYBRID: mark the beats that are better ANIMATED than filmed (title,
         #    chapter cards, figures, quotes, date ranges). Decided first, so
@@ -62,14 +47,14 @@ class VideoAgent(BaseAgent):
         import os
         skip_footage = os.getenv("MIND_VAULT_SKIP_FOOTAGE") == "1"
         if self.config.get("use_stock_footage", True) and topic and not skip_footage:
-            self._attach_footage(plan.scenes, img_dir, topic, category, fmt.resolution, burn)
+            self._attach_footage(plan.scenes, img_dir, topic, category, fmt.resolution)
 
         # 3) Eye-catching stills for every other scene (rendered at the video's
         #    own resolution so nothing is letterboxed).
         if self.config.get("generate_images", True):
             self.settings.images.width, self.settings.images.height = fmt.resolution
             generate_images(plan.scenes, img_dir, topic=topic, category=category,
-                            subtitles=burn)
+                            subtitles=False)
 
         out = Path(self.settings.storage_path("videos")) / f"{run_id}.mp4"
         presenter_overlay = payload.get("presenter_overlay")
@@ -84,14 +69,50 @@ class VideoAgent(BaseAgent):
             # Word-level timings from the rendered narration are far more accurate
             # than durations estimated from the scene plan.
             if voice and self.settings.video.caption_source in ("auto", "audio"):
-                srt = build_srt_from_audio(voice.audio_path, srt_out)
+                spoken = " ".join(s.narration for s in plan.scenes)
+                srt = build_srt_from_audio(voice.audio_path, srt_out, script=spoken)
             if not srt:
                 srt = build_srt(plan.scenes, srt_out)
             result.srt_path = srt
+            # Burned-in captions only where they earn their place: Shorts autoplay
+            # muted, so on-screen words matter. Long-form ships a caption track and
+            # keeps the picture clean.
+            burn = bool(self.config.get("burn_captions", True)) and (
+                video_format == "short" or bool(self.config.get("burn_captions_long", False)))
+            if burn and srt:
+                result.video_path = burn_captions(result.video_path, srt)
         self.log.info("Final video: %s via %s (%.1fs)",
                       Path(result.video_path).name, result.engine, result.duration)
         return result
 
+
+    def _match_narration(self, plan: ScenePlan, voice: VoiceResult | None) -> None:
+        """Make scene timing follow the actual narration so nothing is cut off.
+
+        With per-sentence timings each scene lasts exactly as long as its lines,
+        so the picture changes on the voice. Otherwise scale to the total length.
+        """
+        if not voice or not plan.scenes:
+            return
+        segs = voice.segments
+        if segs and sum(s.sentences for s in plan.scenes) == len(segs):
+            i, t = 0, 0.0
+            for s in plan.scenes:
+                i += s.sentences
+                s.duration = round(segs[i - 1]["end"] - t, 3)
+                t = segs[i - 1]["end"]
+            plan.total_duration = round(t, 2)
+            self.log.info("Cut %d scenes on the voice's sentence timings (%.1fs).",
+                          len(plan.scenes), t)
+            return
+        total = sum(max(0.8, s.duration) for s in plan.scenes)
+        if voice.duration and total > 0 and abs(total - voice.duration) > 1.0:
+            factor = voice.duration / total
+            for s in plan.scenes:
+                s.duration = round(max(0.8, s.duration) * factor, 2)
+            plan.total_duration = round(sum(s.duration for s in plan.scenes), 2)
+            self.log.info("Scaled %d scenes to match narration (%.1fs, x%.2f).",
+                          len(plan.scenes), voice.duration, factor)
 
     # ── hybrid animation ────────────────────────────────────────────────────
     def _mark_animated(self, scenes) -> None:
@@ -145,15 +166,13 @@ class VideoAgent(BaseAgent):
             self.log.info("Animating %d/%d scene(s) as motion graphics.", total, len(scenes))
 
     # ── real footage ────────────────────────────────────────────────────────
-    def _attach_footage(self, scenes, out_dir: Path, topic: str, category: str, res,
-                        burn: bool = True) -> None:
+    def _attach_footage(self, scenes, out_dir: Path, topic: str, category: str, res) -> None:
         """Download distinct shots and give each to ONE scene, spread evenly.
 
         Cycling a 7-clip pool across ~80 scenes showed every SD shot about 12
         times. Now each shot is used once (footage_max_uses) and the scenes in
         between get HD photos.
         """
-        from core.media.images import render_subtitle_overlay
         from core.media.stock_video import fetch_clip_pool
 
         # The first line naming a person/place keeps its still: the actual
@@ -190,7 +209,6 @@ class VideoAgent(BaseAgent):
         uses = max(1, int(self.config.get("footage_max_uses", 1)))
         shots = (pool * uses)[:len(free)]
         step = len(free) / len(shots)
-        brand = self.settings.brand.name
         remaining = list(shots)
         for k in range(len(shots)):
             scene = free[int(k * step)]
@@ -198,14 +216,9 @@ class VideoAgent(BaseAgent):
             clip = self._best_clip(scene.narration, remaining)
             remaining.remove(clip)
             scene.clip_path = clip["path"]
-            if burn:
-                # Caption rendered once per scene as a transparent PNG.
-                scene.overlay_png = render_subtitle_overlay(
-                    scene.text_overlay or scene.narration, w, h,
-                    out_dir / f"cap_{scene.index:03d}.png", brand=brand)
         self.log.info("Footage: %d distinct shot(s) placed across %d scene(s).",
                       len(pool), len(shots))
-        self._write_footage_credits(out_dir, pool)
+        credits.add(out_dir, shots, "footage")
 
     @staticmethod
     def _best_clip(text: str, clips: list[dict]) -> dict:
@@ -217,18 +230,3 @@ class VideoAgent(BaseAgent):
                 if c.get("theme") == theme:
                     return c
         return clips[0]
-
-    def _write_footage_credits(self, out_dir: Path, pool: list[dict]) -> None:
-        lines = ["Footage credits (openly licensed):"]
-        seen = set()
-        for c in pool:
-            key = (c.get("title"), c.get("source"))
-            if key in seen:
-                continue
-            seen.add(key)
-            who = f" by {c['credit']}" if c.get("credit") else ""
-            lines.append(f"- {c.get('title','')}{who} — {c.get('source','')} ({c.get('license','')})")
-        try:
-            (out_dir / "footage_credits.txt").write_text("\n".join(lines), encoding="utf-8")
-        except Exception:
-            pass

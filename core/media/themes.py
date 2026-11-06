@@ -106,7 +106,7 @@ SUBJECTS: list[tuple[str, str]] = [
     (r"\banxi\w+|\bstress\w*|\btoo hard\b|\bwithers?\b|\bstarved\b", "stressed|stress|office work"),
     (r"\bloved?\b|\bpassions?\b|\binterest\w*|\benjoy\w*", "playing guitar"),
     (r"\bautonomy\b|\bchose\b|\bchoose\b|\byour own\b|\boutside of you\b", "hiking"),
-    (r"\brewards?\b|\bprizes?\b|\bawards?\b|\bpraise\b", "trophy|medal|celebration"),
+    (r"\brewards?\b|\bprizes?\b|\bawards?\b|\bpraise\b", "trophy|medal|fireworks"),
     (r"\bgoals?\b", "soccer goal|soccer"),
     (r"\bscores?\b", "scoreboard|soccer"),
     (r"\baudience\b", "audience|concert"),

@@ -228,8 +228,16 @@ def _commons_titles(monkeypatch, titles):
 
 def test_a_full_name_must_appear_together_in_the_title(monkeypatch, tmp_path):
     stock = _commons_titles(monkeypatch, [
-        "U.S. Navy Hull Maintenance Technician 3rd Class Serena Clark.jpg"])
+        "U.S. Navy Hull Maintenance Technician 3rd Class Serena Clark.jpg",
+        "Mitch Clark Hull KR.jpg"])
     assert stock.fetch_named("Clark Hull", tmp_path / "a") is None
+
+
+@pytest.mark.parametrize("title", ["Clark L. Hull.jpg", "Portrait of Clark Hull.jpg",
+                                   "Dr. Clark Hull in 1936.jpg", "Clark_Hull.jpg"])
+def test_titles_that_really_name_the_person(monkeypatch, tmp_path, title):
+    stock = _commons_titles(monkeypatch, [title])
+    assert stock.fetch_named("Clark Hull", tmp_path / "a")["title"] == title
 
 
 @pytest.mark.parametrize("title", ["Edward L Deci.jpg", "Edward L. Deci.jpg", "Edward_Deci.jpg"])

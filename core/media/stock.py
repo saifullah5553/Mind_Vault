@@ -197,13 +197,16 @@ def fetch_named(name: str, dest: Path, category: str = "history") -> dict | None
     except Exception as exc:
         log.debug("named search failed for %r: %s", name, exc)
         return None
-    # In order and together, allowing a middle initial: "Edward L Deci" is Edward
-    # Deci, but "Hull Maintenance Technician Serena Clark" is not Clark Hull.
-    whole_name = re.compile(r"\b" + r"(?:[\s_]+\w\.?)?[\s_]+".join(map(re.escape, words)) + r"\b",
-                            re.I)
+    # At the start, in order, allowing a middle initial: "Edward L Deci" is Edward
+    # Deci, but "Hull Maintenance Technician Serena Clark" and "Mitch Clark Hull KR"
+    # (a rugby player at the club Hull KR) are not Clark Hull.
+    whole_name = re.compile(
+        r"^(?:(?:portrait|photo|photograph|picture|painting|bust|statue)[\s_]+of[\s_]+|"
+        r"(?:dr|prof|professor|sir)\.?[\s_]+)?"
+        + r"(?:[\s_]+\w\.?)?[\s_]+".join(map(re.escape, words)) + r"\b", re.I)
     ok = [h for h in hits if (h.get("width") or 0) >= 600
           and not _UNSAFE.search(h["title"]) and not _DIAGRAM.search(h["title"])
-          and whole_name.search(h["title"])
+          and whole_name.match(h["title"])
           # A lone name is ambiguous ("Thorndike" -> the Thorndike Hotel): it
           # must START the title and the title must describe a likeness.
           and (len(words) > 1 or (h["title"].lower().startswith(words[0].lower())

@@ -1,4 +1,18 @@
-# Publishing setup — the final go-live step
+# Publishing
+
+**Automation limits.** YouTube and TikTok keep API uploads private until each
+platform approves a compliance audit of your app, so for now upload by hand:
+
+```bash
+python -m scripts.upload_pack <run_id>
+```
+
+That writes `upload_ready/` with the video, thumbnail, captions and paste-ready
+title, description and tags for each platform. Documentaries go to YouTube and
+Facebook; vertical clips go to every platform (`publishing.long_platforms`,
+`publishing.short_platforms`). Read `claims_to_check.txt` in the review folder
+before approving anything: automated fact checking is not reliable enough.
+ setup — the final go-live step
 
 Everything is built and **dry-run by default**. When you're ready to actually
 post, do two things: (1) add each platform's credentials to `.env` / GitHub
@@ -40,14 +54,19 @@ Uploads set title/description/tags, category = Education, custom thumbnail, and
 the SRT caption track automatically.
 
 ## Facebook (Page videos, Graph API)
-1. Meta for Developers → app → add your Page.
-2. Get a long-lived **Page access token** with `pages_manage_posts`,
-   `pages_read_engagement`.
-3. Set `FACEBOOK_PAGE_ID`, `FACEBOOK_PAGE_TOKEN`.
+1. Meta for Developers: create an app and add your Page. Note the **App ID**.
+2. Get a **user access token** and a **Page access token** with `pages_show_list`,
+   `pages_read_engagement`, `pages_manage_posts` (Meta's docs also mention
+   `publish_video`; check your app dashboard, including whether App Review applies).
+3. Set `FACEBOOK_APP_ID`, `FACEBOOK_USER_TOKEN`, `FACEBOOK_PAGE_ID`, `FACEBOOK_PAGE_TOKEN`.
+
+Uploads are resumable and stay **unpublished** unless privacy is `public`.
 
 ## TikTok (Content Posting API)
 1. TikTok for Developers → app → request **Content Posting API** (video.publish).
 2. Get a user **access token**. Set `TIKTOK_ACCESS_TOKEN`.
+3. Until TikTok approves your app's audit, posts are private only and the account
+   must be private. The uploader checks the account's limits first.
 3. Until your app passes audit, posts are **SELF_ONLY** (private) — expected.
 
 ## Instagram (Reels, Graph API)

@@ -288,7 +288,7 @@ def test_lines_show_what_they_are_about():
     from core.media.themes import subject_of
     assert subject_of("The cats escaped.") == "cat"
     assert subject_of("Then the money stopped.") == "money cash"
-    assert subject_of("Children who loved drawing were promised an award.") == "child drawing"
+    assert subject_of("Children who loved drawing were promised an award.").startswith("child drawing")
     assert subject_of("A plain line about nothing concrete.") is None
 
 
@@ -399,8 +399,8 @@ def test_the_most_specific_subject_wins():
 
     assert subject_of("A researcher put hungry cats inside wooden boxes.") == "cat"
     assert subject_of("To reach the food outside, a cat had to work a latch.") == "cat"
-    assert subject_of("The students who were never paid kept playing.") == "students classroom"
-    assert subject_of("Researchers studied the effect.") == "laboratory scientist"
+    assert subject_of("The students who were never paid kept playing.").startswith("students")
+    assert subject_of("Researchers studied the effect.").startswith("laboratory")
 
 
 def test_a_line_keeps_the_story_subject_for_a_moment():
@@ -455,3 +455,47 @@ def test_adult_reels_are_screened_out():
     assert not acceptable_title("Stripper - Sandra Storm")
     assert not acceptable_title("Burlesque dancer 1950")
     assert acceptable_title("Stripping paint from a door") is True
+
+
+def test_subject_searches_need_every_word_in_the_tags(monkeypatch):
+    from core.media.stock_video import _pixabay_clips
+
+    monkeypatch.setenv("PIXABAY_API_KEY", "x")
+    rend = {"large": {"url": "u", "width": 1920, "height": 1080}}
+    hits = [{"tags": t, "duration": 20, "videos": rend}
+            for t in ("gold wash, pan", "ferris wheel, city", "gold medal, sport")]
+    monkeypatch.setattr(httpx, "get", lambda *a, **k: httpx.Response(
+        200, json={"hits": hits}, request=httpx.Request("GET", "https://pixabay.com/")))
+    found = _pixabay_clips("gold medal", 5, strict=True)
+    assert [h["title"] for h in found] == ["gold medal, sport"]
+    assert len(_pixabay_clips("gold medal", 5)) == 3
+
+
+@pytest.mark.parametrize("tags", ["ai generated, boy", "cube, 3d, puzzle", "hud, eye",
+                                  "quiz, puzzle", "cartoon, cat", "clock, green screen"])
+def test_clips_that_are_not_filmed_are_refused(monkeypatch, tags):
+    from core.media.stock_video import _pixabay_clips
+
+    monkeypatch.setenv("PIXABAY_API_KEY", "x")
+    hit = {"tags": tags, "duration": 20,
+           "videos": {"large": {"url": "u", "width": 1920, "height": 1080}}}
+    monkeypatch.setattr(httpx, "get", lambda *a, **k: httpx.Response(
+        200, json={"hits": [hit]}, request=httpx.Request("GET", "https://pixabay.com/")))
+    assert _pixabay_clips("anything", 5) == []
+
+
+def test_a_scarce_subject_falls_back_to_its_next_search(monkeypatch, tmp_path):
+    from core.media import stock_video
+
+    asked = []
+
+    def clips(query, limit, **kw):
+        asked.append((query, kw.get("strict")))
+        return [{"url": f"{query}{i}", "length": 20} for i in range(1 if query == "first" else 4)]
+
+    monkeypatch.setattr(stock_video, "_pixabay_clips", clips)
+    monkeypatch.setattr(stock_video, "_excerpt", lambda *a: True)
+    monkeypatch.setattr(stock_video, "_too_dark", lambda *a: False)
+    out = stock_video.fetch_subject_clips({"first|second": 3}, tmp_path)
+    assert asked == [("first", True), ("second", True)]
+    assert [c["url"] for c in out["first|second"]] == ["first0", "second0", "second1"]

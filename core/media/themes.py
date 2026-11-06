@@ -42,7 +42,7 @@ THEMES: dict[str, tuple[str, list[str]]] = {
               ["workshop", "craftsman", "classroom", "violinist"]),
     # People absorbed in something, not scenery: this is the fallback for most
     # abstract lines, and a run of skies is where viewers leave.
-    "default": (r"", ["pottery wheel", "painter", "piano hands", "surfing", "woodworking"]),
+    "default": (r"", ["pottery", "painter", "piano", "surfing", "skateboard"]),
 }
 
 _CUES = {name: re.compile(cue, re.I) for name, (cue, _) in THEMES.items() if cue}
@@ -72,47 +72,49 @@ _LONE_SKIP = {"new", "old", "great", "modern", "ancient", "early", "late", "rece
 SUBJECTS: list[tuple[str, str]] = [
     # Most specific first: the first row that matches wins, so "a researcher put
     # hungry cats in a box" shows cats, not a laboratory.
+    # "a|b" = searches in order of preference. Every word of a search must be in
+    # a clip's tags, so a phrase Pixabay barely has needs a broader second choice.
     (r"\bcats?\b|\blatch\b", "cat"),
     (r"\bdogs?\b", "dog"),
     (r"\bmonkeys?\b|\bapes?\b", "monkey"),
-    (r"\bpreschool\w*|\bchild\w*|\bkids?\b|\bdraw\w*|\bmarkers?\b", "child drawing"),
+    (r"\bpreschool\w*|\bchild\w*|\bkids?\b|\bdraw\w*|\bmarkers?\b", "child drawing|drawing|kindergarten"),
     (r"\bparents?\b|\bdaycare\b|\bpickups?\b", "mother child"),
     (r"\bchess\b", "chess"),
     (r"\bclimb\w*", "rock climbing"),
     (r"\bartists?\b|\bpaint\w*", "painter"),
     (r"\bmusic\w*|\bsing\w*", "playing guitar"),
-    (r"\bsports?\b|\bathlet\w*", "soccer goal"),
+    (r"\bsports?\b|\bathlet\w*", "soccer goal|soccer"),
     (r"\bpuzzles?\b", "puzzle"),
-    (r"\bstudents?\b|\buniversity\b|\bclassroom\b", "students classroom"),
+    (r"\bstudents?\b|\buniversity\b|\bclassroom\b", "students classroom|classroom"),
     (r"\bmoney\b|\bpaid\b|\bpay\b|\bsalar\w+|\bwages?\b|\bfines?\b|\bprice\b", "money cash"),
     (r"\blikes\b|\bsocial media\b|\bphones?\b|\bonline\b", "smartphone"),
     (r"\bsteps\b|\bwalk\w*", "walking"),
-    (r"\bgrades?\b|\bexams?\b", "exam"),
+    (r"\bgrades?\b|\bexams?\b", "student exam|writing notebook"),
     (r"\bbusiness\w*|\bjobs?\b|\bsales\b|\btargets?\b|\boffice\b", "office work"),
     (r"\bfood\b|\bhungry\b|\bhunger\b|\bmeals?\b", "food"),
     (r"\bthirst\w*", "drinking water"),
     (r"\bmagazines?\b|\bbooks?\b|\breading\b", "reading"),
     (r"\blate\b|\blateness\b|\bdeadlines?\b|\btime\b|\bhours\b|\bminutes\b", "clock"),
     (r"\bfire\b", "campfire"),
-    (r"\bmachine\b", "gears machine"),
+    (r"\bmachine\b", "gears machine|gears"),
     # Ideas with no object of their own, shown through someone living them.
-    (r"\bflow\b|\beffort felt\b|\bthe doing\b|\bdoing gives\b", "pottery wheel"),
+    (r"\bflow\b|\beffort felt\b|\bthe doing\b|\bdoing gives\b", "pottery|painter"),
     (r"\bcompetence\b|\bgetting better\b|\bskill\w*|\bprogress\b|\bchallenge\w*|\bpractice\b",
      "skateboard"),
-    (r"\brelatedness\b|\bconnected\b|\bdoing this with\b|\btogether\b", "friends laughing"),
-    (r"\bbored\b|\blazy\b|\bdull\b", "bored"),
-    (r"\banxi\w+|\bstress\w*|\btoo hard\b|\bwithers?\b|\bstarved\b", "stressed"),
+    (r"\brelatedness\b|\bconnected\b|\bdoing this with\b|\btogether\b", "friends"),
+    (r"\bbored\b|\blazy\b|\bdull\b", "bored|office work"),
+    (r"\banxi\w+|\bstress\w*|\btoo hard\b|\bwithers?\b|\bstarved\b", "stressed|stress|office work"),
     (r"\bloved?\b|\bpassions?\b|\binterest\w*|\benjoy\w*", "playing guitar"),
     (r"\bautonomy\b|\bchose\b|\bchoose\b|\byour own\b|\boutside of you\b", "hiking"),
-    (r"\brewards?\b|\bprizes?\b|\bawards?\b|\bpraise\b", "gold medal"),
-    (r"\bgoals?\b", "soccer goal"),
-    (r"\bscores?\b", "scoreboard"),
-    (r"\baudience\b", "applause audience"),
-    (r"\bquestions?\b|\bwondered\b", "writing notebook"),
+    (r"\brewards?\b|\bprizes?\b|\bawards?\b|\bpraise\b", "trophy|medal|winner"),
+    (r"\bgoals?\b", "soccer goal|soccer"),
+    (r"\bscores?\b", "scoreboard|soccer"),
+    (r"\baudience\b", "audience|concert"),
+    (r"\bquestions?\b|\bwondered\b", "writing notebook|reading"),
     # Generic last: nearly every study line says "researchers".
-    (r"\bexperiment\w*|\blaborator\w*|\bstud(?:y|ies)\b|\bresearchers?\b", "laboratory scientist"),
+    (r"\bexperiment\w*|\blaborator\w*|\bstud(?:y|ies)\b|\bresearchers?\b", "laboratory scientist|scientist"),
     (r"\bbrains?\b", "brain"),
-    (r"\bancient\b|\bgreeks?\b", "ancient greece ruins"),
+    (r"\bancient\b|\bgreeks?\b", "greece ruins|greece"),
 ]
 _SUBJECTS = [(re.compile(rx, re.I), query) for rx, query in SUBJECTS]
 # "They got better" is still about the monkeys, for a line or two.

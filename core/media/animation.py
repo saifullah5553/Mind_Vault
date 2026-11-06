@@ -197,7 +197,7 @@ def _draw_title(img, scene_text, style, res, p):
     rule = _ease(max(0.0, min(1.0, (p - 0.25) * 2.0)))
     if rule > 0:
         rw = int(w * 0.30 * rule)
-        ry = int(y + th + 44)
+        ry = int(y + bbox[3] + 44)       # bbox[3], not th: th omits the font's top offset
         d.rounded_rectangle([(w - rw) // 2, ry, (w + rw) // 2, ry + 9],
                             radius=5, fill=style.accent)
 

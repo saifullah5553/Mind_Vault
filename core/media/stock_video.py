@@ -90,6 +90,9 @@ _LATEST_YEAR = 1990
 # Vertical HD barely exists on Pixabay (0-13 clips per subject). Landscape this
 # tall, centre-cropped to 9:16, is upscaled at most 1.33x.
 _CROP_MIN_HEIGHT = 1440
+# Not filmed: viewers rejected the AI look, and these read as ads or quiz cards.
+_NOT_FILMED = re.compile(r"ai generated|\b3d\b|cartoon|animation|\bhud\b|green screen|quiz",
+                         re.I)
 # Trailers advertise someone else's film; a "public domain" tag on one proves little.
 _TRAILER_RE = re.compile(r"(?<![a-z])trailers?(?![a-z])", re.I)
 
@@ -294,10 +297,14 @@ def _pexels_clips(query: str, limit: int) -> list[dict]:
 
 
 def _pixabay_clips(query: str, limit: int, landscape: bool = True,
-                   min_height: int = 1080) -> list[dict]:
+                   min_height: int = 1080, strict: bool = False) -> list[dict]:
     """HD stock video (free key). Picks the smallest rendition that is at least
     `min_height` tall in the video's orientation; excerpts are range-read, so a
-    4K source costs only the seconds actually used."""
+    4K source costs only the seconds actually used.
+
+    Pixabay matches ANY word ("gold medal" finds gold panning, "pottery wheel" a
+    Ferris wheel). `strict` keeps only clips tagged with every word.
+    """
     key = os.getenv("PIXABAY_API_KEY")
     if not key:
         return []
@@ -306,12 +313,15 @@ def _pixabay_clips(query: str, limit: int, landscape: bool = True,
     out: list[dict] = []
     try:
         r = httpx.get("https://pixabay.com/api/videos/",
-                      params={"key": key, "q": query, "per_page": str(max(3, min(limit * 3, 50))),
+                      params={"key": key, "q": query, "per_page": "100",
                               "safesearch": "true"},
                       headers=_UA, timeout=25)
         r.raise_for_status()
         for v in r.json().get("hits", []):
-            if not acceptable_title(str(v.get("tags", ""))):
+            tags = str(v.get("tags", "")).lower()
+            if not acceptable_title(tags) or _NOT_FILMED.search(tags):
+                continue
+            if strict and not all(word in tags for word in query.lower().split()):
                 continue
             if float(v.get("duration") or 0) < 8:
                 continue                     # shorter than a scene: it would loop
@@ -432,18 +442,21 @@ def fetch_subject_clips(wanted: dict[str, int], dest_dir: Path, landscape: bool 
     out: dict[str, list[dict]] = {}
     seen: set[str] = set()
     n = 0
-    for query, count in wanted.items():
+    for subject, count in wanted.items():
         clips: list[dict] = []
-        for hit in _pixabay_clips(query, count * 3 + 2, landscape=landscape, min_height=min_height):
-            if len(clips) >= count or hit["url"] in seen:
-                continue
-            seen.add(hit["url"])
-            dest = dest_dir / f"_subject_{n:03d}.mp4"
-            n += 1
-            start = shot_offsets(hit.get("length") or 0.0, 1, excerpt_seconds)[0]
-            if _excerpt(hit["url"], dest, start, excerpt_seconds) and not _too_dark(dest):
-                clips.append(dict(hit, path=str(dest), start=start, subject=query))
-        out[query] = clips
+        for query in subject.split("|"):
+            hits = _pixabay_clips(query, count * 3 + 2, landscape=landscape,
+                                  min_height=min_height, strict=True)
+            for hit in hits:
+                if len(clips) >= count or hit["url"] in seen:
+                    continue
+                seen.add(hit["url"])
+                dest = dest_dir / f"_subject_{n:03d}.mp4"
+                n += 1
+                start = shot_offsets(hit.get("length") or 0.0, 1, excerpt_seconds)[0]
+                if _excerpt(hit["url"], dest, start, excerpt_seconds) and not _too_dark(dest):
+                    clips.append(dict(hit, path=str(dest), start=start, subject=subject))
+        out[subject] = clips
     log.info("Subject footage: %d shot(s) for %d subject(s).",
              sum(len(c) for c in out.values()), len(out))
     return out

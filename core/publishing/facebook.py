@@ -38,12 +38,13 @@ def _stream(path: Path, offset: int, block: int = 1 << 20):
 def upload_file(video: Path, app_id: str, user_token: str, sleep=time.sleep) -> str:
     """Resumable upload. Returns the uploaded file handle."""
     size = video.stat().st_size
-    start = httpx.post(f"{_GRAPH}/{app_id}/uploads", timeout=60, params={
-        "file_name": video.name, "file_length": size, "file_type": "video/mp4",
-        "access_token": user_token})
+    # Token in a header, never the URL: HTTP errors quote the URL, and those
+    # messages reach the logs.
+    auth = {"Authorization": f"OAuth {user_token}"}
+    start = httpx.post(f"{_GRAPH}/{app_id}/uploads", timeout=60, headers=auth, params={
+        "file_name": video.name, "file_length": size, "file_type": "video/mp4"})
     start.raise_for_status()
     session = f"{_GRAPH}/{start.json()['id']}"
-    auth = {"Authorization": f"OAuth {user_token}"}
     offset = 0
     for attempt in range(_RETRIES + 1):
         try:

@@ -12,11 +12,25 @@ from __future__ import annotations
 import json
 import logging
 import logging.handlers
+import re
 from pathlib import Path
 
 from core.config import ROOT_DIR, get_settings
 
 _CONFIGURED = False
+_SECRET_IN_URL = re.compile(
+    r"\b(key|api_key|apikey|access_token|token|client_secret)=[^&\s'\"]+", re.I)
+
+
+class _RedactSecrets(logging.Filter):
+    """HTTP errors quote the URL, and some APIs put credentials in it."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        message = record.getMessage()
+        cleaned = _SECRET_IN_URL.sub(r"\1=REDACTED", message)
+        if cleaned != message:
+            record.msg, record.args = cleaned, None
+        return True
 
 
 class _JsonFormatter(logging.Formatter):
@@ -64,6 +78,7 @@ def configure_logging(force: bool = False) -> None:
 
     console = logging.StreamHandler()
     console.setFormatter(formatter)
+    console.addFilter(_RedactSecrets())
     root.addHandler(console)
 
     file_handler = logging.handlers.RotatingFileHandler(
@@ -73,6 +88,7 @@ def configure_logging(force: bool = False) -> None:
         encoding="utf-8",
     )
     file_handler.setFormatter(formatter)
+    file_handler.addFilter(_RedactSecrets())
     root.addHandler(file_handler)
 
     # Quiet noisy third-party libraries.

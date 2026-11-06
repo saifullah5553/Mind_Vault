@@ -565,3 +565,100 @@ def test_pixabay_animations_are_refused(monkeypatch):
     monkeypatch.setattr(httpx, "get", get)
     assert [h["title"] for h in _pixabay_clips("sea", 5)] == ["sea, boat"]
     assert asked["video_type"] == "film"
+
+
+def test_a_minor_tag_is_not_the_subject():
+    from core.media.stock_video import _tagged
+
+    assert not _tagged("mud dauber wasps, wasp, insect, hornet, nature, dirt, pottery", "pottery")
+    assert _tagged("modeling, clay, pottery, craft", "pottery")
+    assert not _tagged("baby, pregnant, woman, belly, motherhood, child", "mother child")
+    assert _tagged("friend, people, park", "friends")
+    assert _tagged("game, chess, board", "chess")
+
+
+def test_an_excerpt_survives_an_empty_response(monkeypatch, tmp_path):
+    from core.media import stock_video
+
+    monkeypatch.setattr(stock_video, "_RETRY_PAUSE", 0)
+    monkeypatch.setattr("core.media.video._ffmpeg_exe", lambda: "ffmpeg")
+    dest = tmp_path / "clip.mp4"
+    tries = []
+
+    def run(cmd, **kw):
+        tries.append(cmd)
+        dest.write_bytes(b"x" * (261 if len(tries) < 3 else 30_000))
+
+    monkeypatch.setattr("subprocess.run", run)
+    assert stock_video._excerpt("https://example.org/a.mp4", dest, 0.0, 12.0)
+    assert len(tries) == 3
+
+
+def test_a_failed_excerpt_leaves_nothing_behind(monkeypatch, tmp_path):
+    from core.media import stock_video
+
+    monkeypatch.setattr(stock_video, "_RETRY_PAUSE", 0)
+    monkeypatch.setattr("core.media.video._ffmpeg_exe", lambda: "ffmpeg")
+    dest = tmp_path / "clip.mp4"
+    monkeypatch.setattr("subprocess.run", lambda cmd, **kw: dest.write_bytes(b"x" * 261))
+    assert not stock_video._excerpt("https://example.org/a.mp4", dest, 0.0, 12.0)
+    assert not dest.exists()
+
+
+def test_search_retries_a_rate_limit(monkeypatch):
+    from core.media import stock_video
+
+    monkeypatch.setenv("PIXABAY_API_KEY", "x")
+    monkeypatch.setattr(stock_video, "_RETRY_PAUSE", 0)
+    hit = {"tags": "cat", "duration": 20,
+           "videos": {"large": {"url": "u", "width": 1920, "height": 1080}}}
+    replies = [429, 503, 200]
+
+    def get(*a, **k):
+        code = replies.pop(0)
+        return httpx.Response(code, json={"hits": [hit]},
+                              request=httpx.Request("GET", "https://pixabay.com/"))
+
+    monkeypatch.setattr(httpx, "get", get)
+    assert len(stock_video._pixabay_clips("cat", 1)) == 1
+    assert not replies
+
+
+def test_a_search_failure_never_logs_the_api_key(monkeypatch, caplog):
+    from core.media import stock_video
+
+    secret = "SECRET-PIXABAY-KEY"
+    monkeypatch.setenv("PIXABAY_API_KEY", secret)
+    monkeypatch.setattr(stock_video, "_RETRY_PAUSE", 0)
+    url = f"https://pixabay.com/api/videos/?key={secret}"
+    monkeypatch.setattr(httpx, "get", lambda *a, **k: httpx.Response(
+        403, request=httpx.Request("GET", url)))
+    monkeypatch.setattr(stock_video.log, "propagate", True)
+    with caplog.at_level("DEBUG"):
+        assert stock_video._pixabay_clips("cat", 1) == []
+    assert "failed" in caplog.text and secret not in caplog.text
+
+
+@pytest.mark.parametrize("text", [
+    "GET https://pixabay.com/api/videos/?key=abc123&q=cat failed",
+    "https://graph.facebook.com/v27/me?access_token=abc123",
+    "client_secret=abc123 was refused",
+])
+def test_secrets_in_urls_never_reach_a_log_line(text):
+    import logging
+
+    from core.logging_setup import _RedactSecrets
+
+    record = logging.LogRecord("t", logging.ERROR, "f", 1, "failed: %s", (text,), None)
+    assert _RedactSecrets().filter(record)
+    assert "abc123" not in record.getMessage() and "REDACTED" in record.getMessage()
+
+
+def test_ordinary_log_lines_are_untouched():
+    import logging
+
+    from core.logging_setup import _RedactSecrets
+
+    record = logging.LogRecord("t", logging.INFO, "f", 1, "Placed %d shots", (5,), None)
+    _RedactSecrets().filter(record)
+    assert record.getMessage() == "Placed 5 shots" and record.args == (5,)

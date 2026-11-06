@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import os
 import re
+import time
 from pathlib import Path
 
 from core.logging_setup import get_logger
@@ -94,7 +95,12 @@ _CROP_MIN_HEIGHT = 1440
 # or slideshows. Named brands and national flags don't belong in the video either.
 _NOT_FILMED = re.compile(
     r"ai generated|\b3d\b|cartoon|animation|\bhud\b|green ?screen|chroma|transition|overlay|"
-    r"quiz|maze|labyrinth|wallpaper|fifa|coca[- ]cola|\bflags?\b", re.I)
+    r"quiz|maze|labyrinth|wallpaper|fifa|coca[- ]cola|\bflags?\b|"
+    r"coronavirus|covid|quarantine|\bmasks?\b", re.I)
+# Pixabay's CDN answers bursts with empty files, which silently cost a video its
+# subject shots (20 of 85 in one render). Wait and try again.
+_RETRIES = 3
+_RETRY_PAUSE = 4.0
 # Trailers advertise someone else's film; a "public domain" tag on one proves little.
 _TRAILER_RE = re.compile(r"(?<![a-z])trailers?(?![a-z])", re.I)
 
@@ -299,9 +305,36 @@ def _pexels_clips(query: str, limit: int) -> list[dict]:
 
 
 def _tagged(tags: str, query: str) -> bool:
-    """Every search word is a whole tag word: "mother" isn't "motherhood"."""
-    return all(re.search(rf"\b{re.escape(w.removesuffix('s'))}s?\b", tags)
-               for w in query.lower().split())
+    """Every search word is a whole tag word ("mother" isn't "motherhood"), and the
+    first is among the leading tags: a wasp tagged "pottery" seventh is about wasps.
+    """
+    def has(word: str, text: str) -> bool:
+        return bool(re.search(rf"\b{re.escape(word.removesuffix('s'))}s?\b", text))
+
+    words = query.lower().split()
+    leading = ", ".join(tags.split(", ")[:5])
+    return has(words[0], leading) and all(has(w, tags) for w in words)
+
+
+def _pixabay_get(params: dict):
+    """The search request, retried through rate limits and dropped connections."""
+    import httpx
+
+    for attempt in range(_RETRIES):
+        if attempt:
+            time.sleep(_RETRY_PAUSE * attempt)
+        last = attempt == _RETRIES - 1
+        try:
+            r = httpx.get("https://pixabay.com/api/videos/", params=params,
+                          headers=_UA, timeout=25)
+        except httpx.TransportError:
+            if last:
+                raise
+            continue
+        if last or (r.status_code != 429 and r.status_code < 500):
+            break
+    r.raise_for_status()
+    return r
 
 
 def _pixabay_clips(query: str, limit: int, landscape: bool = True,
@@ -316,15 +349,10 @@ def _pixabay_clips(query: str, limit: int, landscape: bool = True,
     key = os.getenv("PIXABAY_API_KEY")
     if not key:
         return []
-    import httpx
-
     out: list[dict] = []
     try:
-        r = httpx.get("https://pixabay.com/api/videos/",
-                      params={"key": key, "q": query, "per_page": "100", "video_type": "film",
-                              "safesearch": "true"},
-                      headers=_UA, timeout=25)
-        r.raise_for_status()
+        r = _pixabay_get({"key": key, "q": query, "per_page": "100", "video_type": "film",
+                          "safesearch": "true"})
         for v in r.json().get("hits", []):
             tags = str(v.get("tags", "")).lower()
             if not acceptable_title(tags) or _NOT_FILMED.search(tags):
@@ -354,7 +382,8 @@ def _pixabay_clips(query: str, limit: int, landscape: bool = True,
             if len(out) >= limit:
                 break
     except Exception as exc:
-        log.debug("Pixabay search failed: %s", exc)
+        # The type only: HTTP errors quote the URL, and the URL holds the API key.
+        log.warning("Pixabay search for %r failed: %s", query, type(exc).__name__)
     return out
 
 
@@ -384,12 +413,18 @@ def _excerpt(url: str, dest: Path, start_s: float, dur: float) -> bool:
            # (Width used to be capped at 1920 and CRF 26, softening 1440p output.)
            "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "16",
            "-vf", "scale='min(3840,iw)':-2", str(dest)]
-    try:
-        subprocess.run(cmd, check=True, capture_output=True, timeout=180)
-        return dest.exists() and dest.stat().st_size > 20_000
-    except Exception as exc:
-        log.debug("excerpt failed (%s)", str(exc)[:120])
-        return False
+    for attempt in range(_RETRIES):
+        if attempt:
+            time.sleep(_RETRY_PAUSE * attempt)
+        try:
+            subprocess.run(cmd, check=True, capture_output=True, timeout=180)
+            if dest.exists() and dest.stat().st_size > 20_000:
+                return True
+        except Exception as exc:
+            log.debug("excerpt failed (%s)", str(exc)[:120])
+    dest.unlink(missing_ok=True)
+    log.warning("No usable excerpt after %d tries: %s", _RETRIES, url[:90])
+    return False
 
 
 def _keyed_or_flat(clip: Path) -> bool:
@@ -503,8 +538,8 @@ def fetch_subject_clips(wanted: dict[str, int], dest_dir: Path, landscape: bool 
                         and not _too_dark(dest) and not _keyed_or_flat(dest)):
                     clips.append(dict(hit, path=str(dest), start=start, subject=subject))
         out[subject] = clips
-    log.info("Subject footage: %d shot(s) for %d subject(s).",
-             sum(len(c) for c in out.values()), len(out))
+    log.info("Subject footage: %d of %d shot(s) for %d subject(s).",
+             sum(len(c) for c in out.values()), sum(wanted.values()), len(out))
     return out
 
 

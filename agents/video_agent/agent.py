@@ -188,6 +188,7 @@ class VideoAgent(BaseAgent):
                 continue
             new = [n for n in named_subjects(s.narration, known) if n not in seen_names]
             seen_names.update(new)
+            seen_names.update(n.split()[-1] for n in new)    # "Harlow" = "Harry Harlow"
             if not new:
                 free.append(s)
         free = self._attach_subject_clips(free, out_dir, res)

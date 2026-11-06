@@ -255,6 +255,9 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
     return scenes
 
 
+_SURNAMES = "\0surnames"              # cache entry: surnames of people already looked up
+
+
 def _named_image(text: str, cache: dict, out_dir: Path, category: str,
                  width: int, height: int, limit: int,
                  known: set[str] | None = None) -> dict | None:
@@ -262,14 +265,17 @@ def _named_image(text: str, cache: dict, out_dir: Path, category: str,
     from core.media.stock import fetch_named
     from core.media.themes import named_subjects
 
+    surnames = cache.setdefault(_SURNAMES, set())
     for name in named_subjects(text, known):
-        if name in cache:
+        if name in cache or name in surnames:
             continue                      # shown already (or nothing found)
-        if len(cache) >= limit:
+        if len(cache) - 1 >= limit:
             return None
         safe = re.sub(r"[^A-Za-z0-9]+", "_", name)[:40]
         meta = fetch_named(name, out_dir / f"_named_{safe}", category)
         cache[name] = meta
+        # "Harlow" later on is this same person, not a search for the town.
+        surnames.add(name.split()[-1])
         if meta:
             if (meta.get("width") or 0) < width:
                 # Too small to fill the frame sharply: present it on a blurred

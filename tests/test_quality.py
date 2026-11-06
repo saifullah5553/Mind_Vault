@@ -1,5 +1,7 @@
 """Defects found by reviewing the first real 12-minute documentary."""
 
+import pytest
+
 from core.media.spoken import headline, spoken_text
 
 
@@ -213,3 +215,58 @@ def test_near_black_shots_are_dropped(tmp_path):
                         f"color=c={colour}:s=160x90:d=3:r=30", str(tmp_path / name)], check=True)
     assert _too_dark(tmp_path / "dark.mp4") and not (tmp_path / "dark.mp4").exists()
     assert not _too_dark(tmp_path / "lit.mp4")
+
+
+def _commons_titles(monkeypatch, titles):
+    from core.media import stock
+
+    hits = [{"title": t, "width": 3000, "url": f"u{i}"} for i, t in enumerate(titles)]
+    monkeypatch.setattr(stock, "_commons_search", lambda q, limit=3, curated=None: hits)
+    monkeypatch.setattr(stock, "_download", lambda url, dest: True)
+    return stock
+
+
+def test_a_full_name_must_appear_together_in_the_title(monkeypatch, tmp_path):
+    stock = _commons_titles(monkeypatch, [
+        "U.S. Navy Hull Maintenance Technician 3rd Class Serena Clark.jpg"])
+    assert stock.fetch_named("Clark Hull", tmp_path / "a") is None
+
+
+@pytest.mark.parametrize("title", ["Edward L Deci.jpg", "Edward L. Deci.jpg", "Edward_Deci.jpg"])
+def test_a_middle_initial_is_still_the_same_person(monkeypatch, tmp_path, title):
+    stock = _commons_titles(monkeypatch, [title])
+    assert stock.fetch_named("Edward Deci", tmp_path / "a")["title"] == title
+
+
+def test_a_surname_alone_is_not_a_new_search(monkeypatch, tmp_path):
+    from core.media import images, stock
+
+    asked = []
+    monkeypatch.setattr(stock, "fetch_named",
+                        lambda name, dest, category: asked.append(name) or None)
+    cache = {}
+    for line in ("In 1949, Harry Harlow built a puzzle.", "Harlow suggested something."):
+        images._named_image(line, cache, tmp_path, "psychology", 640, 360, 5,
+                            known={"Harry Harlow", "Harlow"})
+    assert asked == ["Harry Harlow"]
+
+
+def test_the_named_image_limit_ignores_the_surname_record(monkeypatch, tmp_path):
+    from core.media import images, stock
+
+    asked = []
+    monkeypatch.setattr(stock, "fetch_named",
+                        lambda name, dest, category: asked.append(name) or None)
+    cache = {}
+    for line in ("We met Ann Lee.", "We met Bob Ray.", "We met Cy Fox."):
+        images._named_image(line, cache, tmp_path, "psychology", 640, 360, 2)
+    assert asked == ["Ann Lee", "Bob Ray"]
+
+
+@pytest.mark.parametrize("title", ["Sigmund Freud, by Max Halberstadt (cropped).jpg",
+                                   "Portrait of Henry VIII - Google Art Project.jpg"])
+def test_unmentioned_famous_people_stay_out_of_the_mood_pool(title):
+    from core.media.stock import acceptable
+
+    assert not acceptable({"title": title, "width": 4000}, "psychology")
+    assert acceptable({"title": "Fireworks over a bridge.jpg", "width": 4000}, "psychology")

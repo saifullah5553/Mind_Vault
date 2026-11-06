@@ -55,7 +55,11 @@ _DIAGRAM = re.compile(
     r"\.(?:png|svg|gif)$", re.I)
 # Fine for history (wars, crimes are history) but off-topic for psychology.
 _OFF_TOPIC = {"psychology": re.compile(
-    r"murder|terror|bomb|unabomb|weapon|\bguns?\b|nazi|war\b|massacre|execution", re.I)}
+    r"murder|terror|bomb|unabomb|weapon|\bguns?\b|nazi|war\b|massacre|execution|"
+    # A recognisable person the script doesn't mention reads as the person being
+    # discussed: Freud over a line about Thorndike is a factual error on screen.
+    r"portrait|freud|\bjung\b|pavlov|skinner|einstein|darwin|\bking\b|\bqueen\b|"
+    r"\bhenry\b|\bpresident\b", re.I)}
 MIN_WIDTH = 1600   # below this a 1440p frame is visibly upscaled
 
 
@@ -193,8 +197,13 @@ def fetch_named(name: str, dest: Path, category: str = "history") -> dict | None
     except Exception as exc:
         log.debug("named search failed for %r: %s", name, exc)
         return None
+    # In order and together, allowing a middle initial: "Edward L Deci" is Edward
+    # Deci, but "Hull Maintenance Technician Serena Clark" is not Clark Hull.
+    whole_name = re.compile(r"\b" + r"(?:[\s_]+\w\.?)?[\s_]+".join(map(re.escape, words)) + r"\b",
+                            re.I)
     ok = [h for h in hits if (h.get("width") or 0) >= 600
           and not _UNSAFE.search(h["title"]) and not _DIAGRAM.search(h["title"])
+          and whole_name.search(h["title"])
           # A lone name is ambiguous ("Thorndike" -> the Thorndike Hotel): it
           # must START the title and the title must describe a likeness.
           and (len(words) > 1 or (h["title"].lower().startswith(words[0].lower())

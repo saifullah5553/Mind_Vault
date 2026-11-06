@@ -42,6 +42,8 @@ class SEOAgent(BaseAgent):
         disclosure = extra.get("presenter", {}).get("disclosure")
         used = credits.load(Path(self.settings.storage_path("images")) / payload.run_id)
         chapters = self._chapters(payload)
+        base = self.settings.publishing.credits_url
+        full_url = f"{base}{payload.run_id}.txt" if base and used else ""
         rules = self.config.get("platform_rules", {})
         base_tags = self.config.get("base_hashtags", [])
 
@@ -57,7 +59,7 @@ class SEOAgent(BaseAgent):
                 parts.append(disclosure)
             text = "\n\n".join(parts)
             # Credits are a licence requirement, so they get room before anything else.
-            block = credits.block(used, limit - min(len(text), limit // 2) - 2)
+            block = credits.block(used, limit - min(len(text), limit // 2) - 2, full_url)
             metas.append(PlatformMetadata(
                 platform=platform,
                 title=self._fit(title, r.get("title_max", 100)),

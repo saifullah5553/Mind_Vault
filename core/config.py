@@ -53,6 +53,7 @@ class PublishingConfig(BaseModel):
     short_days: list[str] = Field(default_factory=lambda: ["mon", "wed", "fri"])
     long_days: list[str] = Field(default_factory=lambda: ["sun"])
     platforms: list[str] = Field(default_factory=lambda: ["youtube", "tiktok", "instagram", "facebook"])
+    credits_url: str = ""           # public folder holding each video's full credits
     long_platforms: list[str] = Field(default_factory=lambda: ["youtube", "facebook"])
     short_platforms: list[str] = Field(default_factory=lambda: ["youtube", "tiktok", "instagram", "facebook"])
     timezone: str = "UTC"
@@ -98,7 +99,7 @@ class ImagesConfig(BaseModel):
     style: str = "cinematic documentary"
     width: int = 1080
     height: int = 1920
-    pool_max: int = 40              # most stock photos fetched per video
+    pool_max: int = 70              # most stock photos fetched per video
     named_max: int = 12             # named subjects looked up per video
 
 

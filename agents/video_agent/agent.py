@@ -187,6 +187,7 @@ class VideoAgent(BaseAgent):
             seen_names.update(new)
             if not new:
                 free.append(s)
+        free = self._attach_subject_clips(free, out_dir, res)
         if not free:
             return
         w, h = res
@@ -194,6 +195,7 @@ class VideoAgent(BaseAgent):
         try:
             want = int(self.config.get("footage_pool_size_themed" if themed
                                        else "footage_pool_size", 8))
+            want = min(want, len(free))      # a 13-scene Short needs 13 clips, not 48
             pool = fetch_clip_pool(topic, want, out_dir, category=category,
                                    shots_per_film=int(self.config.get("footage_shots_per_film", 4)),
                                    # 1080p stock is plentiful and upscales cleanly
@@ -219,6 +221,36 @@ class VideoAgent(BaseAgent):
         self.log.info("Footage: %d distinct shot(s) placed across %d scene(s).",
                       len(pool), len(shots))
         credits.add(out_dir, shots, "footage")
+
+    def _attach_subject_clips(self, scenes, out_dir: Path, res) -> list:
+        """Lines about something concrete show that thing. Returns the scenes left."""
+        from collections import Counter
+
+        from core.media.stock_video import fetch_subject_clips
+        from core.media.themes import subject_of
+
+        subjects = {id(s): subject_of(s.narration) for s in scenes}
+        wanted = Counter(q for q in subjects.values() if q)
+        if not wanted:
+            return scenes
+        w, h = res
+        try:
+            found = fetch_subject_clips(dict(wanted), out_dir, landscape=w > h,
+                                        min_height=min(1080, w, h))
+        except Exception as exc:
+            self.log.warning("Subject footage failed (%s).", exc)
+            return scenes
+        rest, placed = [], []
+        for s in scenes:
+            clips = found.get(subjects[id(s)] or "", [])
+            if clips:
+                clip = clips.pop(0)
+                s.clip_path = clip["path"]
+                placed.append(clip)
+            else:
+                rest.append(s)
+        credits.add(out_dir, placed, "footage")
+        return rest
 
     @staticmethod
     def _best_clip(text: str, clips: list[dict]) -> dict:

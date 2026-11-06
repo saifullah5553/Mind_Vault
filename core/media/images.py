@@ -188,8 +188,9 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
     if use_stock and topic:
         try:
             from core.media.stock import fetch_pool, fetch_themed_pool
-            # Roughly one photo per two scenes, so images rarely repeat.
-            want = min(len(scenes), max(12, len(scenes) // 2), cfg.pool_max)
+            # One photo per still, so pictures don't repeat within a video.
+            stills = sum(1 for s in scenes if not s.animation_kind and not s.clip_path)
+            want = min(max(12, stills), cfg.pool_max)
             if category == "psychology":
                 # Abstract subjects: pick by mood from curated libraries.
                 from core.media.themes import THEMES

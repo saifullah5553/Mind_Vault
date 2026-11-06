@@ -19,9 +19,9 @@ import re
 THEMES: dict[str, tuple[str, list[str]]] = {
     "ambition": (r"goal|ambition|achiev|success|striv|effort|drive|determin|persever|"
                  r"climb|purpose|motivat|pursu|passion|win\b",
-                 # Two words, both required in the title: "summit" alone found a
-                 # cruise ship (Celebrity Summit), "runner" found racing dogs.
-                 ["mountain summit", "mountaineer", "marathon", "climber rock"]),
+                 # Specific words: "summit" alone found a cruise ship (Celebrity
+                 # Summit) and snow fields, "runner" found racing dogs.
+                 ["mountaineer", "marathon", "climber rock"]),
     "hope": (r"hope|change|new\b|begin|future|grow|transform|possib|dream|start|light",
              ["sunrise", "dawn", "sunrise lake"]),
     "mind": (r"mind|think|thought|idea|philosoph|aristotle|plato|socrates|theor|reason|"
@@ -34,9 +34,9 @@ THEMES: dict[str, tuple[str, list[str]]] = {
                r"human|everyone|we\b",
                # Not "crowd": Featured "crowd" pictures are historic events
                # (the 1944 Liberation of Paris), off-topic for psychology.
-               ["street market", "festival", "friends laughing", "city people walking"]),
+               ["festival", "friends laughing", "city people walking"]),
     "reward": (r"reward|pleasure|joy|happ|satisf|celebrat|prize|praise|enjoy",
-               ["fireworks", "lantern festival", "celebration"]),
+               ["fireworks over", "lantern festival", "celebration"]),
     "habit": (r"habit|routine|daily|repeat|practice|work|learn|school|train|skill|"
               r"behavio",
               ["workshop", "craftsman", "classroom", "violinist"]),
@@ -63,6 +63,44 @@ _CAP = re.compile(r"\b[A-Z][a-zA-Z\-]{2,}(?:'s)?")
 # Fine inside a name ("New York", "Great Wall") but not a subject on their own.
 _LONE_SKIP = {"new", "old", "great", "modern", "ancient", "early", "late", "recent",
               "young", "little", "big", "high", "low", "north", "south", "east", "west"}
+
+
+# What a line is literally about -> stock video search. A viewer who hears "cats"
+# should see a cat; mood pictures only fill the lines with no concrete subject.
+SUBJECTS: list[tuple[str, str]] = [
+    (r"\bcats?\b|\blatch\b", "cat"),
+    (r"\bdogs?\b", "dog"),
+    (r"\bmonkeys?\b|\bapes?\b", "monkey"),
+    (r"\bpuzzles?\b", "puzzle"),
+    (r"\bmoney\b|\bpaid\b|\bpay\b|\bsalar\w+|\bwages?\b", "money cash"),
+    (r"\bstudents?\b|\buniversity\b|\bclassroom\b", "students classroom"),
+    (r"\bpreschool\w*|\bchild\w*|\bkids?\b|\bdraw\w*|\bmarkers?\b", "child drawing"),
+    (r"\bparents?\b|\bdaycare\b|\bpickups?\b", "parents children"),
+    (r"\blate\b|\blateness\b|\bdeadlines?\b|\btime disappeared\b|\bhours\b", "clock"),
+    (r"\bchess\b", "chess"),
+    (r"\bclimb\w*", "rock climbing"),
+    (r"\bartists?\b|\bpaint\w*", "painter"),
+    (r"\bmusic\w*|\bsing\w*", "playing guitar"),
+    (r"\bsports?\b|\bathlet\w*", "soccer training"),
+    (r"\bbusiness\w*|\bjobs?\b|\bsales\b|\btargets?\b|\boffice\b", "office work"),
+    (r"\blikes\b|\bsocial media\b|\bphones?\b|\bonline\b", "smartphone"),
+    (r"\bsteps\b|\bwalk\w*", "walking"),
+    (r"\bgrades?\b|\bexams?\b", "exam"),
+    (r"\bfood\b|\bhungry\b|\bhunger\b|\bmeals?\b", "food"),
+    (r"\bthirst\w*", "drinking water"),
+    (r"\bmagazines?\b|\bbooks?\b|\breading\b", "reading"),
+    (r"\bexperiment\w*|\blaborator\w*|\bstud(?:y|ies)\b|\bresearchers?\b", "laboratory scientist"),
+    (r"\bfire\b", "campfire"),
+    (r"\bbrains?\b", "brain"),
+    (r"\bancient\b|\bgreeks?\b", "ancient greece ruins"),
+]
+_SUBJECTS = [(re.compile(rx, re.I), query) for rx, query in SUBJECTS]
+
+
+def subject_of(text: str) -> str | None:
+    """Video search for the first concrete subject this line mentions, if any."""
+    found = [(m.start(), q) for rx, q in _SUBJECTS if (m := rx.search(text or ""))]
+    return min(found)[1] if found else None
 
 
 def named_subjects(text: str) -> list[str]:

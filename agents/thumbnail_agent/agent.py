@@ -117,7 +117,7 @@ class ThumbnailAgent(BaseAgent):
             for row in range(h):
                 dist = 0.0 if top - 40 <= row <= top + th + 40 else min(
                     abs(row - (top - 40)), abs(row - (top + th + 40))) / (h * 0.25)
-                shade.putpixel((0, row), int(170 * max(0.0, 1.0 - dist)))
+                shade.putpixel((0, row), int(115 * max(0.0, 1.0 - dist)))
             img = Image.composite(Image.new("RGB", (w, h), (0, 0, 0)), img, shade.resize((w, h)))
 
             draw = ImageDraw.Draw(img)
@@ -127,8 +127,6 @@ class ThumbnailAgent(BaseAgent):
                                 stroke_width=max(3, h // 140), stroke_fill=(0, 0, 0))
             bar = top + th + h * 0.03
             draw.rectangle([(w - tw * 0.5) / 2, bar, (w + tw * 0.5) / 2, bar + h * 0.012], fill=accent)
-            draw.text((int(w * 0.025), int(h * 0.93)), self.settings.brand.name,
-                      font=_font(max(18, h // 26), True), fill=(255, 255, 255))
             img.save(out, "PNG")
             return True
         except Exception as exc:

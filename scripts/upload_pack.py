@@ -19,6 +19,7 @@ import shutil
 from pathlib import Path
 
 from core.config import ROOT_DIR, get_settings
+from core.media import credits
 
 
 def _link(src: Path, dst: Path) -> None:
@@ -36,6 +37,11 @@ def build(run_id: str, root: Path | None = None) -> Path:
     record = json.loads((bundle / "review.json").read_text(encoding="utf-8"))
     metas = json.loads((bundle / "metadata.json").read_text(encoding="utf-8"))
     pub = s.publishing
+    # Last check before anything can leave the machine.
+    bad = credits.restricted(credits.load(bundle))
+    if bad:
+        names = "; ".join(f"{b['title']} ({b['license']})" for b in bad)
+        raise SystemExit(f"Not packing {run_id}: licence forbids this use: {names}")
     allowed = pub.short_platforms if record.get("format") == "short" else pub.long_platforms
 
     slug = re.sub(r"[^A-Za-z0-9]+", "_", record.get("title") or run_id).strip("_")[:50]
@@ -57,6 +63,10 @@ def build(run_id: str, root: Path | None = None) -> Path:
         (pdir / "tags.txt").write_text(", ".join(meta.get("tags") or []), encoding="utf-8")
     if (bundle / "credits.txt").exists():
         shutil.copy2(bundle / "credits.txt", out / "credits_full.txt")
+        # The description links here; commit and push it before publishing.
+        public = ROOT_DIR / "content" / "credits"
+        public.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(bundle / "credits.txt", public / f"{run_id}.txt")
     return out
 
 

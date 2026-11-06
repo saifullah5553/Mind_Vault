@@ -134,8 +134,11 @@ def _fit_text(draw, text: str, font_factory, max_w: int, start: int, min_size: i
         size = max(min_size, size - 4)
     if max_h is not None:
         lines = wrapped.split("\n")
-        while len(lines) > 1 and draw.multiline_textbbox(
-                (0, 0), "\n".join(lines), font=f, spacing=spacing)[3] > max_h:
+        def height() -> int:
+            box = draw.multiline_textbbox((0, 0), "\n".join(lines), font=f, spacing=spacing)
+            return box[3] - box[1]
+
+        while len(lines) > 1 and height() > max_h:
             lines.pop()
         wrapped = "\n".join(lines)
     return f, wrapped
@@ -212,7 +215,8 @@ def _draw_stat(img, scene_text, style, res, p):
     except ValueError:
         target = 100.0
     is_year = not suffix and raw.isdigit() and len(raw) == 4 and 1000 <= target <= 2100
-    label = re.sub(r"^(?:in|by|since|from|around|about)?\s*" + re.escape(raw) + r"\s*,?\s*", "",
+    # Take the preposition with the year, wherever it sits ("A review in 1999 ...").
+    label = re.sub(r"\b(?:in|by|since|from|around|about)\s+" + re.escape(raw) + r"\s*,?\s*", "",
                    scene_text, flags=re.I)
     label = re.sub(re.escape(raw), "", label).strip(" ,.;:") or scene_text
     label = label[:1].upper() + label[1:]

@@ -23,6 +23,7 @@ import re
 from pathlib import Path
 
 from core.logging_setup import get_logger
+from core.media.credits import is_restricted
 
 log = get_logger("media.stock")
 
@@ -130,7 +131,7 @@ def _commons_search(query: str, limit: int = 3, curated: str | None = None) -> l
         meta = info.get("extmetadata") or {}
         lic = (meta.get("LicenseShortName") or {}).get("value", "")
         # Skip anything not clearly reusable.
-        if lic and not re.search(r"public domain|cc|pd", lic, re.I):
+        if not re.search(r"public domain|cc|pd", lic, re.I) or is_restricted(lic):
             continue
         out.append({
             "url": url,

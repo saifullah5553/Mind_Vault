@@ -24,6 +24,8 @@ strategy:
 # ── Publishing cadence ──────────────────────────────────────────────────────
 publishing:
   dry_run: true                 # true = generate metadata but DO NOT upload
+  # Full credits per video are published here (upload_pack writes content/credits/).
+  credits_url: "https://github.com/saifullah5553/Mind_Vault/blob/main/content/credits/"
   long_platforms: ["youtube", "facebook"]   # where documentaries go
   short_platforms: ["youtube", "tiktok", "instagram", "facebook"]  # vertical clips
   require_manual_approval: true # hold every video in the review folder until approved

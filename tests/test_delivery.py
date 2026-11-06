@@ -282,3 +282,112 @@ def test_upload_pack_keeps_each_video_on_its_platforms(monkeypatch, tmp_path):
     assert (out / "youtube" / "video.mp4").exists()
     assert (out / "youtube" / "description.txt").read_text(encoding="utf-8").startswith("D")
     assert not (out / "tiktok").exists()
+
+
+def test_lines_show_what_they_are_about():
+    from core.media.themes import subject_of
+    assert subject_of("The cats escaped.") == "cat"
+    assert subject_of("Then the money stopped.") == "money cash"
+    assert subject_of("Children who loved drawing were promised an award.") == "child drawing"
+    assert subject_of("A plain line about nothing concrete.") is None
+
+
+def test_concrete_lines_get_their_own_shots(monkeypatch, tmp_path):
+    from core.registry import get_agent, load_all_agents
+    from core.schemas import Scene
+    load_all_agents()
+    agent = get_agent("video")
+    monkeypatch.setattr("core.media.stock_video.fetch_subject_clips", lambda wanted, *a, **k: {
+        q: [{"path": f"{q}{i}.mp4", "url": f"{q}{i}", "title": "t", "source": "Pixabay",
+             "license": "x"} for i in range(n)] for q, n in wanted.items()})
+    scenes = [Scene(index=i, narration=t, visual_prompt="x", duration=3)
+              for i, t in enumerate(["The cats escaped.", "A plain line.", "More cats here."])]
+    rest = agent._attach_subject_clips(scenes, tmp_path, (640, 360))
+    assert scenes[0].clip_path == "cat0.mp4" and scenes[2].clip_path == "cat1.mp4"
+    assert rest == [scenes[1]]
+
+
+def test_title_card_keeps_its_last_line():
+    from PIL import Image, ImageDraw
+
+    from core.media.animation import _fit_text, _font
+    d = ImageDraw.Draw(Image.new("RGB", (2560, 1440)))
+    text = "The shocking truth about why people stop pursuing their passions"
+    _f, wrapped = _fit_text(d, text, lambda s: _font(s, True), int(2560 * 0.84), int(2560 * 0.09),
+                            max_h=int(1440 * 0.62), spacing=12)
+    assert wrapped.replace("\n", " ") == text
+
+
+def test_credits_link_to_the_full_list():
+    used = [{"title": "A", "author": "B", "license": "CC BY 4.0", "source": "Wikimedia Commons",
+             "page": "", "kind": "image"}]
+    text = credits.block(used, 500, "https://example.org/run.txt")
+    assert text.endswith("Full credits with source links: https://example.org/run.txt")
+
+
+@pytest.mark.parametrize("licence", [
+    "http://creativecommons.org/licenses/by-nc-nd/3.0/",
+    "https://creativecommons.org/licenses/by-nc/4.0/",
+    "https://creativecommons.org/licenses/by-nd/2.0/",
+    "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "CC BY-NC 4.0", "cc-by-nd", "Non-commercial use only", "All rights reserved",
+])
+def test_restricted_licences_are_refused(licence):
+    from core.media.stock_video import _is_clearable
+
+    assert credits.is_restricted(licence)
+    assert _is_clearable({"licenseurl": licence}) == (False, "")
+    # A curated collection doesn't override the item's own licence.
+    assert _is_clearable({"licenseurl": licence, "collection": ["prelinger"]}) == (False, "")
+
+
+@pytest.mark.parametrize("licence", [
+    "http://creativecommons.org/licenses/by/3.0/",
+    "https://creativecommons.org/licenses/by-sa/4.0/",
+    "http://creativecommons.org/licenses/publicdomain/",
+    "https://creativecommons.org/publicdomain/zero/1.0/",
+])
+def test_open_licences_still_pass(licence):
+    from core.media.stock_video import _is_clearable
+
+    assert not credits.is_restricted(licence)
+    assert _is_clearable({"licenseurl": licence})[0]
+
+
+def test_film_trailers_are_refused_even_if_tagged_public_domain():
+    from core.media.stock_video import _is_clearable
+
+    meta = {"licenseurl": "http://creativecommons.org/licenses/publicdomain/"}
+    assert not _is_clearable({**meta, "title": 'Movie Trailers: "Marathon of Fright"'})[0]
+    assert not _is_clearable({**meta, "collection": ["movie_trailers"]})[0]
+
+
+def test_commons_photo_without_a_licence_is_skipped(monkeypatch):
+    from core.media import stock
+
+    def page(lic):
+        return {"title": f"File:{lic or 'none'}.jpg", "imageinfo": [{
+            "url": "https://example.org/a.jpg", "width": 4000,
+            "extmetadata": {"LicenseShortName": {"value": lic}} if lic else {}}]}
+
+    pages = {"1": page("CC BY-SA 4.0"), "2": page(""), "3": page("CC BY-NC 4.0")}
+    reply = httpx.Response(200, json={"query": {"pages": pages}},
+                           request=httpx.Request("GET", "https://commons.wikimedia.org/"))
+    monkeypatch.setattr(httpx, "get", lambda *a, **k: reply)
+    assert [h["license"] for h in stock._commons_search("anything")] == ["CC BY-SA 4.0"]
+
+
+def test_upload_pack_refuses_a_restricted_credit(tmp_path, monkeypatch):
+    from scripts import upload_pack
+
+    bundle = tmp_path / "storage" / "review" / "abc"
+    bundle.mkdir(parents=True)
+    (bundle / "review.json").write_text("{}", encoding="utf-8")
+    (bundle / "metadata.json").write_text("[]", encoding="utf-8")
+    credits.add(bundle, [{"title": "Climb talk", "license": "by-nc-nd/3.0",
+                          "source": "Internet Archive"}], "footage")
+    monkeypatch.setattr(upload_pack, "ROOT_DIR", tmp_path)
+    monkeypatch.setattr(upload_pack, "get_settings", lambda: type("S", (), {
+        "publishing": type("P", (), {"review_dir": "storage/review"})()})())
+    with pytest.raises(SystemExit, match="Climb talk"):
+        upload_pack.build("abc", tmp_path / "out")

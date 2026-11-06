@@ -13,6 +13,20 @@ import re
 from pathlib import Path
 
 _NO_ATTRIBUTION = re.compile(r"public domain|\bcc0\b|\bpd\b|pixabay|pexels|no restrictions", re.I)
+# Terms a monetised, edited video cannot meet: non-commercial, no-derivatives.
+_RESTRICTED = re.compile(
+    r"\bby[-_ ]?n[cd]\b|\bnc[-_ ]?(?:nd|sa)\b|non[-_ ]?commercial|no[-_ ]?deriv|"
+    r"all rights reserved", re.I)
+
+
+def is_restricted(licence: str) -> bool:
+    """True if this licence text forbids commercial use or editing."""
+    return bool(_RESTRICTED.search(str(licence or "")))
+
+
+def restricted(items: list[dict]) -> list[dict]:
+    """The credited items that must not appear in a published video."""
+    return [i for i in items if is_restricted(i.get("license"))]
 
 
 def _path(out_dir: Path) -> Path:
@@ -76,11 +90,14 @@ def _summary(items: list[dict]) -> str:
     return f"Also includes free-licence material from {', '.join(sources)}." if sources else ""
 
 
-def block(items: list[dict], budget: int) -> str:
+def block(items: list[dict], budget: int, full_url: str = "") -> str:
     """Credits text that fits `budget` characters: everything a licence requires,
-    with source links if there's room."""
+    with source links if there's room, and a link to the complete list."""
     if not items or budget < 40:
         return ""
+    if full_url:
+        link = f"Full credits with source links: {full_url}"
+        return f"{block(items, budget - len(link) - 1)}\n{link}"
     required = [i for i in items if needs_attribution(i)]
     tail = _summary(items)
     for link in (True, False):

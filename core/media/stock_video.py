@@ -30,6 +30,7 @@ import re
 from pathlib import Path
 
 from core.logging_setup import get_logger
+from core.media.credits import is_restricted
 
 log = get_logger("media.stock_video")
 
@@ -86,6 +87,8 @@ _MODERN_RE = re.compile(r"conference|celebration|webinar|zoom|lecture|livestream
                         r"podcast|stream|vlog|gameplay|screencast|tutorial|program(?:s)?\b|"
                         r"\b20[0-2]\d\b", re.I)
 _LATEST_YEAR = 1990
+# Trailers advertise someone else's film; a "public domain" tag on one proves little.
+_TRAILER_RE = re.compile(r"(?<![a-z])trailers?(?![a-z])", re.I)
 
 
 def _is_clearable(meta: dict) -> tuple[bool, str]:
@@ -96,6 +99,10 @@ def _is_clearable(meta: dict) -> tuple[bool, str]:
     if isinstance(collections, str):
         collections = [collections]
     coll = " ".join(collections).lower()
+    # Before anything else: a CC link alone says nothing about NC or ND terms,
+    # and a curated collection doesn't override the item's own licence.
+    if is_restricted(fields) or _TRAILER_RE.search(f"{meta.get('title', '')} {coll}"):
+        return False, ""
     if any(c in coll for c in _SAFE_COLLECTIONS):
         return True, (str(meta.get("licenseurl") or "public domain (safe collection)")[:80])
     if _CLEAR_RE.search(fields):
@@ -242,6 +249,8 @@ def _commons_clips(query: str, limit: int) -> list[dict]:
             if (info.get("size") or 0) > MAX_CLIP_MB * 1024 * 1024:
                 continue
             em = info.get("extmetadata") or {}
+            if is_restricted((em.get("LicenseShortName") or {}).get("value", "")):
+                continue
             out.append({
                 "url": url,
                 "title": (page.get("title") or "").replace("File:", "")[:120],
@@ -407,6 +416,30 @@ def _download(url: str, dest: Path) -> bool:
     except Exception as exc:
         log.debug("clip download failed (%s)", exc)
         return False
+
+
+def fetch_subject_clips(wanted: dict[str, int], dest_dir: Path, landscape: bool = True,
+                        min_height: int = 1080, excerpt_seconds: float = 12.0) -> dict[str, list[dict]]:
+    """Distinct clips for each concrete subject ({"cat": 3} -> three cat shots)."""
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    out: dict[str, list[dict]] = {}
+    seen: set[str] = set()
+    n = 0
+    for query, count in wanted.items():
+        clips: list[dict] = []
+        for hit in _pixabay_clips(query, count * 2, landscape=landscape, min_height=min_height):
+            if len(clips) >= count or hit["url"] in seen:
+                continue
+            seen.add(hit["url"])
+            dest = dest_dir / f"_subject_{n:03d}.mp4"
+            n += 1
+            start = shot_offsets(hit.get("length") or 0.0, 1, excerpt_seconds)[0]
+            if _excerpt(hit["url"], dest, start, excerpt_seconds) and not _too_dark(dest):
+                clips.append(dict(hit, path=str(dest), start=start, subject=query))
+        out[query] = clips
+    log.info("Subject footage: %d shot(s) for %d subject(s).",
+             sum(len(c) for c in out.values()), len(out))
+    return out
 
 
 def _themed_hits(count: int, providers, seen: set[str]) -> list[dict]:

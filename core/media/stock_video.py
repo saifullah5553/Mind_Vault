@@ -90,9 +90,11 @@ _LATEST_YEAR = 1990
 # Vertical HD barely exists on Pixabay (0-13 clips per subject). Landscape this
 # tall, centre-cropped to 9:16, is upscaled at most 1.33x.
 _CROP_MIN_HEIGHT = 1440
-# Not filmed: viewers rejected the AI look, and these read as ads or quiz cards.
-_NOT_FILMED = re.compile(r"ai generated|\b3d\b|cartoon|animation|\bhud\b|green screen|quiz",
-                         re.I)
+# Not real scenes: viewers rejected the AI look, and these read as ads, quiz cards
+# or slideshows. Named brands and national flags don't belong in the video either.
+_NOT_FILMED = re.compile(
+    r"ai generated|\b3d\b|cartoon|animation|\bhud\b|green ?screen|chroma|transition|overlay|"
+    r"quiz|maze|labyrinth|wallpaper|fifa|coca[- ]cola|\bflags?\b", re.I)
 # Trailers advertise someone else's film; a "public domain" tag on one proves little.
 _TRAILER_RE = re.compile(r"(?<![a-z])trailers?(?![a-z])", re.I)
 
@@ -296,6 +298,12 @@ def _pexels_clips(query: str, limit: int) -> list[dict]:
     return out
 
 
+def _tagged(tags: str, query: str) -> bool:
+    """Every search word is a whole tag word: "mother" isn't "motherhood"."""
+    return all(re.search(rf"\b{re.escape(w.removesuffix('s'))}s?\b", tags)
+               for w in query.lower().split())
+
+
 def _pixabay_clips(query: str, limit: int, landscape: bool = True,
                    min_height: int = 1080, strict: bool = False) -> list[dict]:
     """HD stock video (free key). Picks the smallest rendition that is at least
@@ -313,7 +321,7 @@ def _pixabay_clips(query: str, limit: int, landscape: bool = True,
     out: list[dict] = []
     try:
         r = httpx.get("https://pixabay.com/api/videos/",
-                      params={"key": key, "q": query, "per_page": "100",
+                      params={"key": key, "q": query, "per_page": "100", "video_type": "film",
                               "safesearch": "true"},
                       headers=_UA, timeout=25)
         r.raise_for_status()
@@ -321,7 +329,7 @@ def _pixabay_clips(query: str, limit: int, landscape: bool = True,
             tags = str(v.get("tags", "")).lower()
             if not acceptable_title(tags) or _NOT_FILMED.search(tags):
                 continue
-            if strict and not all(word in tags for word in query.lower().split()):
+            if v.get("type", "film") != "film" or (strict and not _tagged(tags, query)):
                 continue
             if float(v.get("duration") or 0) < 8:
                 continue                     # shorter than a scene: it would loop
@@ -382,6 +390,43 @@ def _excerpt(url: str, dest: Path, start_s: float, dur: float) -> bool:
     except Exception as exc:
         log.debug("excerpt failed (%s)", str(exc)[:120])
         return False
+
+
+def _keyed_or_flat(clip: Path) -> bool:
+    """True if any sampled frame is chroma-key green or one plain colour.
+
+    Tags don't always say so, and a full-screen green frame is the worst thing
+    that can reach a viewer.
+    """
+    import subprocess
+
+    import numpy as np
+
+    from core.media.video import _ffmpeg_exe
+
+    ffmpeg = _ffmpeg_exe()
+    if not ffmpeg:
+        return False
+    try:
+        raw = subprocess.run(
+            [ffmpeg, "-v", "error", "-i", str(clip), "-vf",
+             "select='not(mod(n\\,60))',scale=64:36", "-frames:v", "3",
+             "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
+            capture_output=True, timeout=60).stdout
+    except Exception:
+        return False
+    size = 64 * 36 * 3
+    if not raw or len(raw) % size:
+        return False
+    return any(frame_is_unusable(f) for f in
+               np.frombuffer(raw, np.uint8).reshape(-1, 64 * 36, 3).astype(int))
+
+
+def frame_is_unusable(pixels) -> bool:
+    """`pixels`: (n, 3) RGB ints. Key green over a quarter of it, or no contrast."""
+    r, g, b = pixels[:, 0], pixels[:, 1], pixels[:, 2]
+    keyed = (g > 120) & (g > 2 * r) & (g > 2 * b)
+    return bool(keyed.mean() > 0.25 or pixels.mean(axis=1).std() < 6)
 
 
 def _too_dark(clip: Path, floor: float = 28.0) -> bool:
@@ -454,7 +499,8 @@ def fetch_subject_clips(wanted: dict[str, int], dest_dir: Path, landscape: bool 
                 dest = dest_dir / f"_subject_{n:03d}.mp4"
                 n += 1
                 start = shot_offsets(hit.get("length") or 0.0, 1, excerpt_seconds)[0]
-                if _excerpt(hit["url"], dest, start, excerpt_seconds) and not _too_dark(dest):
+                if (_excerpt(hit["url"], dest, start, excerpt_seconds)
+                        and not _too_dark(dest) and not _keyed_or_flat(dest)):
                     clips.append(dict(hit, path=str(dest), start=start, subject=subject))
         out[subject] = clips
     log.info("Subject footage: %d shot(s) for %d subject(s).",
@@ -554,7 +600,8 @@ def fetch_clip_pool(topic: str, count: int, dest_dir: Path,
             for start in shot_offsets(hit.get("length") or 0.0, shots, excerpt_seconds):
                 dest = dest_dir / f"_clip_{n:03d}.mp4"
                 n += 1
-                if _excerpt(hit["url"], dest, start, excerpt_seconds) and not _too_dark(dest):
+                if (_excerpt(hit["url"], dest, start, excerpt_seconds)
+                        and not _too_dark(dest) and not _keyed_or_flat(dest)):
                     pool.append(dict(hit, path=str(dest), start=start))
         else:
             dest = dest_dir / f"_clip_{n:03d}.mp4"

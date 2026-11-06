@@ -463,12 +463,13 @@ def test_subject_searches_need_every_word_in_the_tags(monkeypatch):
     monkeypatch.setenv("PIXABAY_API_KEY", "x")
     rend = {"large": {"url": "u", "width": 1920, "height": 1080}}
     hits = [{"tags": t, "duration": 20, "videos": rend}
-            for t in ("gold wash, pan", "ferris wheel, city", "gold medal, sport")]
+            for t in ("gold wash, pan", "ferris wheel, city", "gold medal, sport",
+                      "gold, medallion")]
     monkeypatch.setattr(httpx, "get", lambda *a, **k: httpx.Response(
         200, json={"hits": hits}, request=httpx.Request("GET", "https://pixabay.com/")))
     found = _pixabay_clips("gold medal", 5, strict=True)
     assert [h["title"] for h in found] == ["gold medal, sport"]
-    assert len(_pixabay_clips("gold medal", 5)) == 3
+    assert len(_pixabay_clips("gold medal", 5)) == 4
 
 
 @pytest.mark.parametrize("tags", ["ai generated, boy", "cube, 3d, puzzle", "hud, eye",
@@ -499,3 +500,68 @@ def test_a_scarce_subject_falls_back_to_its_next_search(monkeypatch, tmp_path):
     out = stock_video.fetch_subject_clips({"first|second": 3}, tmp_path)
     assert asked == [("first", True), ("second", True)]
     assert [c["url"] for c in out["first|second"]] == ["first0", "second0", "second1"]
+
+
+def test_sentence_openers_are_not_people():
+    from core.media.themes import known_names, named_subjects
+
+    script = ("In 1971, psychologist Edward Deci gave students a puzzle. Others got nothing. "
+              "Deci watched in secret. Afterward, they drew less. Long before, there was Aristotle.")
+    known = known_names(script)
+    assert named_subjects("Others got nothing.", known) == []
+    assert named_subjects("Afterward, they drew less.", known) == []
+    assert named_subjects("Deci watched in secret.", known) == ["Deci"]
+    assert named_subjects("Aristotle might have agreed.", known) == ["Aristotle"]
+    assert named_subjects("Then the money stopped. Give it time.", known) == []
+    assert named_subjects("Edward Deci and Richard Ryan agreed.", known) == [
+        "Edward Deci", "Richard Ryan"]
+
+
+def test_ordinary_lines_reach_footage_not_a_portrait_search(monkeypatch, tmp_path):
+    from core.registry import get_agent, load_all_agents
+    from core.schemas import Scene
+    load_all_agents()
+    agent = get_agent("video")
+    seen = []
+    monkeypatch.setattr(agent, "_attach_subject_clips",
+                        lambda free, *a: seen.extend(free) or [])
+    monkeypatch.setattr("core.media.stock_video.fetch_clip_pool", lambda *a, **k: [])
+    lines = ["Psychologist Edward Deci ran it.", "Others got nothing.", "Afterward, they drew less."]
+    scenes = [Scene(index=i, narration=t, visual_prompt="x", duration=3)
+              for i, t in enumerate(lines)]
+    agent._attach_footage(scenes, tmp_path, "topic", "psychology", (640, 360))
+    assert [s.narration for s in seen] == lines[1:]
+
+
+def test_key_green_and_blank_frames_are_unusable():
+    from core.media.stock_video import frame_is_unusable
+
+    rng = np.random.default_rng(1)
+    scene = rng.integers(0, 255, (2304, 3))
+    green = np.tile([58, 176, 11], (2304, 1))
+    half_green = np.concatenate([green[:1152], scene[:1152]])
+    grass = np.tile([95, 140, 70], (2304, 1)) + rng.integers(-30, 30, (2304, 3))
+    assert frame_is_unusable(green)
+    assert frame_is_unusable(half_green)
+    assert frame_is_unusable(np.tile([200, 200, 200], (2304, 1)))
+    assert not frame_is_unusable(scene)
+    assert not frame_is_unusable(grass)
+
+
+def test_pixabay_animations_are_refused(monkeypatch):
+    from core.media.stock_video import _pixabay_clips
+
+    monkeypatch.setenv("PIXABAY_API_KEY", "x")
+    rend = {"large": {"url": "u", "width": 1920, "height": 1080}}
+    hits = [{"tags": "sea, car", "duration": 20, "videos": rend, "type": "animation"},
+            {"tags": "sea, boat", "duration": 20, "videos": rend, "type": "film"}]
+    asked = {}
+
+    def get(*a, **k):
+        asked.update(k["params"])
+        return httpx.Response(200, json={"hits": hits},
+                              request=httpx.Request("GET", "https://pixabay.com/"))
+
+    monkeypatch.setattr(httpx, "get", get)
+    assert [h["title"] for h in _pixabay_clips("sea", 5)] == ["sea, boat"]
+    assert asked["video_type"] == "film"

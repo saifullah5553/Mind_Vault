@@ -179,13 +179,14 @@ class VideoAgent(BaseAgent):
 
         # The first line naming a person/place keeps its still: the actual
         # subject (Rembrandt's Aristotle) beats generic b-roll there.
-        from core.media.themes import named_subjects
+        from core.media.themes import known_names, named_subjects
+        known = known_names(" ".join(s.narration for s in scenes))
         seen_names: set[str] = set()
         free = []
         for s in scenes:
             if s.animation_kind:
                 continue
-            new = [n for n in named_subjects(s.narration) if n not in seen_names]
+            new = [n for n in named_subjects(s.narration, known) if n not in seen_names]
             seen_names.update(new)
             if not new:
                 free.append(s)

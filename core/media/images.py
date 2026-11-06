@@ -21,7 +21,7 @@ from pathlib import Path
 from core.config import get_settings
 from core.logging_setup import get_logger
 from core.media import credits
-from core.media.themes import pick
+from core.media.themes import known_names, pick
 from core.schemas import Scene
 
 log = get_logger("media.images")
@@ -202,6 +202,7 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
             log.warning("Image pool fetch failed (%s); using cards.", exc)
 
     named_cache: dict[str, dict | None] = {}
+    known = known_names(" ".join(s.narration for s in scenes))
     for scene in scenes:
         out = out_dir / f"scene_{scene.index:03d}.jpg"
         done = False
@@ -210,7 +211,7 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
         # Only for scenes that will show a still (cards and footage don't).
         if use_stock and not scene.animation_kind and not scene.clip_path:
             meta = _named_image(scene.narration, named_cache, out_dir, category,
-                                width, height, cfg.named_max)
+                                width, height, cfg.named_max, known=known)
             if meta and _cinematic_from_photo(Path(meta["path"]), scene, out, width,
                                               height, brand, subtitle=subtitles):
                 shown.append(meta)
@@ -255,12 +256,13 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
 
 
 def _named_image(text: str, cache: dict, out_dir: Path, category: str,
-                 width: int, height: int, limit: int) -> dict | None:
+                 width: int, height: int, limit: int,
+                 known: set[str] | None = None) -> dict | None:
     """Picture of the first not-yet-shown subject this line names, or None."""
     from core.media.stock import fetch_named
     from core.media.themes import named_subjects
 
-    for name in named_subjects(text):
+    for name in named_subjects(text, known):
         if name in cache:
             continue                      # shown already (or nothing found)
         if len(cache) >= limit:

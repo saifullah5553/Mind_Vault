@@ -191,7 +191,7 @@ def test_named_line_keeps_its_still_instead_of_b_roll(monkeypatch, tmp_path):
     shots = [{"path": f"s{i}.mp4", "url": f"u{i}", "title": "t", "source": "Pixabay",
               "license": "x"} for i in range(5)]
     monkeypatch.setattr("core.media.stock_video.fetch_clip_pool", lambda *a, **k: shots)
-    lines = ["Plain line.", "Aristotle believed in purpose.", "Another plain line.",
+    lines = ["Plain line.", "The philosopher Aristotle believed in purpose.", "Another plain line.",
              "Aristotle said more.", "Last plain line."]
     scenes = [Scene(index=i, narration=t, visual_prompt="x", duration=3)
               for i, t in enumerate(lines)]

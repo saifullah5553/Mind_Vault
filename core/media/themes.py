@@ -77,7 +77,7 @@ SUBJECTS: list[tuple[str, str]] = [
     (r"\bcats?\b|\blatch\b", "cat"),
     (r"\bdogs?\b", "dog"),
     (r"\bmonkeys?\b|\bapes?\b", "monkey"),
-    (r"\bpreschool\w*|\bchild\w*|\bkids?\b|\bdraw\w*|\bmarkers?\b", "child drawing|drawing|kindergarten"),
+    (r"\bpreschool\w*|\bchild\w*|\bkids?\b|\bdraw\w*|\bmarkers?\b", "child drawing|girl drawing|kindergarten|classroom"),
     (r"\bparents?\b|\bdaycare\b|\bpickups?\b", "mother child"),
     (r"\bchess\b", "chess"),
     (r"\bclimb\w*", "rock climbing"),
@@ -106,7 +106,7 @@ SUBJECTS: list[tuple[str, str]] = [
     (r"\banxi\w+|\bstress\w*|\btoo hard\b|\bwithers?\b|\bstarved\b", "stressed|stress|office work"),
     (r"\bloved?\b|\bpassions?\b|\binterest\w*|\benjoy\w*", "playing guitar"),
     (r"\bautonomy\b|\bchose\b|\bchoose\b|\byour own\b|\boutside of you\b", "hiking"),
-    (r"\brewards?\b|\bprizes?\b|\bawards?\b|\bpraise\b", "trophy|medal|winner"),
+    (r"\brewards?\b|\bprizes?\b|\bawards?\b|\bpraise\b", "trophy|medal|podium"),
     (r"\bgoals?\b", "soccer goal|soccer"),
     (r"\bscores?\b", "scoreboard|soccer"),
     (r"\baudience\b", "audience|concert"),
@@ -142,25 +142,41 @@ def carry_subjects(lines: list[str]) -> list[str | None]:
     return out
 
 
-def named_subjects(text: str) -> list[str]:
-    """Proper names a line mentions ("Aristotle", "Edward Thorndike")."""
+def named_subjects(text: str, known: set[str] | None = None) -> list[str]:
+    """Proper names a line mentions ("Aristotle", "Edward Thorndike").
+
+    Every sentence opens with a capital, so with `known` (see known_names) a lone
+    capitalised opener only counts if the script uses that name mid-sentence too:
+    "Deci left the room" is a person, "Others got nothing" is not.
+    """
     names: list[str] = []
     run: list[str] = []
+    run_opens = False
+    at_start = True
     tokens = re.findall(r"[A-Za-z][A-Za-z'\-]*|[^\sA-Za-z]", text or "")
     for tok in tokens + ["."]:
         if _CAP.fullmatch(tok) and tok.lower().removesuffix("'s") not in _NOT_NAMES:
+            if not run:
+                run_opens = at_start
             run.append(tok.removesuffix("'s"))
-            if tok.endswith("'s"):
-                tok = "."            # a possessive ends the name
-            else:
+            at_start = False
+            if not tok.endswith("'s"):       # a possessive ends the name
                 continue
         if run:
             name = " ".join(run)
             lone = len(run) == 1 and run[0].lower() in _LONE_SKIP
-            if not lone and name not in names:
+            guess = len(run) == 1 and run_opens and known is not None and name not in known
+            if not lone and not guess and name not in names:
                 names.append(name)
             run = []
+        at_start = tok in (".", "!", "?", ":")
     return names
+
+
+def known_names(text: str) -> set[str]:
+    """Names a whole script uses mid-sentence, with surnames ("Edward Deci", "Deci")."""
+    found = named_subjects(text, known=set())
+    return set(found) | {name.split()[-1] for name in found}
 
 
 def theme_of(text: str) -> str:

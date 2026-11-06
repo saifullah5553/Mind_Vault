@@ -25,7 +25,7 @@ from core.config import ROOT_DIR
 from core.database.models import Content, ContentStatus
 from core.database.session import session_scope
 from core.media.spoken import CHAPTER_RE, sentences, spoken_text
-from core.media.themes import named_subjects
+from core.media.themes import known_names, named_subjects
 from core.registry import register_agent
 from core.schemas import PipelineContext
 
@@ -43,8 +43,10 @@ class ReviewAgent(BaseAgent):
         (a misattributed Greek term, a made-up 1912 concept), so a person reads
         these before anything goes public.
         """
-        claims = [s for s, _ in sentences(spoken_text(script))
-                  if not CHAPTER_RE.match(s) and (named_subjects(s) or re.search(r"\d", s))]
+        spoken = spoken_text(script)
+        known = known_names(spoken)
+        claims = [s for s, _ in sentences(spoken)
+                  if not CHAPTER_RE.match(s) and (named_subjects(s, known) or re.search(r"\d", s))]
         out.write_text("CHECK THESE BEFORE APPROVING (names, dates, figures):\n\n"
                        + "\n".join(f"[ ] {c}" for c in claims) + "\n", encoding="utf-8")
 

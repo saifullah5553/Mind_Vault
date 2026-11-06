@@ -40,7 +40,9 @@ class VideoAgent(BaseAgent):
         # 1) HYBRID: mark the beats that are better ANIMATED than filmed (title,
         #    chapter cards, figures, quotes, date ranges). Decided first, so
         #    footage and photos are spread over the remaining scenes.
-        if self.config.get("use_animation", True):
+        #    Not for Shorts: burned captions already carry the words, and a card
+        #    on a plain background is a weak first second to swipe past.
+        if self.config.get("use_animation", True) and video_format != "short":
             self._mark_animated(plan.scenes)
 
         # 2) REAL FOOTAGE: each shot used once, spread through the video.
@@ -227,9 +229,9 @@ class VideoAgent(BaseAgent):
         from collections import Counter
 
         from core.media.stock_video import fetch_subject_clips
-        from core.media.themes import subject_of
+        from core.media.themes import carry_subjects
 
-        subjects = {id(s): subject_of(s.narration) for s in scenes}
+        subjects = dict(zip(map(id, scenes), carry_subjects([s.narration for s in scenes])))
         wanted = Counter(q for q in subjects.values() if q)
         if not wanted:
             return scenes

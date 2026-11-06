@@ -87,6 +87,9 @@ _MODERN_RE = re.compile(r"conference|celebration|webinar|zoom|lecture|livestream
                         r"podcast|stream|vlog|gameplay|screencast|tutorial|program(?:s)?\b|"
                         r"\b20[0-2]\d\b", re.I)
 _LATEST_YEAR = 1990
+# Vertical HD barely exists on Pixabay (0-13 clips per subject). Landscape this
+# tall, centre-cropped to 9:16, is upscaled at most 1.33x.
+_CROP_MIN_HEIGHT = 1440
 # Trailers advertise someone else's film; a "public domain" tag on one proves little.
 _TRAILER_RE = re.compile(r"(?<![a-z])trailers?(?![a-z])", re.I)
 
@@ -315,9 +318,13 @@ def _pixabay_clips(query: str, limit: int, landscape: bool = True,
             rends = [x for x in (v.get("videos") or {}).values() if x and x.get("url")]
             # Right orientation only: a vertical clip cover-cropped into a
             # landscape frame loses two thirds of the picture.
-            rends = [x for x in rends if (x.get("width", 0) > x.get("height", 0)) == landscape]
+            wide = [x for x in rends if x.get("width", 0) > x.get("height", 0)]
+            rends = wide if landscape else [x for x in rends if x not in wide]
             short_side = (lambda x: x.get("height", 0)) if landscape else (lambda x: x.get("width", 0))
             good = sorted((x for x in rends if short_side(x) >= min_height), key=short_side)
+            if not good and not landscape:
+                good = sorted((x for x in wide if x.get("height", 0) >= _CROP_MIN_HEIGHT),
+                              key=lambda x: x.get("height", 0))
             if not good:
                 continue
             pick = good[0]
@@ -427,7 +434,7 @@ def fetch_subject_clips(wanted: dict[str, int], dest_dir: Path, landscape: bool 
     n = 0
     for query, count in wanted.items():
         clips: list[dict] = []
-        for hit in _pixabay_clips(query, count * 2, landscape=landscape, min_height=min_height):
+        for hit in _pixabay_clips(query, count * 3 + 2, landscape=landscape, min_height=min_height):
             if len(clips) >= count or hit["url"] in seen:
                 continue
             seen.add(hit["url"])
@@ -487,6 +494,11 @@ def fetch_clip_pool(topic: str, count: int, dest_dir: Path,
         providers = [_ia_clips, _commons_clips, _pexels_clips, _pixabay_clips]
     else:
         providers = [_pexels_clips, _pixabay_clips, _commons_clips, _ia_clips]
+
+    # Archive items match mood words by title alone: that put a 1950s stripper
+    # reel and a chimp in a costume into a Short about motivation.
+    if category == "psychology":
+        providers.remove(_ia_clips)
 
     from functools import partial
     providers = [partial(_pixabay_clips, landscape=landscape, min_height=min_height)

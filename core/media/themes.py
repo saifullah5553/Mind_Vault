@@ -40,7 +40,9 @@ THEMES: dict[str, tuple[str, list[str]]] = {
     "habit": (r"habit|routine|daily|repeat|practice|work|learn|school|train|skill|"
               r"behavio",
               ["workshop", "craftsman", "classroom", "violinist"]),
-    "default": (r"", ["milky way", "mountain panorama", "waves", "forest"]),
+    # People absorbed in something, not scenery: this is the fallback for most
+    # abstract lines, and a run of skies is where viewers leave.
+    "default": (r"", ["pottery wheel", "painter", "piano hands", "surfing", "woodworking"]),
 }
 
 _CUES = {name: re.compile(cue, re.I) for name, (cue, _) in THEMES.items() if cue}
@@ -68,39 +70,74 @@ _LONE_SKIP = {"new", "old", "great", "modern", "ancient", "early", "late", "rece
 # What a line is literally about -> stock video search. A viewer who hears "cats"
 # should see a cat; mood pictures only fill the lines with no concrete subject.
 SUBJECTS: list[tuple[str, str]] = [
+    # Most specific first: the first row that matches wins, so "a researcher put
+    # hungry cats in a box" shows cats, not a laboratory.
     (r"\bcats?\b|\blatch\b", "cat"),
     (r"\bdogs?\b", "dog"),
     (r"\bmonkeys?\b|\bapes?\b", "monkey"),
-    (r"\bpuzzles?\b", "puzzle"),
-    (r"\bmoney\b|\bpaid\b|\bpay\b|\bsalar\w+|\bwages?\b", "money cash"),
-    (r"\bstudents?\b|\buniversity\b|\bclassroom\b", "students classroom"),
     (r"\bpreschool\w*|\bchild\w*|\bkids?\b|\bdraw\w*|\bmarkers?\b", "child drawing"),
-    (r"\bparents?\b|\bdaycare\b|\bpickups?\b", "parents children"),
-    (r"\blate\b|\blateness\b|\bdeadlines?\b|\btime disappeared\b|\bhours\b", "clock"),
+    (r"\bparents?\b|\bdaycare\b|\bpickups?\b", "mother child"),
     (r"\bchess\b", "chess"),
     (r"\bclimb\w*", "rock climbing"),
     (r"\bartists?\b|\bpaint\w*", "painter"),
     (r"\bmusic\w*|\bsing\w*", "playing guitar"),
-    (r"\bsports?\b|\bathlet\w*", "soccer training"),
-    (r"\bbusiness\w*|\bjobs?\b|\bsales\b|\btargets?\b|\boffice\b", "office work"),
+    (r"\bsports?\b|\bathlet\w*", "soccer goal"),
+    (r"\bpuzzles?\b", "puzzle"),
+    (r"\bstudents?\b|\buniversity\b|\bclassroom\b", "students classroom"),
+    (r"\bmoney\b|\bpaid\b|\bpay\b|\bsalar\w+|\bwages?\b|\bfines?\b|\bprice\b", "money cash"),
     (r"\blikes\b|\bsocial media\b|\bphones?\b|\bonline\b", "smartphone"),
     (r"\bsteps\b|\bwalk\w*", "walking"),
     (r"\bgrades?\b|\bexams?\b", "exam"),
+    (r"\bbusiness\w*|\bjobs?\b|\bsales\b|\btargets?\b|\boffice\b", "office work"),
     (r"\bfood\b|\bhungry\b|\bhunger\b|\bmeals?\b", "food"),
     (r"\bthirst\w*", "drinking water"),
     (r"\bmagazines?\b|\bbooks?\b|\breading\b", "reading"),
-    (r"\bexperiment\w*|\blaborator\w*|\bstud(?:y|ies)\b|\bresearchers?\b", "laboratory scientist"),
+    (r"\blate\b|\blateness\b|\bdeadlines?\b|\btime\b|\bhours\b|\bminutes\b", "clock"),
     (r"\bfire\b", "campfire"),
+    (r"\bmachine\b", "gears machine"),
+    # Ideas with no object of their own, shown through someone living them.
+    (r"\bflow\b|\beffort felt\b|\bthe doing\b|\bdoing gives\b", "pottery wheel"),
+    (r"\bcompetence\b|\bgetting better\b|\bskill\w*|\bprogress\b|\bchallenge\w*|\bpractice\b",
+     "skateboard"),
+    (r"\brelatedness\b|\bconnected\b|\bdoing this with\b|\btogether\b", "friends laughing"),
+    (r"\bbored\b|\blazy\b|\bdull\b", "bored"),
+    (r"\banxi\w+|\bstress\w*|\btoo hard\b|\bwithers?\b|\bstarved\b", "stressed"),
+    (r"\bloved?\b|\bpassions?\b|\binterest\w*|\benjoy\w*", "playing guitar"),
+    (r"\bautonomy\b|\bchose\b|\bchoose\b|\byour own\b|\boutside of you\b", "hiking"),
+    (r"\brewards?\b|\bprizes?\b|\bawards?\b|\bpraise\b", "gold medal"),
+    (r"\bgoals?\b", "soccer goal"),
+    (r"\bscores?\b", "scoreboard"),
+    (r"\baudience\b", "applause audience"),
+    (r"\bquestions?\b|\bwondered\b", "writing notebook"),
+    # Generic last: nearly every study line says "researchers".
+    (r"\bexperiment\w*|\blaborator\w*|\bstud(?:y|ies)\b|\bresearchers?\b", "laboratory scientist"),
     (r"\bbrains?\b", "brain"),
     (r"\bancient\b|\bgreeks?\b", "ancient greece ruins"),
 ]
 _SUBJECTS = [(re.compile(rx, re.I), query) for rx, query in SUBJECTS]
+# "They got better" is still about the monkeys, for a line or two.
+_CARRY_SCENES = 2
 
 
 def subject_of(text: str) -> str | None:
-    """Video search for the first concrete subject this line mentions, if any."""
-    found = [(m.start(), q) for rx, q in _SUBJECTS if (m := rx.search(text or ""))]
-    return min(found)[1] if found else None
+    """Video search for the most specific subject this line mentions, if any."""
+    return next((q for rx, q in _SUBJECTS if rx.search(text or "")), None)
+
+
+def carry_subjects(lines: list[str]) -> list[str | None]:
+    """Each line's subject, or the story's current one if the line names none."""
+    out: list[str | None] = []
+    current, age = None, 0
+    for line in lines:
+        found = subject_of(line)
+        if found:
+            current, age = found, 0
+        else:
+            age += 1
+            if age > _CARRY_SCENES:
+                current = None
+        out.append(current)
+    return out
 
 
 def named_subjects(text: str) -> list[str]:

@@ -301,10 +301,11 @@ def test_concrete_lines_get_their_own_shots(monkeypatch, tmp_path):
         q: [{"path": f"{q}{i}.mp4", "url": f"{q}{i}", "title": "t", "source": "Pixabay",
              "license": "x"} for i in range(n)] for q, n in wanted.items()})
     scenes = [Scene(index=i, narration=t, visual_prompt="x", duration=3)
-              for i, t in enumerate(["The cats escaped.", "A plain line.", "More cats here."])]
+              for i, t in enumerate(["The cats escaped.", "A plain line.", "More cats here.",
+                                     "One.", "Two.", "Three."])]
     rest = agent._attach_subject_clips(scenes, tmp_path, (640, 360))
-    assert scenes[0].clip_path == "cat0.mp4" and scenes[2].clip_path == "cat1.mp4"
-    assert rest == [scenes[1]]
+    assert [s.clip_path for s in scenes[:4]] == ["cat0.mp4", "cat1.mp4", "cat2.mp4", "cat3.mp4"]
+    assert scenes[4].clip_path == "cat4.mp4" and rest == [scenes[5]]
 
 
 def test_title_card_keeps_its_last_line():
@@ -391,3 +392,66 @@ def test_upload_pack_refuses_a_restricted_credit(tmp_path, monkeypatch):
         "publishing": type("P", (), {"review_dir": "storage/review"})()})())
     with pytest.raises(SystemExit, match="Climb talk"):
         upload_pack.build("abc", tmp_path / "out")
+
+
+def test_the_most_specific_subject_wins():
+    from core.media.themes import subject_of
+
+    assert subject_of("A researcher put hungry cats inside wooden boxes.") == "cat"
+    assert subject_of("To reach the food outside, a cat had to work a latch.") == "cat"
+    assert subject_of("The students who were never paid kept playing.") == "students classroom"
+    assert subject_of("Researchers studied the effect.") == "laboratory scientist"
+
+
+def test_a_line_keeps_the_story_subject_for_a_moment():
+    from core.media.themes import carry_subjects
+
+    lines = ["The monkeys solved it.", "They got faster.", "They got better.", "And on.", "Cats."]
+    assert carry_subjects(lines) == ["monkey", "monkey", "monkey", None, "cat"]
+
+
+def test_the_motivation_script_is_mostly_covered():
+    from core.media.spoken import sentences
+    from core.media.themes import carry_subjects
+
+    text = Path("content/scripts/motivation_documentary.txt").read_text(encoding="utf-8")
+    subjects = carry_subjects([s for s, _ in sentences(text)])
+    assert sum(1 for s in subjects if s) / len(subjects) > 0.75
+
+
+def _pixabay_reply(videos):
+    return httpx.Response(200, json={"hits": [
+        {"tags": "cat", "duration": 20, "user": "u", "pageURL": "p", "videos": videos}]},
+        request=httpx.Request("GET", "https://pixabay.com/api/videos/"))
+
+
+def test_vertical_video_can_crop_big_landscape_clips(monkeypatch):
+    from core.media.stock_video import _pixabay_clips
+
+    monkeypatch.setenv("PIXABAY_API_KEY", "x")
+    big = {"large": {"url": "u4k", "width": 3840, "height": 2160}}
+    small = {"large": {"url": "u1080", "width": 1920, "height": 1080}}
+    monkeypatch.setattr(httpx, "get", lambda *a, **k: _pixabay_reply(big))
+    assert _pixabay_clips("cat", 1, landscape=False)[0]["url"] == "u4k"
+    # 1080p would be upscaled 1.78x after the crop: too soft.
+    monkeypatch.setattr(httpx, "get", lambda *a, **k: _pixabay_reply(small))
+    assert _pixabay_clips("cat", 1, landscape=False) == []
+
+
+def test_psychology_footage_never_searches_the_archive(monkeypatch, tmp_path):
+    from core.media import stock_video
+
+    called = []
+    monkeypatch.setattr(stock_video, "_ia_clips", lambda *a, **k: called.append(a) or [])
+    for name in ("_pexels_clips", "_pixabay_clips", "_commons_clips"):
+        monkeypatch.setattr(stock_video, name, lambda *a, **k: [])
+    stock_video.fetch_clip_pool("motivation", 4, tmp_path, category="psychology")
+    assert not called
+
+
+def test_adult_reels_are_screened_out():
+    from core.media.stock_video import acceptable_title
+
+    assert not acceptable_title("Stripper - Sandra Storm")
+    assert not acceptable_title("Burlesque dancer 1950")
+    assert acceptable_title("Stripping paint from a door") is True

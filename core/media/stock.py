@@ -44,7 +44,8 @@ _STOP = {
 # Never on a family-friendly educational channel, whatever the topic.
 _UNSAFE = re.compile(
     r"\bsex|offend|abuse|\bnude|naked|porn|erotic|fetish|\brap(?:e|ed|es|ist)\b|"
-    r"suicid|self-harm|\bgore\b|corpse|tortur|lingerie|bikini", re.I)
+    r"suicid|self-harm|\bgore\b|corpse|tortur|lingerie|bikini|"
+    r"stripper|striptease|burlesque|pin[- ]?up|topless|showgirl", re.I)
 # Charts, models and slides: Commons answers abstract topics with these, and a
 # diagram of an academic model is not a documentary image.
 _DIAGRAM = re.compile(

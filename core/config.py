@@ -63,6 +63,10 @@ class PublishingConfig(BaseModel):
     short_platforms: list[str] = Field(default_factory=lambda: ["youtube", "tiktok", "instagram", "facebook"])
     timezone: str = "UTC"
     review_dir: str = "storage/review"
+    # When finished videos go public, in the audience's time zone.
+    release_timezone: str = "America/New_York"
+    release_weekday: str = "14:00"
+    release_weekend: str = "10:00"
 
 
 class FormatSpec(BaseModel):

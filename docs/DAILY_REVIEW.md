@@ -121,11 +121,15 @@ for youtube). Check what YouTube received:
 .venv\Scripts\python -m scripts.go_live <video_id> <run_id>
 ```
 
-Only if every line is OK:
+Only if every line is OK, schedule the release:
 
 ```bash
-.venv\Scripts\python -m scripts.go_live <video_id> <run_id> --public
+.venv\Scripts\python -m scripts.go_live <video_id> <run_id> --schedule
 ```
+
+The video stays private and YouTube makes it public at the next free release slot
+(`publishing.release_*` in settings: 2 pm on weekdays and 10 am at weekends, US
+Eastern). `--public` instead publishes immediately. Use it only if the owner asks.
 
 ## 6. Report
 

@@ -46,6 +46,14 @@ publishing:
   long_platforms: ["youtube", "facebook"]   # where documentaries go
   short_platforms: ["youtube", "tiktok", "instagram", "facebook"]  # vertical clips
   require_manual_approval: true # hold every video in the review folder until approved
+  # Release time: videos upload privately and YouTube makes them public at the next
+  # free slot. English-language audience, so US Eastern time. Large 2026 studies:
+  # long videos do best on weekdays 2-4 pm, and weekends mid-morning, in the
+  # audience's local time. Re-check against YouTube Studio's "When your viewers are
+  # on YouTube" once the channel has an audience, and change these.
+  release_timezone: "America/New_York"
+  release_weekday: "14:00"
+  release_weekend: "10:00"
   short_days: []                # vertical clips are cut from a documentary by hand for now
   long_days: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]   # one documentary a day
   platforms: ["youtube", "tiktok", "instagram", "facebook"]

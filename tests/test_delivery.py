@@ -1096,3 +1096,31 @@ def test_one_documentary_every_day():
     start = date(2026, 11, 9)
     for i in range(7):
         assert "long" in plan_jobs(start + timedelta(days=i), s)
+
+
+def test_release_slots_follow_the_audience_clock():
+    from datetime import datetime, timezone
+
+    from scripts.go_live import next_release_slot
+
+    pub = get_settings().publishing
+    # Mon 9 Nov 2026, 03:30 Dubai = Sun 8 Nov 18:30 New York: Sunday's 10:00 has passed.
+    now = datetime(2026, 11, 8, 23, 30, tzinfo=timezone.utc)
+    slot = next_release_slot(now, pub, [])
+    assert slot == datetime(2026, 11, 9, 19, 0, tzinfo=timezone.utc)     # Mon 14:00 New York
+    # A taken slot moves the next video to the following day.
+    nxt = next_release_slot(now, pub, [slot.isoformat()])
+    assert nxt == datetime(2026, 11, 10, 19, 0, tzinfo=timezone.utc)
+    # Saturday uses the weekend time.
+    sat = next_release_slot(datetime(2026, 11, 13, 20, 0, tzinfo=timezone.utc), pub, [])
+    assert sat == datetime(2026, 11, 14, 15, 0, tzinfo=timezone.utc)     # Sat 10:00 New York
+
+
+def test_a_slot_too_close_to_now_is_skipped():
+    from datetime import datetime, timezone
+
+    from scripts.go_live import next_release_slot
+
+    pub = get_settings().publishing
+    now = datetime(2026, 11, 9, 18, 30, tzinfo=timezone.utc)              # 13:30 New York
+    assert next_release_slot(now, pub, []) == datetime(2026, 11, 10, 19, 0, tzinfo=timezone.utc)

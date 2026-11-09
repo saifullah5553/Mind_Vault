@@ -5,14 +5,26 @@ director, social media expert and SEO expert. The scheduled task "Mind_Vault dai
 documentary" follows this page. Commands run from `D:\Mind_Vault` with
 `.venv\Scripts\python`.
 
-## 1. Make the video
+## 1. Write and make the video
 
-```bash
-.venv\Scripts\python -m scripts.autopilot --job long
-```
+The script is written by the reviewer (Claude), not by a local model. Ollama is
+not used, because the company network blocks it.
 
-The run id is the newest folder in `storage/review/` whose `review.json` says
-`"status": "pending"` and `"format": "long"`.
+1. Write `content/scripts/<slug>.txt` and `content/scripts/<slug>.sources.txt`,
+   following `.claude/skills/mind-vault-production/SKILL.md`. That file covers topic
+   choice, the header lines, 1,050–1,250 words, the hook, sources (at least 8), and
+   writing for the ear.
+2. Render it:
+
+   ```bash
+   .venv\Scripts\python -m scripts.run_pipeline --new-from-script content/scripts/<slug>.txt --category history --format long
+   ```
+
+   Use `--category psychology` for psychology topics.
+
+The run id is printed as `RUN <id>` and is the newest folder in `storage/review/`.
+The hook and overall scores are advice for a written script. Facts, originality,
+length, audio and copyright still block.
 
 ## 2. Collect the evidence
 
@@ -62,33 +74,24 @@ Look at every picture it writes to `storage/review/<run_id>/qa/`: `sheet.png`
 
 ## 4. Fix
 
-Script, title, description, thumbnail text and tags all live in one file:
+Script, title, description, thumbnail text and tags all live in the script file,
+`content/scripts/<slug>.txt`, which already has its header. Edit it there: facts, the
+hook, a line that pulls the wrong picture, or the TITLE, DESCRIPTION, THUMBNAIL or TAGS
+lines. Add any new fact to the `.sources.txt` file. Then re-render:
 
-1. Copy `storage/review/<run_id>/script.txt` to `content/scripts/<run_id>.txt`.
-2. Add a header above `[INTRODUCTION]`:
+- If the narration changed:
 
-   ```
-   TITLE: ...
-   DESCRIPTION: ...
-   THUMBNAIL: TWO TO FOUR WORDS
-   TAGS: phrase one, phrase two, ...
-   ```
+  ```bash
+  .venv\Scripts\python -m scripts.run_pipeline --rerender <run_id> --from visual --script-file content/scripts/<slug>.txt
+  ```
 
-3. Edit the narration (facts, hook, a line that pulls the wrong picture).
-4. Re-render:
-   - If the narration changed:
+- If only the title, description, tags or thumbnail changed:
 
-     ```bash
-     .venv\Scripts\python -m scripts.run_pipeline --rerender <run_id> --from visual --script-file content/scripts/<run_id>.txt
-     ```
+  ```bash
+  .venv\Scripts\python -m scripts.run_pipeline --rerender <run_id> --from seo --script-file content/scripts/<slug>.txt
+  ```
 
-   - If only the title, description, tags or thumbnail changed:
-
-     ```bash
-     .venv\Scripts\python -m scripts.run_pipeline --rerender <run_id> --from seo --script-file content/scripts/<run_id>.txt
-     ```
-
-5. Run `qa_report` again and look at the pictures again.
+Run `qa_report` again and look at the pictures again.
 
 A picture problem that a script change can't fix needs a code rule, for example a
 Pixabay id in `_BLOCKED_IDS` or a word in `_OFF_TOPIC`. Make it small, add a test,

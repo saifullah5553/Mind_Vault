@@ -1124,3 +1124,80 @@ def test_a_slot_too_close_to_now_is_skipped():
     pub = get_settings().publishing
     now = datetime(2026, 11, 9, 18, 30, tzinfo=timezone.utc)              # 13:30 New York
     assert next_release_slot(now, pub, []) == datetime(2026, 11, 10, 19, 0, tzinfo=timezone.utc)
+
+
+def _written_script(tmp_path, facts=6, topic=True):
+    script = tmp_path / "japan.txt"
+    script.write_text(
+        ("TOPIC: the history of Japan\n" if topic else "")
+        + "TITLE: How Japan Opened to the World\nTAGS: japan, meiji\n\n"
+        "[INTRODUCTION]\nIn 1853, four black ships sailed into Edo Bay.\n\n"
+        "[CHAPTER: Change]\nWithin fifteen years, the shogunate was gone.\n\n"
+        "[CTA]\nJoin Mind Vault for more stories about the human mind and history.\n",
+        encoding="utf-8")
+    (tmp_path / "japan.sources.txt").write_text("\n".join(
+        f"Fact number {i} about Japan | https://www.britannica.com/place/Japan/{i}"
+        for i in range(facts)), encoding="utf-8")
+    return script
+
+
+def test_a_written_script_starts_a_run_without_the_local_model(tmp_path):
+    from core.orchestrator import Orchestrator
+    from core.registry import load_all_agents
+
+    load_all_agents()
+    ctx = Orchestrator.context_from_script(str(_written_script(tmp_path)), "history")
+    assert ctx.topic.topic == "the history of Japan" and ctx.topic.angle == "How Japan Opened to the World"
+    assert len(ctx.fact_verdicts) == 6 and all(v.status == "approved" for v in ctx.fact_verdicts)
+    assert ctx.extra["approved_facts"][0]["url"].startswith("https://www.britannica.com/")
+    assert ctx.selected_hook.text.startswith("In 1853") and ctx.selected_hook.total > 0
+    assert {"research", "fact", "hook", "script"} <= set(ctx.completed_stages)
+    assert "visual" not in ctx.completed_stages
+
+
+def test_a_written_script_needs_a_topic_and_sources(tmp_path):
+    from core.errors import Mind_VaultError
+    from core.orchestrator import Orchestrator
+    from core.registry import load_all_agents
+
+    load_all_agents()
+    with pytest.raises(Mind_VaultError, match="TOPIC"):
+        Orchestrator.context_from_script(str(_written_script(tmp_path, topic=False)), "history")
+    with pytest.raises(Mind_VaultError, match="at least 5"):
+        Orchestrator.context_from_script(str(_written_script(tmp_path, facts=3)), "history")
+
+
+def _report_for(monkeypatch, tmp_path, locked, duration=500.0):
+    from core.registry import get_agent, load_all_agents
+    from core.schemas import FactVerdict, Hook, PipelineContext, Script, VideoResult, VoiceResult
+
+    load_all_agents()
+    audio = tmp_path / "a.wav"
+    audio.write_bytes(b"x")
+    video = tmp_path / "v.mp4"
+    video.write_bytes(b"x")
+    text = "In 1853 four ships came. " * 40
+    ctx = PipelineContext(run_id="qa_locked", category="history", video_format="long")
+    ctx.script = Script(title="T", hook="In 1853 four ships came.", introduction="", body=text,
+                        ending="", cta="", full_text=text, word_count=200)
+    ctx.selected_hook = Hook(text="In 1853 four ships came.", total=60.0)
+    ctx.fact_verdicts = [FactVerdict(claim=f"c{i}", confidence=95, status="approved") for i in range(6)]
+    ctx.voice = VoiceResult(audio_path=str(audio), duration=duration, provider="t", voice="t")
+    ctx.video = VideoResult(video_path=str(video), duration=duration, resolution=[1, 1], engine="t")
+    if locked:
+        ctx.extra["title_locked"] = True
+    agent = get_agent("quality")
+    monkeypatch.setattr(agent, "_originality", lambda payload: 99.0)
+    return agent.run(ctx)
+
+
+def test_a_written_script_is_not_blocked_by_the_keyword_hook_score(monkeypatch, tmp_path):
+    report = _report_for(monkeypatch, tmp_path, locked=True)
+    assert report.passed
+    assert any(r.startswith("advisory: hook_score") for r in report.reasons)
+    assert not _report_for(monkeypatch, tmp_path, locked=False).passed
+
+
+def test_a_written_script_over_the_length_limit_still_fails(monkeypatch, tmp_path):
+    report = _report_for(monkeypatch, tmp_path, locked=True, duration=700.0)
+    assert not report.passed and any("limit" in r for r in report.reasons)

@@ -62,6 +62,9 @@ def main() -> None:
                         help="first stage to redo with --rerender (default: visual)")
     parser.add_argument("--script-file", default=None,
                         help="use this human-edited script (see core/script_file.py)")
+    parser.add_argument("--new-from-script", metavar="FILE", default=None,
+                        help="a new video from a written script (needs TOPIC: in its header "
+                             "and FILE's .sources.txt); no local LLM is used")
     parser.add_argument("--derive", metavar="RUN_ID", default=None,
                         help="new video from RUN_ID's research using --script-file and --format")
     parser.add_argument("--orientation", choices=["vertical", "landscape"], default=None,
@@ -87,6 +90,10 @@ def main() -> None:
         if not args.script_file:
             parser.error("--derive needs --script-file")
         ctx = orch.derive(args.derive, args.script_file, args.video_format)
+    elif args.new_from_script:
+        if not args.category:
+            parser.error("--new-from-script needs --category")
+        ctx = orch.from_script(args.new_from_script, args.category, args.video_format)
     elif args.resume:
         ctx = orch.resume(args.resume)
     else:

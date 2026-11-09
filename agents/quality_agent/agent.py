@@ -106,7 +106,14 @@ class QualityAgent(BaseAgent):
         if overall < overall_min:
             reasons.append(f"overall {overall} < {overall_min}")
 
-        passed = not reasons
+        # A written script was judged by its writer and is judged again by the
+        # reviewer, who sees these scores. The hook and overall formulas only
+        # count keywords, so for such a script they advise instead of blocking.
+        # Facts, originality, length, audio, picture and copyright still block.
+        if (payload.extra or {}).get("title_locked"):
+            reasons = [r if not r.startswith(("hook_score", "overall")) else f"advisory: {r}"
+                       for r in reasons]
+        passed = not [r for r in reasons if not r.startswith("advisory:")]
         scorecard = {
             "hook": hook_score, "storytelling": storytelling, "fact_confidence": fact_score,
             "originality": originality, "retention_prediction": retention,

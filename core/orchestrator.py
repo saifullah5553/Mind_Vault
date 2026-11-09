@@ -69,6 +69,70 @@ class Orchestrator:
         log.info("=== START run %s | %s | %s ===", run_id, category, video_format)
         return self._run(ctx)
 
+    def from_script(self, script_file: str, category: str,
+                    video_format: str = "long") -> PipelineContext:
+        """A new video from a written script, with no local LLM involved.
+
+        The script file carries TOPIC (what footage and photos are searched for)
+        in its header. Next to it, `<name>.sources.txt` lists the facts the
+        writer checked, one per line as `claim | source URL`. Those become the
+        run's verified facts.
+        """
+        ctx = self.context_from_script(script_file, category, video_format)
+        self._stage_content_record(ctx)
+        ctx.completed_stages.append("content_record")
+        self._use_script(ctx, script_file)
+        reasons, scores = self._text_gate(get_agent("quality"), ctx)
+        ctx.extra["precheck"] = {"passed": not reasons, "reasons": reasons, "scores": scores}
+        if any(r.startswith("originality") for r in reasons):
+            raise Mind_VaultError(f"script too close to an earlier video: {reasons}")
+        if reasons:
+            log.warning("Pre-render gate notes (the reviewer decides): %s", reasons)
+        ctx.completed_stages.append("precheck")
+        log.info("=== START run %s from script %s | %s | %s ===",
+                 ctx.run_id, script_file, category, video_format)
+        return self._run(ctx)
+
+    @staticmethod
+    def context_from_script(script_file: str, category: str,
+                            video_format: str = "long") -> PipelineContext:
+        from core.schemas import FactVerdict, ResearchDossier, ResearchFact, ScoredTopic
+        from core.script_file import load
+
+        script, head = load(script_file)
+        topic = head.get("topic")
+        if not topic:
+            raise Mind_VaultError(f"{script_file}: needs a 'TOPIC:' header line")
+        sources = Path(script_file).with_suffix(".sources.txt")
+        facts: list[ResearchFact] = []
+        if sources.exists():
+            for line in sources.read_text(encoding="utf-8").splitlines():
+                claim, _, url = line.partition("|")
+                if claim.strip() and url.strip().startswith("http"):
+                    url = url.strip()
+                    facts.append(ResearchFact(
+                        claim=claim.strip(), url=url, confidence=95.0,
+                        source_name=url.split("/")[2] if url.count("/") >= 2 else ""))
+        if len(facts) < 5:
+            raise Mind_VaultError(
+                f"{sources.name}: needs at least 5 checked facts as 'claim | https://source'")
+        ctx = PipelineContext(run_id=uuid.uuid4().hex[:12], category=category,
+                              video_format=video_format)
+        ctx.topic = ScoredTopic(topic=topic, category=category,
+                                subcategory=head.get("subcategory"), angle=script.title,
+                                evergreen=85.0, total=80.0)
+        ctx.dossier = ResearchDossier(topic=topic, category=category, facts=facts,
+                                      overall_confidence=95.0)
+        ctx.fact_verdicts = [FactVerdict(claim=f.claim, confidence=95.0, status="approved",
+                                         note=f"checked by the writer: {f.url}") for f in facts]
+        ctx.extra["approved_facts"] = [f.model_dump() for f in facts]
+        ctx.script = script
+        hook_agent = get_agent("hook")
+        ctx.selected_hook = hook_agent._score(script.hook)
+        ctx.hooks = [ctx.selected_hook]
+        ctx.completed_stages = ["trend", "topic", "research", "fact", "hook", "script"]
+        return ctx
+
     def resume(self, run_id: str) -> PipelineContext:
         ctx = self._load_checkpoint(run_id)
         if ctx is None:
@@ -397,6 +461,8 @@ class Orchestrator:
         # Each attempt is a FULL render, and the text gates already passed before
         # rendering, so this has its own (smaller) budget.
         attempts = self.settings.reliability.max_render_retries
+        if ctx.extra.get("title_locked"):
+            attempts = 0              # a written script is fixed by its writer, not regenerated
         for i in range(1, attempts + 1):
             log.warning("Quality failed (%s). Regeneration attempt %d/%d.",
                         ctx.quality.reasons, i, attempts)

@@ -193,3 +193,10 @@ def test_named_pictures_get_the_same_subject_checks(monkeypatch, tmp_path):
     monkeypatch.setattr(stock, "_download", lambda url, dest: True)
     got = stock.fetch_named("North Sea", tmp_path / "n.jpg", "history")
     assert got and got["url"].endswith("b.jpg")
+
+
+def test_blocked_titles_match_as_commons_returns_them():
+    from core.media.stock import acceptable
+    for title in ("Nederland 1916 rus.jpg", "File:Nederland 1916 rus.jpg",
+                  "North Sea Edward Wadsworth 1928.jpg"):
+        assert not acceptable({"title": title, "license": "PD", "width": 3000}, "history")

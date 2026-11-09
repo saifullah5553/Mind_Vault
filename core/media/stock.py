@@ -75,7 +75,7 @@ _OFF_TOPIC = {"psychology": re.compile(
     r"wind ?turbines?|wind ?farm|windpark|offshore wind", re.I)}
 # Single pictures that passed the filters but were wrong on screen: a modernist
 # painting in the 1953 flood film, and a map lettered in Russian on its thumbnail.
-_BLOCKED_TITLES = re.compile(r"^(?:File:)?North Sea Edward Wadsworth|^(?:File:)?Nederland 1916 rus",
+_BLOCKED_TITLES = re.compile(r"^(?:File:)?North Sea Edward Wadsworth|^(?:File:)?Nederland 1916 rus\b",
                              re.I)
 MIN_WIDTH = 1600   # below this a 1440p frame is visibly upscaled
 # "Sarah Chepchirchir - Paris Half Marathon": a photo titled with a person's name

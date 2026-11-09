@@ -181,3 +181,15 @@ def test_the_pool_keeps_one_copy_of_the_same_picture(monkeypatch, tmp_path):
     assert [h["url"][-1] for h in pool] == ["a", "c"]
     assert not stock.acceptable({"title": "North Sea Edward Wadsworth 1928", "license": "CC0",
                                  "width": 3000}, "history")
+
+
+def test_named_pictures_get_the_same_subject_checks(monkeypatch, tmp_path):
+    from core.media import stock
+    hits = [{"url": "https://x/a.jpg", "title": "North Sea Edward Wadsworth 1928", "license": "PD",
+             "width": 3000, "source": "t"},
+            {"url": "https://x/b.jpg", "title": "North Sea coast at Westkapelle in 1953",
+             "license": "PD", "width": 3000, "source": "t"}]
+    monkeypatch.setattr(stock, "_commons_search", lambda q, limit: hits)
+    monkeypatch.setattr(stock, "_download", lambda url, dest: True)
+    got = stock.fetch_named("North Sea", tmp_path / "n.jpg", "history")
+    assert got and got["url"].endswith("b.jpg")

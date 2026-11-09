@@ -234,6 +234,10 @@ def fetch_named(name: str, dest: Path, category: str = "history") -> dict | None
         + r"(?:[\s_]+\w\.?)?[\s_]+".join(map(re.escape, words)) + r"\b", re.I)
     ok = [h for h in hits if (h.get("width") or 0) >= 600 and not is_restricted(h.get("license"))
           and not _UNSAFE.search(h["title"]) and not _DIAGRAM.search(h["title"])
+          # A named place gets the same subject checks as the pool: "North Sea"
+          # found a 1928 modernist painting, "Nederland" a map in Russian.
+          and not _BLOCKED_TITLES.search(h["title"])
+          and not (_OFF_TOPIC.get(category) and _OFF_TOPIC[category].search(h["title"]))
           and whole_name.match(h["title"])
           # A lone name is ambiguous ("Thorndike" -> the Thorndike Hotel): it
           # must START the title and the title must describe a likeness.

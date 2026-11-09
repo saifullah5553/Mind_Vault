@@ -190,6 +190,9 @@ class Orchestrator:
         from core.script_file import load
         ctx.script, head = load(script_file)
         ctx.extra["title_locked"] = True
+        # The TOPIC line drives the picture searches: an edited one must count.
+        if head.get("topic") and ctx.topic is not None:
+            ctx.topic = ctx.topic.model_copy(update={"topic": head["topic"]})
         for field, key in (("description", "description"), ("thumbnail", "thumbnail_text"),
                            ("tags", "tags")):
             if head.get(field):

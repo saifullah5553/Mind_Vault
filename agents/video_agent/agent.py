@@ -235,15 +235,23 @@ class VideoAgent(BaseAgent):
         shots = (pool * uses)[:len(free)]
         step = len(free) / len(shots)
         remaining = list(shots)
+        placed: list[dict] = []
+        from core.media.stock import part_per_line
+        line_part = dict(zip(map(id, scenes), part_per_line([s.narration for s in scenes], topic)))
         for k in range(len(shots)):
             scene = free[int(k * step)]
-            # Evenly spread positions; at each, the clip whose mood fits the line.
-            clip = self._best_clip(scene.narration, remaining)
+            # Evenly spread positions; at each, footage of the part of the story
+            # this line is in, else the clip whose mood fits the line.
+            same = [c for c in remaining if c.get("part") == line_part.get(id(scene))]
+            if not same and any("part" in c for c in remaining):
+                continue      # no footage of this part left: the line keeps a still
+            clip = same[0] if same else self._best_clip(scene.narration, remaining)
             remaining.remove(clip)
             scene.clip_path = clip["path"]
+            placed.append(clip)
         self.log.info("Footage: %d distinct shot(s) placed across %d scene(s).",
-                      len(pool), len(shots))
-        credits.add(out_dir, shots, "footage")
+                      len(pool), len(placed))
+        credits.add(out_dir, placed, "footage")
 
     def _attach_subject_clips(self, scenes, out_dir: Path, res) -> list:
         """Lines about something concrete show that thing. Returns the scenes left."""

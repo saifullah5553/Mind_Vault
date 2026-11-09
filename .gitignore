@@ -26,6 +26,7 @@ storage/backups/*
 storage/voices/*
 storage/music/*
 storage/review/*
+storage/reels/*
 storage/*.json
 storage/autopilot.lock
 !storage/**/.gitkeep

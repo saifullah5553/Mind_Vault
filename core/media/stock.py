@@ -63,7 +63,20 @@ _OFF_TOPIC = {"psychology": re.compile(
     r"\bhenry\b|\bpresident\b|"
     # Religious art over an unrelated line reads as a statement about faith.
     r"\bsaints?\b|madonna|virgin|christ\b|jesus|coronation|crucifi|\bchurch|cathedral|"
-    r"mosque|temple|relig|bible|\bangels?\b|\bgods?\b|goddess|prophet|\bpope\b|marathon", re.I)}
+    r"mosque|temple|relig|bible|\bangels?\b|\bgods?\b|goddess|prophet|\bpope\b|marathon", re.I),
+    # History: wars are history, but a hell or a biblical Deluge over a line about
+    # a real flood reads as a statement about faith (Bosch's "Hell and the Flood").
+    "history": re.compile(
+    r"\bhell\b|\bsaints?\b|madonna|virgin|christ\b|jesus|crucifi|bible|biblical|"
+    r"\bangels?\b|\bgods?\b|goddess|prophet|\bpope\b|deluge|\bnoah\b|genius of|"
+    r"^(?:File:)?The Flood\b|"
+    # Modern wind farms read as "today" over any period story (it was the 1953
+    # flood video's thumbnail).
+    r"wind ?turbines?|wind ?farm|windpark|offshore wind", re.I)}
+# Single pictures that passed the filters but were wrong on screen: a modernist
+# painting in the 1953 flood film, and a map lettered in Russian on its thumbnail.
+_BLOCKED_TITLES = re.compile(r"^(?:File:)?North Sea Edward Wadsworth|^(?:File:)?Nederland 1916 rus",
+                             re.I)
 MIN_WIDTH = 1600   # below this a 1440p frame is visibly upscaled
 # "Sarah Chepchirchir - Paris Half Marathon": a photo titled with a person's name
 # shows that person. In the mood pool they'd appear over a line about someone else.
@@ -80,9 +93,12 @@ def acceptable(hit: dict, category: str = "history") -> bool:
     if is_restricted(hit.get("license")):
         return False
     off = _OFF_TOPIC.get(category)
+    if _BLOCKED_TITLES.search(title):
+        return False
     if off and off.search(title):
         return False
-    if off and _PERSON_TITLE.match(str(hit.get("title", ""))):
+    # Psychology's mood pool only: a history pool searches named places and people.
+    if category == "psychology" and _PERSON_TITLE.match(str(hit.get("title", ""))):
         return False
     w = hit.get("width") or 0
     return not w or w >= MIN_WIDTH
@@ -337,6 +353,34 @@ def _download(url: str, dest: Path) -> bool:
         return False
 
 
+def topic_parts(topic: str) -> list[tuple[str, re.Pattern | None]]:
+    """'flood 1953 @ flood|storm; Kinderdijk @ windmill' -> [(query, cue), ...].
+
+    A TOPIC with ';' names several picture searches; the words after '@' are the
+    lines each one belongs to. A plain TOPIC is one search with no cue.
+    """
+    parts = []
+    for raw in (topic or "").split(";"):
+        query, _, cues = raw.partition("@")
+        if query.strip():
+            cue = re.compile(r"\b(?:" + cues.strip() + ")", re.I) if cues.strip() else None
+            parts.append((query.strip(), cue))
+    return parts or [(topic or "", None)]
+
+
+def part_per_line(lines: list[str], topic: str) -> list[int]:
+    """The TOPIC part each line belongs to: the last part whose cue this line (or
+    an earlier one) mentions, so a story told in order shows each subject in turn."""
+    parts = topic_parts(topic)
+    out, current = [], 0
+    for line in lines:
+        for i, (_, cue) in enumerate(parts):
+            if cue and cue.search(line or ""):
+                current = i
+        out.append(current)
+    return out
+
+
 def fetch_pool(topic: str, count: int, dest_dir: Path, category: str = "history") -> list[dict]:
     """Fetch a COHERENT pool of images about `topic`.
 
@@ -346,11 +390,62 @@ def fetch_pool(topic: str, count: int, dest_dir: Path, category: str = "history"
     far faster (one query, N downloads instead of N queries).
     """
     dest_dir.mkdir(parents=True, exist_ok=True)
-    queries = search_queries(topic, category)
+    parts = topic_parts(topic)
     providers = ([_commons_search, _openverse_search] if category == "history"
                  else [_openverse_search, _commons_search])
 
     seen: set[str] = set()
+    hits: list[dict] = []
+    share = -(-count // len(parts))
+    for part, (query, _) in enumerate(parts):
+        # 'a + b + c' gives one part several searches, so a narrow subject
+        # still fills its share of photos instead of repeating a few.
+        queries = list(dict.fromkeys(q for alt in query.split("+") if alt.strip()
+                                     for q in search_queries(alt.strip(), category)))
+        found = _pool_hits(queries, share, providers, category, seen)
+        hits += [dict(h, part=part) for h in found] if len(parts) > 1 else found
+
+    pool: list[dict] = []
+    looks: list[int] = []
+    for i, hit in enumerate(hits):
+        dest = dest_dir / f"_pool_{i:03d}"
+        if _download(hit["url"], dest):
+            # Museums hold several prints of one engraving under different
+            # titles: compare the pictures themselves, and keep one.
+            look = _look(dest)
+            if look is not None and any(_near(look, other) for other in looks):
+                dest.unlink(missing_ok=True)
+                continue
+            if look is not None:
+                looks.append(look)
+            hit = dict(hit, path=str(dest))
+            pool.append(hit)
+    log.info("Image pool for '%s': %d image(s) from %s", topic[:40], len(pool),
+             ", ".join(sorted({h["source"] for h in pool})) or "none")
+    return pool
+
+
+def _look(path: Path) -> int | None:
+    """A 64-bit difference hash: near-identical pictures get near-identical hashes."""
+    try:
+        from PIL import Image
+        with Image.open(path) as im:
+            px = list(im.convert("L").resize((9, 8)).getdata())
+        bits = 0
+        for row in range(8):
+            for col in range(8):
+                bits = (bits << 1) | (px[row * 9 + col] < px[row * 9 + col + 1])
+        return bits
+    except Exception:
+        return None
+
+
+def _near(a: int, b: int, limit: int = 10) -> bool:
+    return bin(a ^ b).count("1") <= limit
+
+
+def _pool_hits(queries: list[str], count: int, providers, category: str,
+               seen: set[str]) -> list[dict]:
     hits: list[dict] = []
     for q in queries:
         if len(hits) >= count or not q.strip():
@@ -359,7 +454,9 @@ def fetch_pool(topic: str, count: int, dest_dir: Path, category: str = "history"
             if len(hits) >= count:
                 break
             try:
-                for hit in provider(q, limit=count):
+                # Ask for more than needed: many results fail the licence,
+                # size or subject checks.
+                for hit in provider(q, limit=min(50, count * 3)):
                     title_key = re.sub(r"[^a-z]", "", str(hit.get("title", "")).lower())[:40]
                     if hit["url"] in seen or (title_key and title_key in seen) \
                             or not acceptable(hit, category):
@@ -370,16 +467,7 @@ def fetch_pool(topic: str, count: int, dest_dir: Path, category: str = "history"
                         break
             except Exception as exc:
                 log.debug("%s failed for %r: %s", provider.__name__, q[:40], exc)
-
-    pool: list[dict] = []
-    for i, hit in enumerate(hits):
-        dest = dest_dir / f"_pool_{i:03d}"
-        if _download(hit["url"], dest):
-            hit = dict(hit, path=str(dest))
-            pool.append(hit)
-    log.info("Image pool for '%s': %d image(s) from %s", topic[:40], len(pool),
-             ", ".join(sorted({h["source"] for h in pool})) or "none")
-    return pool
+    return hits
 
 
 def fetch_image(query: str, dest: Path, category: str = "history") -> dict | None:

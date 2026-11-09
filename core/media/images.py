@@ -191,6 +191,8 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
             # One photo per still, so pictures don't repeat within a video.
             stills = sum(1 for s in scenes if not s.animation_kind and not s.clip_path)
             want = min(max(12, stills), cfg.pool_max)
+            if ";" in topic:
+                want = cfg.pool_max     # shared between the searches; parts differ in length
             if category == "psychology":
                 # Abstract subjects: pick by mood from curated libraries.
                 from core.media.themes import THEMES
@@ -201,6 +203,10 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
         except Exception as exc:
             log.warning("Image pool fetch failed (%s); using cards.", exc)
 
+    from core.media.stock import part_per_line
+    by_index = {s.index: s.narration for s in scenes}
+    parts = part_per_line([by_index.get(i, "") for i in range(max(by_index, default=-1) + 1)],
+                          topic)
     named_cache: dict[str, dict | None] = {}
     known = known_names(" ".join(s.narration for s in scenes))
     for scene in scenes:
@@ -224,6 +230,18 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
                 # use the pool up: one picture appeared four times in a video.
                 shows = not scene.animation_kind and not scene.clip_path
                 meta = pick(scene.narration, pool, used if shows else dict(used))
+            elif any("part" in m for m in pool):
+                # A TOPIC with several searches: the least-used picture of the
+                # part this line belongs to (flood photos for the flood, barriers
+                # for the barriers), any least-used picture once that part is spent.
+                shows = not scene.animation_kind and not scene.clip_path
+                want = parts[scene.index] if scene.index < len(parts) else 0
+                same = [m for m in pool if m.get("part") == want]
+                meta = min(same or pool, key=lambda m: (used.get(m["path"], 0), pool.index(m)))
+                if used.get(meta["path"], 0):
+                    meta = min(pool, key=lambda m: (used.get(m["path"], 0), pool.index(m)))
+                if shows:
+                    used[meta["path"]] = used.get(meta["path"], 0) + 1
             else:
                 # Cycle the pool so consecutive scenes differ but stay on-subject.
                 meta = pool[scene.index % len(pool)]

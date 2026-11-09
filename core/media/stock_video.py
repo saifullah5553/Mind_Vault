@@ -585,6 +585,12 @@ def fetch_clip_pool(topic: str, count: int, dest_dir: Path,
     """
     dest_dir.mkdir(parents=True, exist_ok=True)
     terms = [t for t in (topic, search_terms(topic, 3), search_terms(topic, 2)) if t.strip()]
+    from core.media.stock import topic_parts
+    # Footage uses each part's first search; '+' alternatives are for photos.
+    parts = [q.split("+")[0].strip() for q, _ in topic_parts(topic)]
+    if len(parts) > 1:
+        # Several searches: an equal share of footage for each part of the story.
+        terms = parts
 
     # History leans on archival film; psychology leans on modern b-roll.
     if category == "history":
@@ -610,19 +616,21 @@ def fetch_clip_pool(topic: str, count: int, dest_dir: Path,
         # psychology documentary).
         if hits:
             terms = []
-    for term in terms:
+    share = -(-count // len(terms)) if len(parts) > 1 else count
+    for part, term in enumerate(terms):
         if len(hits) >= count:
             break
+        cap = min(count, len(hits) + share)
         for provider in providers:
-            if len(hits) >= count:
+            if len(hits) >= cap:
                 break
             try:
                 for hit in provider(term, count):
                     if hit["url"] in seen:
                         continue
                     seen.add(hit["url"])
-                    hits.append(hit)
-                    if len(hits) >= count:
+                    hits.append(dict(hit, part=part) if len(parts) > 1 else hit)
+                    if len(hits) >= cap:
                         break
             except Exception as exc:
                 log.debug("%s failed: %s", getattr(provider, "__name__", "?"), exc)

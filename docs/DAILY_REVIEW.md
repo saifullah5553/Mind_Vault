@@ -134,6 +134,57 @@ The video stays private and YouTube makes it public at the next free release slo
 (`publishing.release_*` in settings: 2 pm on weekdays and 10 am at weekends, US
 Eastern). `--public` instead publishes immediately. Use it only if the owner asks.
 
+## 5b. Reels: Part 1, Part 2, …
+
+Every long video also becomes 5–10 vertical reels of about a minute each. They are
+cut from the finished long video, so they carry the same checked facts, pictures,
+music and licences. Make them only from a long video that passed review and is
+uploaded.
+
+1. Plan the parts. Each cut falls on a sentence break, and a pause is preferred:
+
+   ```bash
+   .venv\Scripts\python -m scripts.make_reels plan <run_id>
+   ```
+
+   Use `--parts N` to change the number. Each part should start where a new thought
+   starts.
+2. Write `content/scripts/<slug>.reels.txt`, one line per part:
+   `HEADLINE | YouTube title`.
+   - HEADLINE is 2–6 words in capitals, shown under "PART n/N" in the first second.
+     It must make a stranger want the next minute, and must be true to that part.
+   - The YouTube title carries the keyword early. "(Part n/N)" is added
+     automatically.
+3. Render, then look at `storage/reels/<run_id>/sheet.png`. Each row shows a part's
+   opening, middle and end card.
+
+   ```bash
+   .venv\Scripts\python -m scripts.make_reels render <run_id> --titles content/scripts/<slug>.reels.txt
+   ```
+
+   Check each part as producer, director, social media expert and SEO expert:
+   - the headline is readable and fits the part
+   - the opening line hooks, and the part makes sense on its own
+   - the captions are clear of the picture
+   - the disclaimer card is last
+   - it runs under 3 minutes
+4. Publish:
+
+   ```bash
+   .venv\Scripts\python -m scripts.make_reels publish <run_id> --long-id <video_id> --live
+   ```
+
+   - Each part uploads PRIVATE with its own release time, so YouTube releases them
+     with no computer needed.
+   - Part 1 goes out at least an hour after the long video. Then the parts follow
+     at the next free reel times: 07, 09, 11, 13, 16, 18, 20 and 22 o'clock US
+     Eastern. These are tracked in `storage/reel_slots.json`.
+   - Each description says "Part n of N", links to the full documentary, and keeps
+     the disclaimer and credits.
+   - Copies with ready-to-paste captions go to `upload_ready/reels_<run_id>/` for
+     Facebook and TikTok.
+   - Without `--live`, publish only prints the plan.
+
 ## 6. Report
 
 Write `storage/review/<run_id>/review_notes.md` covering what was checked, what

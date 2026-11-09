@@ -429,6 +429,16 @@ def _mix_music(base: Path, out: Path, seconds: float, seed: str) -> bool:
         return False
 
 
+def _loudness_filter(m: dict) -> str:
+    """Second loudnorm pass, then a limiter: loudnorm alone let a mix reach a true
+    peak of +0.5 dB (it falls back to dynamic mode when the target can't be met)."""
+    return (f"loudnorm={_LOUDNESS}:measured_I={m['input_i']}:measured_TP={m['input_tp']}:"
+            f"measured_LRA={m['input_lra']}:measured_thresh={m['input_thresh']}:"
+            f"offset={m['target_offset']}:linear=true,"
+            # -2 dBFS sample peak leaves room for the AAC encoder's overshoot.
+            "alimiter=limit=0.794:level=disabled")
+
+
 def _normalize_loudness(src: Path, out: Path) -> bool:
     """Bring the finished mix to the platforms' level, and put the index up front.
 
@@ -444,9 +454,7 @@ def _normalize_loudness(src: Path, out: Path) -> bool:
             check=True, capture_output=True)
         text = probe.stderr.decode("utf-8", "replace")
         m = json.loads(text[text.rindex("{"):text.rindex("}") + 1])
-        filt = (f"loudnorm={_LOUDNESS}:measured_I={m['input_i']}:measured_TP={m['input_tp']}:"
-                f"measured_LRA={m['input_lra']}:measured_thresh={m['input_thresh']}:"
-                f"offset={m['target_offset']}:linear=true")
+        filt = _loudness_filter(m)
         subprocess.run([ffmpeg, "-y", "-i", str(src), "-map", "0:v", "-map", "0:a", "-c:v", "copy",
                         "-af", filt, *_AUDIO_OUT, "-movflags", "+faststart", str(out)],
                        check=True, capture_output=True)

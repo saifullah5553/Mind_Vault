@@ -435,8 +435,9 @@ def _loudness_filter(m: dict) -> str:
     return (f"loudnorm={_LOUDNESS}:measured_I={m['input_i']}:measured_TP={m['input_tp']}:"
             f"measured_LRA={m['input_lra']}:measured_thresh={m['input_thresh']}:"
             f"offset={m['target_offset']}:linear=true,"
-            # -2 dBFS sample peak leaves room for the AAC encoder's overshoot.
-            "alimiter=limit=0.794:level=disabled")
+            # -3 dBFS sample peak leaves room for the AAC encoder's overshoot:
+            # -2 dBFS still let one 1953 flood render reach a true peak of 0.0 dB.
+            "alimiter=limit=0.708:level=disabled")
 
 
 def _normalize_loudness(src: Path, out: Path) -> bool:

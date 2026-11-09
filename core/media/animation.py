@@ -441,6 +441,15 @@ def render_animated_segment(text: str, kind: str, out_path: Path, res, fps: int,
     w, h = res
     frames = max(2, round(max(0.8, duration) * fps))
     renderer = _RENDERERS.get(kind)
+    if kind.startswith("map:"):
+        # "map:{json}" carries the place chosen for this line (core/media/maps.py).
+        import json
+
+        from core.media import maps
+        spec = json.loads(kind[4:])
+
+        def renderer(img, _text, st, rs, p):
+            maps.draw(img, spec, st, rs, p)
 
     try:
         bg = _background(res, style)

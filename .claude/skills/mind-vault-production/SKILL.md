@@ -76,6 +76,11 @@ Use `--category psychology` for psychology topics.
   Write numbers the way they're said ("nineteen seventy-one" is fine as "1971").
 - Use concrete nouns: footage is found by the subject of each sentence. A line about
   "cats in wooden boxes" gets cats; a line about "the human condition" gets nothing.
+- Maps: the first line naming a country, city or landmark can become an animated map
+  with a pin (at most 4 per video, spread through the story). Name places plainly
+  ("at Kinderdijk", "the Maeslant barrier"). Cities over 100,000 people and every
+  country are known. Add a landmark, region or small town to
+  `content/data/places.json` with its coordinates from Wikipedia before rendering.
 - Every 60–90 seconds, add a turn: a surprise, a reversal, or a question answered.
   That's what holds retention.
 - Never "delve", "journey", "tapestry", "in the realm of", "profound", "multifaceted",

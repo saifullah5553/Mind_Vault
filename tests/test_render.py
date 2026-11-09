@@ -101,7 +101,7 @@ def test_loudness_pass_ends_with_a_limiter():
          "target_offset": "0.2"}
     f = _loudness_filter(m)
     assert f.startswith("loudnorm=") and "measured_I=-20" in f
-    assert f.endswith("alimiter=limit=0.794:level=disabled")
+    assert f.endswith("alimiter=limit=0.708:level=disabled")
 
 
 def test_rerender_script_file_updates_the_topic(tmp_path):

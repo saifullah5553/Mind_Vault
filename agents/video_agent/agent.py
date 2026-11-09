@@ -150,6 +150,26 @@ class VideoAgent(BaseAgent):
             if CHAPTER_RE.match(scene.narration.strip()):
                 scene.animation_kind = "title"
 
+        # Pass 0 — maps: the first line naming each place or country shows where
+        # it is (core/media/maps.py). They count towards the budget.
+        if self.config.get("maps", True):
+            import json
+
+            from core.media.maps import plan_maps
+            try:
+                plan = plan_maps([s.narration for s in scenes],
+                                 limit=int(self.config.get("map_max", 4)))
+            except Exception as exc:
+                self.log.warning("Map planning failed (%s); no maps.", str(exc)[:160])
+                plan = {}
+            for i, spec in plan.items():
+                if not scenes[i].animation_kind and used < budget:
+                    scenes[i].animation_kind = "map:" + json.dumps(spec)
+                    used += 1
+            if plan:
+                self.log.info("Maps: %s", ", ".join(s["place"] or s["country"]
+                                                   for s in plan.values()))
+
         # Pass 1 — confident matches (a headline, a figure, a date range, a
         # cause->effect chain). These are the scenes animation renders best.
         shown = {s.text_overlay.lower() for s in scenes if s.animation_kind}

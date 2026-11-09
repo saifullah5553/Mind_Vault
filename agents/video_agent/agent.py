@@ -17,6 +17,24 @@ from core.registry import register_agent
 from core.schemas import ScenePlan, VideoResult, VoiceResult
 
 
+def with_disclaimer(scenes: list, video_format: str, brand) -> list:
+    """The scenes plus a closing disclaimer card (silent; the music plays on).
+
+    The card is added for rendering only, so chapters and captions still follow
+    the narration.
+    """
+    text = (brand.disclaimer_screen or "").strip()
+    if not text or not scenes:
+        return list(scenes)
+    seconds = brand.disclaimer_seconds_short if video_format == "short" \
+        else brand.disclaimer_seconds_long
+    card = scenes[-1].model_copy(update={
+        "index": scenes[-1].index + 1, "narration": "", "text_overlay": text,
+        "duration": seconds, "animation_kind": "notice", "clip_path": None,
+        "image_path": None, "sentences": 0})
+    return [*scenes, card]
+
+
 @register_agent
 class VideoAgent(BaseAgent):
     name = "video"
@@ -60,7 +78,8 @@ class VideoAgent(BaseAgent):
 
         out = Path(self.settings.storage_path("videos")) / f"{run_id}.mp4"
         presenter_overlay = payload.get("presenter_overlay")
-        result = assemble_video(plan.scenes, voice, out, video_format=video_format,
+        result = assemble_video(with_disclaimer(plan.scenes, video_format, self.settings.brand),
+                                voice, out, video_format=video_format,
                                 presenter_overlay=presenter_overlay)
 
         # Synced SRT captions (platforms reward them; used by the uploaders).

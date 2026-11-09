@@ -22,7 +22,8 @@ def _next(weekday: int) -> date:
 
 
 def test_plan_follows_publishing_cadence():
-    s = get_settings()  # short mon/wed/fri, long sun, review sun
+    s = get_settings().model_copy(deep=True)
+    s.publishing.short_days, s.publishing.long_days = ["mon", "wed", "fri"], ["sun"]
     assert autopilot.plan_jobs(_next(0), s) == ["research", "short", "backup"]
     assert autopilot.plan_jobs(_next(1), s) == ["research", "backup"]
     assert autopilot.plan_jobs(_next(6), s) == ["research", "long", "review", "backup"]

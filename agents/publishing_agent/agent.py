@@ -19,6 +19,7 @@ from pathlib import Path
 
 from core.agents.base import BaseAgent
 from core.errors import ProviderError
+from core.media import credits
 from core.publishing import get_publisher
 from core.registry import register_agent
 from core.schemas import PipelineContext, PublishPackage, PublishResult
@@ -40,6 +41,9 @@ class PublishingAgent(BaseAgent):
         packages: list[PublishPackage] = []
         pub = self.settings.publishing
         allowed = pub.short_platforms if payload.video_format == "short" else pub.long_platforms
+        # Last check before a real upload; a dry run sends nothing.
+        problem = "" if dry_run else credits.publish_problem(
+            Path(self.settings.storage_path("images")) / payload.run_id)
         for meta in payload.metadata:
             if meta.platform not in allowed:
                 continue
@@ -51,6 +55,10 @@ class PublishingAgent(BaseAgent):
                 duration=payload.video.duration if payload.video else 0.0,
             )
             packages.append(pkg)
+            if problem:
+                self.log.error("Not uploading %s: %s", payload.run_id, problem)
+                results.append(PublishResult(platform=pkg.platform, status="failed", note=problem))
+                continue
             results.append(self._dispatch(pkg, dry_run))
 
         self._write_manifest(payload, packages, results)

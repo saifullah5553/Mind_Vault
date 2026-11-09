@@ -32,9 +32,10 @@ class SEOAgent(BaseAgent):
         topic = payload.topic.angle if payload.topic else subject
         category = payload.category
         base_title = payload.script.title if payload.script else topic
-        keywords = self._keywords(topic, category)
-
         extra = payload.extra or {}
+        # Human-written tags beat anything worked out from the title.
+        keywords = [t.strip() for t in str(extra.get("tags") or "").split(",") if t.strip()] \
+            or self._keywords(topic, category)
         # A human-written title/description is used as is.
         title = base_title if extra.get("title_locked") else self._best_title(subject, category, base_title)
         description = extra.get("description") or self._description(topic, category)
@@ -45,18 +46,21 @@ class SEOAgent(BaseAgent):
         base = self.settings.publishing.credits_url
         full_url = f"{base}{payload.run_id}.txt" if base and used else ""
         rules = self.config.get("platform_rules", {})
-        base_tags = self.config.get("base_hashtags", [])
 
         metas: list[PlatformMetadata] = []
         for platform in self.settings.publishing.platforms:
             r = rules.get(platform, {})
-            hashtags = self._platform_hashtags(category, base_tags, r.get("hashtags", 3))
+            hashtags = self._platform_hashtags(category, platform, payload.video_format,
+                                               r.get("hashtags", 3))
             limit = r.get("desc_max", 2000)
             parts = [self._platform_desc(description, platform)]
             if platform == "youtube" and chapters:
                 parts.append(chapters)
             if disclosure:
                 parts.append(disclosure)
+            notice = (self.settings.brand.disclaimer_description or "").strip()
+            if notice:
+                parts.append(notice)
             text = "\n\n".join(parts)
             # Credits are a licence requirement, so they get room before anything else.
             block = credits.block(used, limit - min(len(text), limit // 2) - 2, full_url)
@@ -129,18 +133,25 @@ class SEOAgent(BaseAgent):
         skip = {"that", "this", "what", "with", "your", "from", "they", "their", "uncovering",
                 "hidden", "secret", "truth", "real", "reason"}
         words = [w for w in re.findall(r"[A-Za-z]{4,}", topic.lower()) if w not in skip]
-        base = [category, "documentary", "education", "facts", "explained", "story"]
+        # What people actually search for comes first; single title words are weak tags.
+        base = [category, f"{category} explained", f"{category} documentary", "education"]
         seen, out = set(), []
-        for w in words + base:
+        for w in base + words:
             if w not in seen:
                 seen.add(w)
                 out.append(w)
         return out
 
-    def _platform_hashtags(self, category: str, base: list[str], n: int) -> list[str]:
-        other = {"psychology": "#history", "history": "#psychology"}.get(category)
-        tags = [t for t in base if t != other] + [f"#{category}facts", "#storytime", "#didyouknow"]
-        return tags[:n]
+    def _platform_hashtags(self, category: str, platform: str, video_format: str,
+                           n: int) -> list[str]:
+        tags = [f"#{category}", "#mindvault"]
+        if video_format == "long":
+            tags.append("#documentary")
+        elif platform == "youtube":
+            tags.append("#shorts")
+        if platform == "tiktok":
+            tags.append("#learnontiktok")
+        return (tags + [f"#{category}facts", "#didyouknow", "#storytime"])[:n]
 
     def _fit(self, text: str, limit: int) -> str:
         return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"

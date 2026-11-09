@@ -24,7 +24,6 @@ from core.publishing.base import GRAPH_VERSION, PlatformPublisher
 from core.schemas import PublishPackage, PublishResult
 
 _GRAPH = f"https://graph.facebook.com/{GRAPH_VERSION}"
-_GRAPH_VIDEO = f"https://graph-video.facebook.com/{GRAPH_VERSION}"
 _RETRIES = 5
 
 
@@ -77,7 +76,7 @@ class FacebookPublisher(PlatformPublisher):
         try:
             handle = upload_file(video, os.environ["FACEBOOK_APP_ID"],
                                  os.environ["FACEBOOK_USER_TOKEN"])
-            r = httpx.post(f"{_GRAPH_VIDEO}/{page_id}/videos", timeout=120, data={
+            r = httpx.post(f"{_GRAPH}/{page_id}/videos", timeout=120, data={
                 "access_token": os.environ["FACEBOOK_PAGE_TOKEN"],
                 "title": pkg.title, "description": desc,
                 "fbuploader_video_file_chunk": handle,

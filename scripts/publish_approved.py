@@ -54,7 +54,12 @@ def _load_ctx(run_id: str) -> PipelineContext | None:
 def main() -> None:
     ap = argparse.ArgumentParser(description="Publish approved videos (private)")
     ap.add_argument("run_id", nargs="?", default=None)
+    ap.add_argument("--live", action="store_true",
+                    help="upload for real this once, even though publishing.dry_run is on "
+                         "(uploads still start private)")
     args = ap.parse_args()
+    if args.live:
+        get_settings().publishing.dry_run = False
 
     load_all_agents()
     approved = _approved(args.run_id)

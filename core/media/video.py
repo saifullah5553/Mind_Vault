@@ -14,6 +14,7 @@ image layer, so the output carries on-screen text under every engine.
 from __future__ import annotations
 
 import shutil
+import json
 import subprocess
 import tempfile
 from pathlib import Path
@@ -23,6 +24,15 @@ from core.logging_setup import get_logger
 from core.schemas import Scene, VideoResult, VoiceResult
 
 log = get_logger("media.video")
+
+
+# Every segment carries the same colour tags, or the stream-copied concat takes the
+# first segment's and players can show the wrong colours.
+_COLOUR_SCALE = "scale=out_color_matrix=bt709:out_range=tv"
+_COLOUR_TAGS = ["-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709",
+                "-color_range", "tv"]
+# Platforms turn loud videos down but don't turn quiet ones up.
+_LOUDNESS = "I=-14:TP=-1.5:LRA=11"
 
 
 def _crf() -> int:
@@ -68,11 +78,11 @@ def _clip_segment(ffmpeg: str, scene, dur: float, res, fps: int, part: Path) -> 
     w, h = res
     inputs = [ffmpeg, "-y", "-stream_loop", "-1", "-t", f"{dur:.3f}", "-i", scene.clip_path]
     base = (f"[0:v]scale={w}:{h}:force_original_aspect_ratio=increase,"
-            f"crop={w}:{h},setsar=1,fps={fps},format=yuv420p")
+            f"crop={w}:{h},setsar=1,fps={fps},{_COLOUR_SCALE},format=yuv420p")
     fc = f"{base}[out]"
     cmd = inputs + ["-filter_complex", fc, "-map", "[out]", "-an",
                     "-r", str(fps), "-c:v", "libx264", "-preset", _preset(),
-                    "-crf", str(_crf()), "-threads", "2", str(part)]
+                    "-crf", str(_crf()), *_COLOUR_TAGS, "-threads", "2", str(part)]
     try:
         subprocess.run(cmd, check=True, capture_output=True)
         return part.exists()
@@ -113,8 +123,9 @@ def _kenburns_segment(ffmpeg: str, scene, i: int, dur: float, res, fps: int, par
     mode = i % 4
     z0, z1 = {0: (1.0, 1.15), 1: (1.15, 1.0)}.get(mode, (1.08, 1.12))
     cmd = [ffmpeg, "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{w}x{h}",
-           "-r", str(fps), "-i", "-", "-c:v", "libx264", "-preset", _preset(),
-           "-crf", str(_crf()), "-pix_fmt", "yuv420p", "-threads", "2", str(part)]
+           "-r", str(fps), "-i", "-", "-vf", _COLOUR_SCALE, "-c:v", "libx264",
+           "-preset", _preset(), "-crf", str(_crf()), "-pix_fmt", "yuv420p", *_COLOUR_TAGS,
+           "-threads", "2", str(part)]
     try:
         proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
                                 stderr=subprocess.DEVNULL)
@@ -173,12 +184,13 @@ def burn_captions(video_path: str, srt_path: str) -> str:
     src, srt = Path(video_path), Path(srt_path)
     out = src.with_name(f"{src.stem}_captioned{src.suffix}")
     style = ("FontName=Arial,Bold=1,FontSize=13,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,"
-             "BorderStyle=1,Outline=2,Shadow=0,Alignment=2,MarginV=70")
+             "BorderStyle=1,Outline=2,Shadow=0,Alignment=2,MarginV=70,MarginL=48,MarginR=48")
     # Filter arguments can't hold a Windows path, so run beside the .srt.
     cmd = [ffmpeg, "-y", "-i", str(src.resolve()), "-vf",
            f"subtitles={srt.name}:force_style='{style}'",
            "-c:v", "libx264", "-preset", _preset(), "-crf", str(_crf()),
-           "-pix_fmt", "yuv420p", "-c:a", "copy", str(out.resolve())]
+           "-pix_fmt", "yuv420p", *_COLOUR_TAGS, "-c:a", "copy",
+           "-movflags", "+faststart", str(out.resolve())]
     try:
         subprocess.run(cmd, check=True, capture_output=True, cwd=str(srt.parent))
         return str(out)
@@ -270,7 +282,7 @@ def _kenburns_build(scenes, audio: VoiceResult | None, out_path: Path, res, fps:
 
         if audio and Path(audio.audio_path).exists():
             cmd2 = [ffmpeg, "-y", "-i", str(silent), "-i", audio.audio_path,
-                    "-c:v", "copy", *_AUDIO_OUT, "-shortest", str(out_path)]
+                    "-c:v", "copy", "-af", "apad", *_AUDIO_OUT, "-shortest", str(out_path)]
         else:
             cmd2 = [ffmpeg, "-y", "-i", str(silent), "-c", "copy", str(out_path)]
         subprocess.run(cmd2, check=True, capture_output=True)
@@ -403,7 +415,7 @@ def _mix_music(base: Path, out: Path, seconds: float, seed: str) -> bool:
     fc = (f"[0:a]{fmt},asplit=2[voice][key];"
           f"[1:a]{fmt},{env}[bed];"
           f"[bed][key]sidechaincompress=threshold=0.04:ratio=8:attack=5:release=320[duck];"
-          f"[voice][duck]amix=inputs=2:duration=first:dropout_transition=2[a]")
+          f"[voice][duck]amix=inputs=2:duration=first:dropout_transition=2:normalize=0[a]")
     cmd = [ffmpeg, "-y", "-i", str(base), "-stream_loop", "-1", "-i", bed,
            "-filter_complex", fc, "-map", "0:v", "-map", "[a]",
            "-c:v", "copy", *_AUDIO_OUT, "-shortest", str(out)]
@@ -414,6 +426,33 @@ def _mix_music(base: Path, out: Path, seconds: float, seed: str) -> bool:
         return out.exists()
     except Exception as exc:
         log.warning("Music mix failed (%s); keeping video without music.", exc)
+        return False
+
+
+def _normalize_loudness(src: Path, out: Path) -> bool:
+    """Bring the finished mix to the platforms' level, and put the index up front.
+
+    Two passes: measure, then correct, so the voice keeps its natural dynamics.
+    """
+    ffmpeg = _ffmpeg_exe()
+    if not ffmpeg:
+        return False
+    try:
+        probe = subprocess.run(
+            [ffmpeg, "-hide_banner", "-nostats", "-i", str(src), "-vn", "-af",
+             f"loudnorm={_LOUDNESS}:print_format=json", "-f", "null", "-"],
+            check=True, capture_output=True)
+        text = probe.stderr.decode("utf-8", "replace")
+        m = json.loads(text[text.rindex("{"):text.rindex("}") + 1])
+        filt = (f"loudnorm={_LOUDNESS}:measured_I={m['input_i']}:measured_TP={m['input_tp']}:"
+                f"measured_LRA={m['input_lra']}:measured_thresh={m['input_thresh']}:"
+                f"offset={m['target_offset']}:linear=true")
+        subprocess.run([ffmpeg, "-y", "-i", str(src), "-map", "0:v", "-map", "0:a", "-c:v", "copy",
+                        "-af", filt, *_AUDIO_OUT, "-movflags", "+faststart", str(out)],
+                       check=True, capture_output=True)
+        return out.exists()
+    except Exception as exc:
+        log.warning("Loudness pass failed (%s); keeping the mix as it was.", str(exc)[:200])
         return False
 
 
@@ -465,6 +504,11 @@ def assemble_video(scenes: list[Scene], audio: VoiceResult | None, out_path: str
         if _mix_music(final_path, mixed, total, out.stem):
             final_path = mixed
             music_used = True
+
+    if engine_used.startswith("ffmpeg"):
+        levelled = final_path.with_name(final_path.stem + "_level.mp4")
+        if _normalize_loudness(final_path, levelled):
+            final_path = levelled
 
     tags = ("+presenter" if presenter_used else "") + ("+music" if music_used else "")
     log.info("Assembled video via %s%s -> %s", engine_used, tags, final_path.name)

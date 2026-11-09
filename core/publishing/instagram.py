@@ -5,6 +5,8 @@ IMPORTANT: Instagram's API does NOT accept a file upload — it requires the vid
 to be reachable at a PUBLIC URL. So this publisher needs the video hosted first
 (set INSTAGRAM_VIDEO_URL to the public URL of the uploaded file, or wire a host
 step). Flow: create a REELS media container from the URL -> publish it.
+Instagram's API has no private or draft state, so publishing here is immediately
+live. This publisher therefore refuses anything but an explicit privacy="public".
 Nothing runs unless dry_run is false and creds are present.
 """
 
@@ -25,7 +27,11 @@ class InstagramPublisher(PlatformPublisher):
     platform = "instagram"
     required_env = ["INSTAGRAM_USER_ID", "INSTAGRAM_ACCESS_TOKEN"]
 
-    def publish(self, pkg: PublishPackage) -> PublishResult:  # pragma: no cover - needs creds+network
+    def publish(self, pkg: PublishPackage) -> PublishResult:
+        if pkg.privacy != "public":
+            return PublishResult(
+                platform=self.platform, status="skipped",
+                note=f"Instagram has no private upload; not posting while privacy={pkg.privacy}.")
         user_id = os.environ["INSTAGRAM_USER_ID"]
         token = os.environ["INSTAGRAM_ACCESS_TOKEN"]
         # IG needs a PUBLIC video URL, not a local file.
@@ -35,7 +41,8 @@ class InstagramPublisher(PlatformPublisher):
                 platform=self.platform, status="skipped",
                 note="Instagram requires a public video URL. Host the mp4 and set "
                      "INSTAGRAM_VIDEO_URL (see docs/PUBLISHING.md).")
-        caption = f"{pkg.title}\n\n{' '.join(pkg.hashtags)}".strip()[:2200]
+        # The description carries the licence credits, so it can't be dropped.
+        caption = f"{pkg.description}\n\n{' '.join(pkg.hashtags)}".strip()[:2200]
         try:
             create = httpx.post(f"{_GRAPH}/{user_id}/media", data={
                 "media_type": "REELS", "video_url": video_url,

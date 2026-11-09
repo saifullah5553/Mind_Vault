@@ -9,14 +9,31 @@ brand:
   name: "Mind_Vault"
   tagline: "The vault of the human mind and its history."
   language: "en"
-  cta: "Follow for more stories about the human mind and history."
+  cta: "Join Mind Vault for more stories about the human mind and history."
+  # Every video ends on this card, and every description carries the longer text.
+  disclaimer_screen: >-
+    For education and entertainment only. Not medical, psychological, legal or
+    financial advice. The views expressed are Mind Vault's own. Footage and images
+    are used under their licences; credits are in the description.
+  disclaimer_description: >-
+    Disclaimer: This video is for educational and entertainment purposes only and is
+    not medical, psychological, legal or financial advice. The views expressed are
+    those of Mind Vault, based on published research and historical sources believed
+    to be accurate at the time of publication. No claim is made on behalf of any
+    person or organisation shown or mentioned. If you spot an error, tell us in the
+    comments and we will correct it. Footage and images are used under their
+    licences; see the credits.
+  disclaimer_seconds_long: 7.0
+  disclaimer_seconds_short: 5.0
 
 # ── Content strategy ────────────────────────────────────────────────────────
 strategy:
   # The content mix the CEO tries to maintain across the rolling calendar.
+  # A third psychology; two thirds history, which covers human history and the
+  # history of countries (core/taxonomy.py).
   category_mix:
-    psychology: 0.5
-    history: 0.5
+    psychology: 0.34
+    history: 0.66
   calendar_days: 90
   # Avoid repeating the same emotional angle / structure back to back.
   avoid_repeat_window: 8
@@ -29,8 +46,8 @@ publishing:
   long_platforms: ["youtube", "facebook"]   # where documentaries go
   short_platforms: ["youtube", "tiktok", "instagram", "facebook"]  # vertical clips
   require_manual_approval: true # hold every video in the review folder until approved
-  short_days: ["mon", "wed", "fri"]
-  long_days: ["sun"]
+  short_days: []                # vertical clips are cut from a documentary by hand for now
+  long_days: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]   # one documentary a day
   platforms: ["youtube", "tiktok", "instagram", "facebook"]
   timezone: "Asia/Dubai"
   review_dir: "storage/review"
@@ -92,11 +109,12 @@ images:
 # ── Video assembly ──────────────────────────────────────────────────────────
 video:
   engine: "auto"                 # auto | ffmpeg | moviepy
+  speak_chapters: false          # true = announce "Chapter one: ..." with a title card
   captions: true
   ken_burns: true                # slow zoom/pan on every still (cinematic motion)
   # Encode quality for YouTube. crf 18 + medium preset gives a high-bitrate
   # 1080p master; raise crf (e.g. 23) for faster, smaller, softer renders.
-  crf: 18
+  crf: 16
   preset: "medium"
   frame_quality: 95              # JPEG quality of generated animation frames
   min_footage_height: 400        # skip stock sources too low-res to upscale

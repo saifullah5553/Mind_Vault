@@ -73,7 +73,8 @@ class TikTokPublisher(PlatformPublisher):
         headers = {"Authorization": f"Bearer {os.environ['TIKTOK_ACCESS_TOKEN']}",
                    "Content-Type": "application/json; charset=UTF-8"}
         size = video.stat().st_size
-        caption = f"{pkg.title} {' '.join(pkg.hashtags)}".strip()[:2200]
+        # The description carries the licence credits, so it can't be dropped.
+        caption = f"{pkg.description}\n\n{' '.join(pkg.hashtags)}".strip()[:2200]
         try:
             info = httpx.post(f"{_BASE}/creator_info/query/", headers=headers, timeout=30)
             info.raise_for_status()

@@ -74,17 +74,21 @@ SUBJECTS: list[tuple[str, str]] = [
     # hungry cats in a box" shows cats, not a laboratory.
     # "a|b" = searches in order of preference. Every word of a search must be in
     # a clip's tags, so a phrase Pixabay barely has needs a broader second choice.
+    # The closing line: end on something striking, not on whatever came next.
+    (r"\bhuman mind\b", "galaxy|milky way|starry sky|night sky|stars"),
+    # "No goal. No score." is advice to do the thing for its own sake, not football.
+    (r"\bno (?:goal|score|audience)\b", "painter|pottery|playing guitar|piano"),
     (r"\bcats?\b|\blatch\b", "cat"),
     (r"\bdogs?\b", "dog"),
     (r"\bmonkeys?\b|\bapes?\b", "monkey"),
-    (r"\bpreschool\w*|\bchild\w*|\bkids?\b|\bdraw\w*|\bmarkers?\b", "child drawing|girl drawing|kindergarten|classroom"),
+    (r"\bpreschool\w*|\bchild\w*|\bkids?\b|\bdraw\w*|\bmarkers?\b", "child drawing|girl drawing|classroom"),
     (r"\bparents?\b|\bdaycare\b|\bpickups?\b", "mother child"),
     (r"\bchess\b", "chess"),
     (r"\bclimb\w*", "rock climbing"),
     (r"\bartists?\b|\bpaint\w*", "painter"),
     (r"\bmusic\w*|\bsing\w*", "playing guitar"),
     (r"\bsports?\b|\bathlet\w*", "soccer goal|soccer"),
-    (r"\bpuzzles?\b", "puzzle"),
+    (r"\bpuzzles?\b", "puzzle|jigsaw|rubik"),
     (r"\bstudents?\b|\buniversity\b|\bclassroom\b", "students classroom|classroom"),
     (r"\bmoney\b|\bpaid\b|\bpay\b|\bsalar\w+|\bwages?\b|\bfines?\b|\bprice\b", "money cash"),
     (r"\blikes\b|\bsocial media\b|\bphones?\b|\bonline\b", "smartphone"),

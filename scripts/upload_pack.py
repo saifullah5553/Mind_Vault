@@ -38,10 +38,9 @@ def build(run_id: str, root: Path | None = None) -> Path:
     metas = json.loads((bundle / "metadata.json").read_text(encoding="utf-8"))
     pub = s.publishing
     # Last check before anything can leave the machine.
-    bad = credits.restricted(credits.load(bundle))
-    if bad:
-        names = "; ".join(f"{b['title']} ({b['license']})" for b in bad)
-        raise SystemExit(f"Not packing {run_id}: licence forbids this use: {names}")
+    problem = credits.publish_problem(Path(s.storage_path("images")) / run_id)
+    if problem:
+        raise SystemExit(f"Not packing {run_id}: {problem}")
     allowed = pub.short_platforms if record.get("format") == "short" else pub.long_platforms
 
     slug = re.sub(r"[^A-Za-z0-9]+", "_", record.get("title") or run_id).strip("_")[:50]

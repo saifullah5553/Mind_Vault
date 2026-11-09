@@ -97,6 +97,9 @@ _NOT_FILMED = re.compile(
     r"ai generated|\b3d\b|cartoon|animation|\bhud\b|green ?screen|chroma|transition|overlay|"
     r"quiz|maze|labyrinth|wallpaper|fifa|coca[- ]cola|\bflags?\b|"
     r"coronavirus|covid|quarantine|\bmasks?\b", re.I)
+# Clips that pass every tag check but show something wrong for this channel.
+# 132048: kindergarten class in face masks, which dates a story about the 1970s.
+_BLOCKED_IDS = {132048}
 # Pixabay's CDN answers bursts with empty files, which silently cost a video its
 # subject shots (20 of 85 in one render). Wait and try again.
 _RETRIES = 3
@@ -355,7 +358,7 @@ def _pixabay_clips(query: str, limit: int, landscape: bool = True,
                           "safesearch": "true"})
         for v in r.json().get("hits", []):
             tags = str(v.get("tags", "")).lower()
-            if not acceptable_title(tags) or _NOT_FILMED.search(tags):
+            if not acceptable_title(tags) or _NOT_FILMED.search(tags) or v.get("id") in _BLOCKED_IDS:
                 continue
             if v.get("type", "film") != "film" or (strict and not _tagged(tags, query)):
                 continue

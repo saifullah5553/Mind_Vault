@@ -130,6 +130,8 @@ class YouTubePublisher(PlatformPublisher):
             # 2) Upload the bytes in resumable chunks.
             video_id = _upload_chunks(session_url, video)["id"]
             url = f"https://youtu.be/{video_id}"
+            token = self._access_token()
+            headers = {"Authorization": f"Bearer {token}"}
 
             # 3) Custom thumbnail (best-effort).
             if pkg.thumbnail_path and Path(pkg.thumbnail_path).exists():

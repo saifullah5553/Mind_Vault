@@ -34,7 +34,7 @@ class ThumbnailAgent(BaseAgent):
                 else self.config.get("long_size", [1280, 720]))
         styles = self.config.get("styles", [])[: self.config.get("variants", 3)]
         punchy = (payload.get("text") or self._punchy_text(title)).upper()
-        photos = self._best_photos(run_id, len(styles))
+        photos = self._best_photos(run_id, len(styles), payload.get("stills"))
 
         out_dir = Path(self.settings.storage_path("thumbnails"))
         variants: list[str] = []
@@ -60,7 +60,7 @@ class ThumbnailAgent(BaseAgent):
         words = title.split(":")[0].split()
         return " ".join(words[: self.config.get("max_words", 6)]).upper()
 
-    def _best_photos(self, run_id: str, count: int) -> list[Path]:
+    def _best_photos(self, run_id: str, count: int, only: list[str] | None = None) -> list[Path]:
         """The video's most striking stills: colourful, bright enough, all different."""
         try:
             import numpy as np
@@ -68,7 +68,10 @@ class ThumbnailAgent(BaseAgent):
 
             scored = []
             folder = Path(self.settings.storage_path("images")) / run_id
+            allowed = {Path(p).resolve() for p in only} if only is not None else None
             for path in folder.glob("scene_*.jpg"):
+                if allowed is not None and path.resolve() not in allowed:
+                    continue
                 a = np.asarray(Image.open(path).convert("RGB").resize((160, 90)), dtype="float32")
                 rg = a[..., 0] - a[..., 1]
                 yb = (a[..., 0] + a[..., 1]) / 2 - a[..., 2]

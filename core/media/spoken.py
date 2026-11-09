@@ -18,14 +18,24 @@ _NUMBERS = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nin
 CHAPTER_RE = re.compile(r"^Chapter (\w+): (.+?)\.?$")
 
 
-def spoken_text(full_text: str) -> str:
-    """Strip section markers; turn chapter markers into a spoken heading."""
+def _speak_chapters() -> bool:
+    try:
+        from core.config import get_settings
+        return bool(get_settings().video.speak_chapters)
+    except Exception:
+        return False
+
+
+def spoken_text(full_text: str, speak_chapters: bool | None = None) -> str:
+    """Strip section markers. Chapter markers become a spoken heading only when
+    `video.speak_chapters` is on; otherwise just a paragraph break."""
     count = 0
+    speak = _speak_chapters() if speak_chapters is None else speak_chapters
 
     def repl(m: re.Match) -> str:
         nonlocal count
         tag, name = m.group(1).strip().upper(), (m.group(2) or "").strip().rstrip(".")
-        if tag == "CHAPTER" and name:
+        if tag == "CHAPTER" and name and speak:
             count += 1
             n = _NUMBERS[count - 1] if count <= len(_NUMBERS) else str(count)
             return f"\n\nChapter {n}: {name}.\n\n"

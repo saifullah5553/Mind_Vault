@@ -20,6 +20,9 @@ TAXONOMY: dict[str, dict[str, list[str]]] = {
             "ancient civilizations", "lost kingdoms", "empires", "famous leaders",
             "historical mysteries", "wars", "discoveries", "inventions",
             "cultural history", "forgotten events",
+            # The history of countries: the story of how a nation came to be.
+            "Japan", "Egypt", "China", "India", "the United Arab Emirates", "Turkey",
+            "Greece", "Mexico", "Peru", "Morocco", "Italy", "Mongolia",
         ],
     },
     # Future verticals — pre-seeded so expansion is trivial. Not used until the

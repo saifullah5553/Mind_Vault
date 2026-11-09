@@ -397,9 +397,31 @@ def _draw_ambient(img, scene_text, style, res, p, seed: int = 0):
                 wrapped, f, style.ink, _ease(min(1.0, p * 2.5)))
 
 
+def _draw_notice(img, scene_text, style, res, p):
+    """The closing disclaimer: a small heading and calm, readable text."""
+    from PIL import ImageDraw
+    w, h = res
+    d = ImageDraw.Draw(img)
+    a = _ease(min(1.0, p * 4))
+    hf = _font(max(28, int(min(w, h) * 0.05)), True)
+    head = "DISCLAIMER"
+    hb = d.textbbox((0, 0), head, font=hf)
+    f, wrapped = _fit_text(d, scene_text.strip(), lambda s: _font(s, False),
+                           int(w * 0.80), int(min(w, h) * 0.05), max_h=int(h * 0.50))
+    lines = wrapped.split("\n")
+    lh = d.textbbox((0, 0), "Ag", font=f)[3] + 12
+    gap = (hb[3] - hb[1]) * 1.6
+    top = (h - (gap + len(lines) * lh)) / 2
+    _alpha_text(img, ((w - (hb[2] - hb[0])) / 2, top), head, hf, style.accent, a)
+    for i, line in enumerate(lines):
+        tb = d.textbbox((0, 0), line, font=f)
+        _alpha_text(img, ((w - (tb[2] - tb[0])) / 2, top + gap + i * lh), line, f, style.ink, a)
+
+
 _RENDERERS = {
     "title": _draw_title, "stat": _draw_stat, "timeline": _draw_timeline,
     "concept": _draw_concept, "quote": _draw_quote, "bullets": _draw_bullets,
+    "notice": _draw_notice,
 }
 
 
@@ -438,7 +460,10 @@ def render_animated_segment(text: str, kind: str, out_path: Path, res, fps: int,
                 frame.save(tdp / f"f{i:05d}.jpg", "JPEG", quality=_frame_quality(), subsampling=0)
             cmd = [ffmpeg, "-y", "-framerate", str(fps), "-i", str(tdp / "f%05d.jpg"),
                    "-r", str(fps), "-c:v", "libx264", "-preset", _enc_preset(),
-                   "-crf", str(_enc_crf()), "-pix_fmt", "yuv420p", str(out_path)]
+                   "-crf", str(_enc_crf()), "-vf",
+                   "scale=in_range=pc:out_range=tv:out_color_matrix=bt709",
+                   "-pix_fmt", "yuv420p", "-colorspace", "bt709", "-color_primaries", "bt709",
+                   "-color_trc", "bt709", "-color_range", "tv", str(out_path)]
             subprocess.run(cmd, check=True, capture_output=True)
         return out_path.exists()
     except Exception as exc:

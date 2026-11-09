@@ -13,10 +13,11 @@ import re
 from pathlib import Path
 
 _NO_ATTRIBUTION = re.compile(r"public domain|\bcc0\b|\bpd\b|pixabay|pexels|no restrictions", re.I)
-# Terms a monetised, edited video cannot meet: non-commercial, no-derivatives.
+# Terms a monetised, edited video cannot safely meet: non-commercial, no-derivatives,
+# and ShareAlike, which may require the finished video to carry the same licence.
 _RESTRICTED = re.compile(
     r"\bby[-_ ]?n[cd]\b|\bnc[-_ ]?(?:nd|sa)\b|non[-_ ]?commercial|no[-_ ]?deriv|"
-    r"all rights reserved", re.I)
+    r"\bby[-_ ]?sa\b|share[-_ ]?alike|all rights reserved", re.I)
 
 
 def is_restricted(licence: str) -> bool:
@@ -31,6 +32,21 @@ def restricted(items: list[dict]) -> list[dict]:
 
 def _path(out_dir: Path) -> Path:
     return Path(out_dir) / "credits.json"
+
+
+def publish_problem(out_dir: Path) -> str:
+    """Why this run can't leave the machine, or "" when it can.
+
+    `out_dir` is the run's folder under storage/images. A missing record is a
+    refusal: looking in the wrong folder must never read as "nothing restricted".
+    """
+    if not _path(out_dir).exists():
+        return f"no credits record in {out_dir}"
+    bad = restricted(load(out_dir))
+    if bad:
+        names = "; ".join(f"{b['title']} ({b['license']})" for b in bad)
+        return f"licence forbids this use: {names}"
+    return ""
 
 
 def reset(out_dir: Path) -> None:

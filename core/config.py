@@ -39,6 +39,11 @@ class BrandConfig(BaseModel):
     tagline: str = ""
     language: str = "en"
     cta: str = ""
+    # Shown as an end card on every video and added to every description.
+    disclaimer_screen: str = ""
+    disclaimer_description: str = ""
+    disclaimer_seconds_long: float = 7.0
+    disclaimer_seconds_short: float = 5.0
 
 
 class StrategyConfig(BaseModel):
@@ -105,6 +110,9 @@ class ImagesConfig(BaseModel):
 
 class VideoConfig(BaseModel):
     engine: str = "auto"
+    # False: chapters structure the script but aren't read out or shown, so the
+    # video plays as one continuous story (and the description has no chapter list).
+    speak_chapters: bool = False
     captions: bool = True
     background_music: bool = True
     ken_burns: bool = True          # slow zoom/pan on stills (cinematic motion)

@@ -126,7 +126,8 @@ class Orchestrator:
         from core.script_file import load
         ctx.script, head = load(script_file)
         ctx.extra["title_locked"] = True
-        for field, key in (("description", "description"), ("thumbnail", "thumbnail_text")):
+        for field, key in (("description", "description"), ("thumbnail", "thumbnail_text"),
+                           ("tags", "tags")):
             if head.get(field):
                 ctx.extra[key] = head[field]
         self._update_content(ctx, title=ctx.script.title, script=ctx.script.full_text)
@@ -351,7 +352,8 @@ class Orchestrator:
         return True
 
     def _stage_visual(self, ctx):
-        ctx.scene_plan = self._agent_output("visual", {"script": ctx.script}, ctx)
+        ctx.scene_plan = self._agent_output(
+            "visual", {"script": ctx.script, "video_format": ctx.video_format}, ctx)
 
     def _stage_voice(self, ctx):
         ctx.voice = self._agent_output("voice", {"script": ctx.script, "run_id": ctx.run_id}, ctx)
@@ -432,6 +434,10 @@ class Orchestrator:
         result = self._agent_output("thumbnail", {
             "title": title, "run_id": ctx.run_id, "content_id": ctx.content_id,
             "video_format": ctx.video_format, "text": ctx.extra.get("thumbnail_text"),
+            # Only stills the video shows: every scene has a fallback photo, and an
+            # unshown one is uncredited (a CC BY photo reached a thumbnail that way).
+            "stills": [s.image_path for s in (ctx.scene_plan.scenes if ctx.scene_plan else [])
+                       if s.image_path and not s.clip_path and not s.animation_kind],
         }, ctx)
         ctx.extra["thumbnails"] = result.get("variants", [])
         ctx.extra["thumbnail"] = result.get("selected")

@@ -9,7 +9,7 @@ def test_markers_are_not_read_aloud_and_chapters_are_spoken():
     script = ("[INTRODUCTION]\nThe hook line.\n\n[CHAPTER: Origins]\nIt began here.\n\n"
               "[CHAPTER: The Turning Point]\nThen it changed.\n\n[CONCLUSION]\nSo.\n\n"
               "[CTA]\nFollow for more.")
-    s = spoken_text(script)
+    s = spoken_text(script, speak_chapters=True)
     assert "[" not in s and "INTRODUCTION" not in s and "CTA" not in s
     assert "Chapter one: Origins." in s and "Chapter two: The Turning Point." in s
     # The chapter heading is its own sentence, not glued to the next one.

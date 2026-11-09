@@ -219,7 +219,11 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
 
         if pool and not done:
             if any("theme" in m for m in pool):
-                meta = pick(scene.narration, pool, used)     # by mood, no repeats
+                # Only scenes that will show the still count towards "no repeats".
+                # Footage and card scenes get one too, as a fallback, and used to
+                # use the pool up: one picture appeared four times in a video.
+                shows = not scene.animation_kind and not scene.clip_path
+                meta = pick(scene.narration, pool, used if shows else dict(used))
             else:
                 # Cycle the pool so consecutive scenes differ but stay on-subject.
                 meta = pool[scene.index % len(pool)]

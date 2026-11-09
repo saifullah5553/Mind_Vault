@@ -27,6 +27,9 @@ class VisualAgent(BaseAgent):
         style = self.config.get("style_prefix", "cinematic documentary still")
         anims = self.config.get("animations", ["slow-zoom"])
         max_s = self.config.get("max_scene_seconds", 6.0)
+        if payload.get("video_format") == "short":
+            # Vertical clips are swiped away fast: change the picture more often.
+            max_s = self.config.get("short_max_scene_seconds", max_s)
         min_s = self.config.get("min_scene_seconds", 2.5)
 
         scenes: list[Scene] = []

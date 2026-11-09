@@ -24,6 +24,7 @@ from pathlib import Path
 
 from core.logging_setup import get_logger
 from core.media.credits import is_restricted
+from core.media.credits import is_restricted
 
 log = get_logger("media.stock")
 
@@ -59,8 +60,15 @@ _OFF_TOPIC = {"psychology": re.compile(
     # A recognisable person the script doesn't mention reads as the person being
     # discussed: Freud over a line about Thorndike is a factual error on screen.
     r"portrait|freud|\bjung\b|pavlov|skinner|einstein|darwin|\bking\b|\bqueen\b|"
-    r"\bhenry\b|\bpresident\b", re.I)}
+    r"\bhenry\b|\bpresident\b|"
+    # Religious art over an unrelated line reads as a statement about faith.
+    r"\bsaints?\b|madonna|virgin|christ\b|jesus|coronation|crucifi|\bchurch|cathedral|"
+    r"mosque|temple|relig|bible|\bangels?\b|\bgods?\b|goddess|prophet|\bpope\b|marathon", re.I)}
 MIN_WIDTH = 1600   # below this a 1440p frame is visibly upscaled
+# "Sarah Chepchirchir - Paris Half Marathon": a photo titled with a person's name
+# shows that person. In the mood pool they'd appear over a line about someone else.
+_PERSON_TITLE = re.compile(
+    r"^(?:File:)?[A-Z][a-z\u00c0-\u017f]+(?: [A-Z][a-z\u00c0-\u017f]+){1,2}\s+[-\u2013,(]")
 
 
 def acceptable(hit: dict, category: str = "history") -> bool:
@@ -69,8 +77,12 @@ def acceptable(hit: dict, category: str = "history") -> bool:
     title = f"{hit.get('title', '')} {hit.get('tags', '')}"
     if _UNSAFE.search(title) or _DIAGRAM.search(hit.get("title", "")):
         return False
+    if is_restricted(hit.get("license")):
+        return False
     off = _OFF_TOPIC.get(category)
     if off and off.search(title):
+        return False
+    if off and _PERSON_TITLE.match(str(hit.get("title", ""))):
         return False
     w = hit.get("width") or 0
     return not w or w >= MIN_WIDTH
@@ -204,7 +216,7 @@ def fetch_named(name: str, dest: Path, category: str = "history") -> dict | None
         r"^(?:(?:portrait|photo|photograph|picture|painting|bust|statue)[\s_]+of[\s_]+|"
         r"(?:dr|prof|professor|sir)\.?[\s_]+)?"
         + r"(?:[\s_]+\w\.?)?[\s_]+".join(map(re.escape, words)) + r"\b", re.I)
-    ok = [h for h in hits if (h.get("width") or 0) >= 600
+    ok = [h for h in hits if (h.get("width") or 0) >= 600 and not is_restricted(h.get("license"))
           and not _UNSAFE.search(h["title"]) and not _DIAGRAM.search(h["title"])
           and whole_name.match(h["title"])
           # A lone name is ambiguous ("Thorndike" -> the Thorndike Hotel): it
@@ -264,9 +276,11 @@ def fetch_themed_pool(topic: str, category: str, per_theme: int, dest_dir: Path,
                 for hit in hits:
                     if got >= per_theme:
                         break
-                    if hit["url"] in seen or not acceptable(hit, category):
+                    title_key = re.sub(r"[^a-z]", "", str(hit.get("title", "")).lower())[:40]
+                    if hit["url"] in seen or (title_key and title_key in seen) \
+                            or not acceptable(hit, category):
                         continue
-                    seen.add(hit["url"])
+                    seen.update({hit["url"], title_key})
                     dest = dest_dir / f"_pool_{len(pool):03d}"
                     if _download(hit["url"], dest):
                         pool.append(dict(hit, path=str(dest), theme=theme))
@@ -346,9 +360,11 @@ def fetch_pool(topic: str, count: int, dest_dir: Path, category: str = "history"
                 break
             try:
                 for hit in provider(q, limit=count):
-                    if hit["url"] in seen or not acceptable(hit, category):
+                    title_key = re.sub(r"[^a-z]", "", str(hit.get("title", "")).lower())[:40]
+                    if hit["url"] in seen or (title_key and title_key in seen) \
+                            or not acceptable(hit, category):
                         continue
-                    seen.add(hit["url"])
+                    seen.update({hit["url"], title_key})
                     hits.append(hit)
                     if len(hits) >= count:
                         break

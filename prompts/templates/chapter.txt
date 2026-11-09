@@ -10,7 +10,8 @@ ALREADY COVERED IN EARLIER CHAPTERS:
 
 You are writing ONE chapter of a premium Mind_Vault documentary about the topic
 above. Write the chapter titled "{chapter}" as at most {words} words of spoken
-narration (no headings, no bullet points, no "in this chapter").
+narration (no headings, no bullet points, no "in this chapter", no "part one").
+The video plays as one continuous story, so never mention chapters or parts.
 
 Rules:
 - Say something NEW. Never repeat a person, fact or idea from the earlier chapters.
@@ -20,4 +21,4 @@ Rules:
 - Tell a concrete story: who, where, what happened.
 - Never use these phrases: "in the realm of", "delve", "journey", "intricate",
   "tapestry", "profound", "multifaceted", "fast-forward", "as we navigate".
-- End on a beat that pulls the viewer into the next chapter.
+- End on a beat that pulls the viewer into what comes next.

@@ -111,13 +111,16 @@ def _render_part(src: Path, part: reels.Part, headline: str, card: Path, out: Pa
     work.mkdir(exist_ok=True)
     (work / "c.srt").write_text(reels.part_srt(part), encoding="utf-8")
     _headline_png(work / "head.png", part.number, part.total, headline)
+    _next_png(work / "next.png", reels.next_step(part.number, part.total))
     d = part.duration
+    cta_from = max(0.0, d - reels.NEXT_STEP_SECONDS)
     secs = get_settings().brand.disclaimer_seconds_short
     filt = (
         "[0:v]split[a][b];"
         "[a]scale=270:480:force_original_aspect_ratio=increase,crop=270:480,boxblur=10:2,"
         f"scale={W}:{H},eq=brightness=-0.18:saturation=0.85[bg];"
-        f"[b]scale={W}:-2[fg];[bg][fg]overlay=0:{FG_Y}[v1];[v1][1:v]overlay=0:0[v2];"
+        f"[b]scale={W}:-2[fg];[bg][fg]overlay=0:{FG_Y}[v1];[v1][1:v]overlay=0:0[v1h];"
+        f"[v1h][4:v]overlay=0:0:enable='gte(t,{cta_from:.3f})'[v2];"
         f"[v2]subtitles=c.srt:force_style='{_CAPTION_STYLE}',"
         f"scale=out_color_matrix=bt709:out_range=tv,fps={FPS},format=yuv420p,setsar=1[vp];"
         f"[2:v]fps={FPS},format=yuv420p,setsar=1[vc];"
@@ -131,6 +134,7 @@ def _render_part(src: Path, part: reels.Part, headline: str, card: Path, out: Pa
     cmd = [ffmpeg, "-y", "-ss", f"{part.start:.3f}", "-t", f"{d:.3f}", "-i", str(src.resolve()),
            "-i", str((work / "head.png").resolve()), "-i", str(card.resolve()),
            "-f", "lavfi", "-t", f"{secs}", "-i", "anullsrc=r=48000:cl=stereo",
+           "-i", str((work / "next.png").resolve()),
            "-filter_complex", filt, "-map", "[v]", "-map", "[a]",
            "-c:v", "libx264", "-preset", _preset(), "-crf", str(_crf()), "-pix_fmt", "yuv420p",
            *_COLOUR_TAGS, "-c:a", "aac", "-b:a", "192k", str(raw.resolve())]
@@ -141,6 +145,28 @@ def _render_part(src: Path, part: reels.Part, headline: str, card: Path, out: Pa
     if not _normalize_loudness(raw, out):
         shutil.copyfile(raw, out)
     shutil.rmtree(work, ignore_errors=True)
+
+
+def _next_png(path: Path, text: str) -> None:
+    """The call to action shown under the picture over the part's last seconds."""
+    from PIL import Image, ImageDraw
+
+    from core.media.animation import Style, _fit_text, _font
+    st = Style()
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    f, wrapped = _fit_text(d, text, lambda s: _font(s, True), 940, 64,
+                           min_size=40, max_h=160, spacing=10)
+    tb = d.multiline_textbbox((0, 0), wrapped, font=f, spacing=10)
+    # Inside the bottom of the picture, clear of the captions below it.
+    top = FG_Y + W * 9 // 16 - 34 - (tb[3] - tb[1]) - 10
+    pad = 22
+    d.rounded_rectangle([(W - (tb[2] - tb[0])) / 2 - pad, top - pad,
+                         (W + (tb[2] - tb[0])) / 2 + pad, top + (tb[3] - tb[1]) + pad + 10],
+                        radius=18, fill=(*st.accent, 235))
+    d.multiline_text(((W - (tb[2] - tb[0])) / 2 - tb[0], top - tb[1]), wrapped, font=f,
+                     fill=(255, 255, 255, 255), spacing=10, align="center")
+    img.save(path)
 
 
 def _sheet(files: list[Path], out: Path) -> None:

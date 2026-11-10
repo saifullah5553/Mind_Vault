@@ -75,8 +75,17 @@ _OFF_TOPIC = {"psychology": re.compile(
     r"wind ?turbines?|wind ?farm|windpark|offshore wind", re.I)}
 # Single pictures that passed the filters but were wrong on screen: a modernist
 # painting in the 1953 flood film, and a map lettered in Russian on its thumbnail.
-_BLOCKED_TITLES = re.compile(r"^(?:File:)?North Sea Edward Wadsworth|^(?:File:)?Nederland 1916 rus\b",
-                             re.I)
+_BLOCKED_TITLES = re.compile(
+    r"^(?:File:)?North Sea Edward Wadsworth|^(?:File:)?Nederland 1916 rus\b|"
+    # The Iceland film: Stockholm's parliament over the Althing, a living namesake
+    # of Ingolfur Arnarson, Norway's present crown prince over King Haakon IV,
+    # blank manuscript bindings, and a 1928 building over the 1845 Althing.
+    r"Riksdagshuset|Bjorn Thor Arnarson|Crown Prince|AM 113 [ab] fol\. - 001|"
+    r"University of Iceland, circa 1928|"
+    # Re-render: 20th-century Haakon VII over the 1262 king, blank Íslendingabók
+    # pages, a 1918 committee photo over the year 930, modern ships over 874.
+    r"Haakon VII|Kong Haakon|Haakon 7\.|Haakon in 20\d\d|slendingab|Sambandslaganefnd|"
+    r"Coast Guard ship|from V\w+kin museum", re.I)
 MIN_WIDTH = 1600   # below this a 1440p frame is visibly upscaled
 # "Sarah Chepchirchir - Paris Half Marathon": a photo titled with a person's name
 # shows that person. In the mood pool they'd appear over a line about someone else.

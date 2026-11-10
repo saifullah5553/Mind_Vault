@@ -1201,3 +1201,36 @@ def test_a_written_script_is_not_blocked_by_the_keyword_hook_score(monkeypatch, 
 def test_a_written_script_over_the_length_limit_still_fails(monkeypatch, tmp_path):
     report = _report_for(monkeypatch, tmp_path, locked=True, duration=700.0)
     assert not report.passed and any("limit" in r for r in report.reasons)
+
+
+def test_history_lines_get_no_psychology_b_roll(monkeypatch, tmp_path):
+    """The Iceland film showed a dog, a guitarist and sneakers over history lines."""
+    from core.registry import get_agent, load_all_agents
+    from core.schemas import Scene
+    load_all_agents()
+    agent = get_agent("video")
+    asked = []
+    monkeypatch.setattr(agent, "_attach_subject_clips",
+                        lambda scenes, *a, **k: asked.append(1) or scenes)
+    monkeypatch.setattr("core.media.stock_video.fetch_clip_pool", lambda *a, **k: [])
+    scenes = [Scene(index=0, narration="It lived in the books they were reading.",
+                    visual_prompt="x", duration=3)]
+    agent._attach_footage(scenes, tmp_path, "Thingvellir", "history", (640, 360))
+    assert not asked
+    agent._attach_footage(scenes, tmp_path, "motivation", "psychology", (640, 360))
+    assert asked
+
+
+@pytest.mark.parametrize("title", [
+    "Riksdagshuset Parliament House Kungliga Operan Stockholm 2016 02.jpg",
+    "20180313 Bjorn Thor Arnarson Copenhagen University 0007 (25915953827).jpg",
+    "Crown Prince Haakon of Norway 2010-09-06 001.jpg",
+    "Íslendingabók - AM 113 a fol. - 001.jpg",
+    "Haakon in 2025 (cropped).jpg",
+    "King Haakon VII of Norway boarding MS Venus.jpg",
+    "Íslendingabók - AM 113 b fol. - 002.jpg",
+    "Sambandslaganefndin in front of Alþingishúsið in Reykjavík.jpg",
+])
+def test_wrong_iceland_pictures_are_blocked(title):
+    from core.media.stock import acceptable
+    assert not acceptable({"title": title, "license": "CC0", "width": 3000}, "history")

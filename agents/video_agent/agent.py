@@ -230,7 +230,10 @@ class VideoAgent(BaseAgent):
             seen_names.update(n.split()[-1] for n in new)    # "Harlow" = "Harry Harlow"
             if not new:
                 free.append(s)
-        free = self._attach_subject_clips(free, out_dir, res)
+        # Subject b-roll (reading, friends, walking...) illustrates psychology ideas.
+        # Over a history line it puts a dog or a guitarist where the place should be.
+        if category == "psychology":
+            free = self._attach_subject_clips(free, out_dir, res)
         if not free:
             return
         w, h = res

@@ -204,3 +204,14 @@ def youtube_title(title: str, number: int, total: int) -> str:
     tag = f"(Part {number}/{total})"
     title = re.sub(r"\s*\(?part\s*\d+\s*/\s*\d+\)?\s*$", "", title, flags=re.I).strip()
     return f"{title[:100 - len(tag) - 1].rstrip()} {tag}"
+
+
+# Seconds at the end of each part that carry the call to action.
+NEXT_STEP_SECONDS = 4.0
+
+
+def next_step(number: int, total: int) -> str:
+    """What the reel asks the viewer to do before the disclaimer card."""
+    if number < total:
+        return f"FOLLOW FOR PART {number + 1}/{total}"
+    return "FULL VIDEO: LINK BELOW"

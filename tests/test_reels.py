@@ -87,3 +87,9 @@ def test_reel_slots_follow_the_long_video_and_skip_taken():
     ny = [s.astimezone(__import__("zoneinfo").ZoneInfo("America/New_York")).strftime("%a %H:%M")
           for s in slots]
     assert ny == ["Mon 18:00", "Mon 20:00", "Mon 22:00", "Tue 07:00"]
+
+
+def test_every_part_ends_by_asking_the_viewer_to_act():
+    assert reels.next_step(1, 5) == "FOLLOW FOR PART 2/5"
+    assert reels.next_step(4, 5) == "FOLLOW FOR PART 5/5"
+    assert reels.next_step(5, 5) == "FULL VIDEO: LINK BELOW"

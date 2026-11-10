@@ -12,6 +12,7 @@
     {"name": "Zuiderzee", "lat": 52.75, "lon": 5.35, "country": "Netherlands"},
     {"name": "Eastern Scheldt", "lat": 51.64, "lon": 3.70, "country": "Netherlands"},
     {"name": "Maeslant barrier", "lat": 51.955, "lon": 4.163, "country": "Netherlands"},
+    {"name": "Thingvellir", "lat": 64.2559, "lon": -21.1299, "country": "Iceland"},
     {"name": "Edo Bay", "lat": 35.45, "lon": 139.80, "country": "Japan"},
     {"name": "Uraga", "lat": 35.24, "lon": 139.72, "country": "Japan"}
   ]

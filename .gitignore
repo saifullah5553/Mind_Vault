@@ -67,3 +67,4 @@ storage/_test/
 
 # Paste-ready upload folders (large videos)
 upload_ready/
+storage/previews/

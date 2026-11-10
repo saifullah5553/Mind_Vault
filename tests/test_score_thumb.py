@@ -45,3 +45,9 @@ def test_thumbnail_prefers_on_story_photo(tmp_path, monkeypatch):
                                 story="How Iceland Ruled Itself: The Althing at the Law Rock")
     assert picked[0].name == "scene_002.jpg"
     assert agent._best_photos("run", 1)[0].name == "scene_001.jpg"   # colour only
+
+
+def test_score_survives_any_length():
+    for secs in (3.1, 8.3, 13.7, 21.1, 30.9):
+        x = music.score(secs, "edge")
+        assert x.shape[0] == int(secs * music.SR)

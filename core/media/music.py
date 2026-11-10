@@ -65,9 +65,13 @@ def _note(freq, n, rng):
 
 def _env(n, attack, release):
     e = np.ones(n)
-    a, r = int(attack * SR), int(release * SR)
-    e[:a] = np.sin(np.linspace(0, np.pi / 2, a)) ** 2
-    e[-r:] = np.cos(np.linspace(0, np.pi / 2, r)) ** 2
+    # A chord cut short by the end of the video is shorter than its fades.
+    a = min(int(attack * SR), n // 2)
+    r = min(int(release * SR), n - a)
+    if a:
+        e[:a] = np.sin(np.linspace(0, np.pi / 2, a)) ** 2
+    if r:
+        e[-r:] = np.cos(np.linspace(0, np.pi / 2, r)) ** 2
     return e
 
 

@@ -154,6 +154,26 @@ def _place_patterns() -> tuple[tuple[re.Pattern, str], ...]:
     return tuple((_word(n), n) for n in names)
 
 
+@lru_cache(maxsize=1)
+def adjective_patterns() -> tuple[tuple[re.Pattern, str], ...]:
+    """'Australian', 'Brazilian', 'Mexican': the country name plus -n/-an/-ian.
+    Irregular ones (Danish, Dutch, French) are listed by hand."""
+    irregular = {"Danish": "Denmark", "Dutch": "Netherlands", "French": "France",
+                 "English": "United Kingdom", "British": "United Kingdom",
+                 "Scottish": "United Kingdom", "Welsh": "United Kingdom", "Irish": "Ireland",
+                 "Swedish": "Sweden", "Norwegian": "Norway", "Finnish": "Finland",
+                 "Icelandic": "Iceland", "German": "Germany", "Spanish": "Spain",
+                 "Portuguese": "Portugal", "Polish": "Poland", "Greek": "Greece",
+                 "Turkish": "Turkey", "Chinese": "China", "Japanese": "Japan",
+                 "Swiss": "Switzerland", "Thai": "Thailand", "American": "United States of America"}
+    pats = [(_word(a), c) for a, c in irregular.items() if _country(c)]
+    for c in _countries():
+        n = c["name"]
+        if len(n) >= 5 and " " not in n and n[-1] == "a":
+            pats.append((re.compile(r"(?<![\w-])" + re.escape(n[:-1]) + r"(?:an|n)(?![\w-])"), n))
+    return tuple(pats)
+
+
 def countries_in(text: str) -> list[str]:
     found = [c for pat, c in _country_patterns() if pat.search(text or "")]
     found += [c for d, c in _DEMONYMS.items() if _word(d).search(text or "")]

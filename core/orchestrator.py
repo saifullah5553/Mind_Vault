@@ -511,6 +511,7 @@ class Orchestrator:
             # a photo of what the title is about.
             "about": {s.image_path: f"{s.source} {s.narration}"
                       for s in (ctx.scene_plan.scenes if ctx.scene_plan else []) if s.image_path},
+            "story": ctx.metadata[0].description[:300] if ctx.metadata else "",
         }, ctx)
         ctx.extra["thumbnails"] = result.get("variants", [])
         ctx.extra["thumbnail"] = result.get("selected")

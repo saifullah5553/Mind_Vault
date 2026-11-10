@@ -106,3 +106,25 @@ def test_dark_picture_is_rejected(tmp_path):
     img.save(tmp_path / "ok.jpg")
     assert _too_dark(tmp_path / "dark.jpg")
     assert not _too_dark(tmp_path / "ok.jpg")
+
+
+def test_modern_ships_and_religious_art_are_off_topic_for_history():
+    from core.media.stock import acceptable
+    for title in ("Viking Sky (ship, 2017) - Sete", "Studio of Rubens - The Sacrifice of the Old Covenant",
+                  "The Adoration of the Holy Trinity"):
+        assert not acceptable({"title": title, "width": 3000}, "history"), title
+    assert acceptable({"title": "Viking (ship, 1906) at the quay", "width": 3000}, "history")
+
+
+def test_pictures_from_places_outside_the_story_are_dropped():
+    import pytest
+    from core.media import maps
+    if not all((maps.DATA_DIR / n).exists() for n in maps._FILES):
+        pytest.skip("map data not downloaded")
+    from core.media.stock import off_story_places
+    lines = ["The settlers sailed from Norway to Iceland.", "Later Iceland shared a king with Denmark."]
+    pool = [_pic("Australian Old Parliament House Speaker's Chair"),
+            _pic("Danish Royalty Tours Minneapolis"),
+            _pic("Bergen, Haakonshallen"), _pic("Danish crown jewels"), _pic("Turf house")]
+    kept = [p["title"] for p in off_story_places(pool, lines)]
+    assert kept == ["Bergen, Haakonshallen", "Danish crown jewels", "Turf house"]

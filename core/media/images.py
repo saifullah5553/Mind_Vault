@@ -200,6 +200,9 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
                 pool = fetch_themed_pool(topic, category, per_theme, out_dir)
             if len(pool) < 4:
                 pool = fetch_pool(topic, max(4, want), out_dir, category=category)
+            if category == "history":
+                from core.media.stock import off_story_places
+                pool = off_story_places(pool, [s.narration for s in scenes])
         except Exception as exc:
             log.warning("Image pool fetch failed (%s); using cards.", exc)
 

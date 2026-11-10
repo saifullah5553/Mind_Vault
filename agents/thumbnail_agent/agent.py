@@ -34,7 +34,7 @@ class ThumbnailAgent(BaseAgent):
                 else self.config.get("long_size", [1280, 720]))
         styles = self.config.get("styles", [])[: self.config.get("variants", 3)]
         punchy = (payload.get("text") or self._punchy_text(title)).upper()
-        story = f"{title} {payload.get('text') or ''}"
+        story = f"{title} {payload.get('text') or ''} {payload.get('story') or ''}"
         photos = self._best_photos(run_id, len(styles), payload.get("stills"),
                                    about=payload.get("about"), story=story)
 

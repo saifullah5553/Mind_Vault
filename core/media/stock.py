@@ -74,7 +74,11 @@ _OFF_TOPIC = {"psychology": re.compile(
     # flood video's thumbnail).
     r"wind ?turbines?|wind ?farm|windpark|offshore wind|"
     # A road sign showed twice in the Iceland test ("Divers Crossing").
-    r"\bsigns?\b|signpost|crossing sign|traffic", re.I)}
+    r"\bsigns?\b|signpost|crossing sign|traffic|"
+    # "Viking ship replica" found cruise ships named Viking Sky; "Old Covenant"
+    # found Rubens' biblical paintings.
+    r"\(ship, (?:19[5-9]\d|20\d\d)\)|cruise|\bferry\b|\bholy\b|trinity|adoration|"
+    r"sacrifice of|annunciation|nativity|apostles?\b", re.I)}
 # Single pictures that passed the filters but were wrong on screen: a modernist
 # painting in the 1953 flood film, and a map lettered in Russian on its thumbnail.
 _BLOCKED_TITLES = re.compile(
@@ -456,7 +460,7 @@ def named_words(text: str) -> set[str]:
 # someone else it is a wrong person on screen (King Inge over Thorgeir).
 _PERSON_PICTURE = re.compile(
     r"\b(?:king|queen|prince|princess|saint|bishop|jarl|earl|president|emperor|empress|"
-    r"pope|chieftain|portrait|bust of|statue of)\b", re.I)
+    r"pope|chieftain|portrait|bust of|statue of|coronation|royalty|royals)\b", re.I)
 
 
 def _common(a: set[str], b: set[str]) -> set[str]:
@@ -491,6 +495,47 @@ def relevance(line: str, hit: dict) -> tuple[float, bool]:
     if _PERSON_PICTURE.search(hit.get("title", "")) and not (named_words(line) & title):
         score -= 100
     return score, bool(names)
+
+
+def off_story_places(pool: list[dict], lines: list[str]) -> list[dict]:
+    """The pool without pictures of places in countries the story never names.
+
+    Uses the map data (core/media/maps.py): countries, their adjectives
+    (Australia -> Australian) and cities of 100,000+ people. Without the data
+    the pool is returned as it is."""
+    try:
+        from core.media import maps
+        if not maps.ensure_data():
+            return pool
+        story = set()
+        for line in lines:
+            story.update(maps.countries_in(line))
+            for name in maps.places_in(line):
+                story.update(p["country"] for p in maps._places() if p["name"] == name)
+        if not story:
+            return pool
+        adjectives = maps.adjective_patterns()
+        keep = []
+        for hit in pool:
+            title = str(hit.get("title", ""))
+            where = set(maps.countries_in(title))
+            where.update(c for pat, c in adjectives if pat.search(title))
+            # A city says where the photo was taken: one in a country outside the
+            # story drops it even if the title also names a story country
+            # ("Danish Royalty Tours Minneapolis").
+            abroad = False
+            for name in maps.places_in(title):
+                cands = {p["country"] for p in maps._places() if p["name"] == name}
+                if cands and not cands & story:
+                    abroad = True
+            if abroad or (where and not where & story):
+                log.info("Off-story place dropped: %s", title[:80])
+                continue
+            keep.append(hit)
+        return keep
+    except Exception as exc:
+        log.debug("place filter skipped (%s)", exc)
+        return pool
 
 
 def assign_pictures(lines: list[str], parts: list[int], pool: list[dict],
@@ -562,6 +607,19 @@ def fetch_pool(topic: str, count: int, dest_dir: Path, category: str = "history"
     parts = topic_parts(topic)
     providers = ([_commons_search, _openverse_search] if category == "history"
                  else [_openverse_search, _commons_search])
+    # Each query is asked once per provider: the top-up pass used to ask again,
+    # and a 7-part TOPIC took 28 minutes instead of 5.
+    answers: dict[tuple[str, str], list[dict]] = {}
+
+    def _once(provider):
+        def ask(q: str, limit: int = 3) -> list[dict]:
+            key = (provider.__name__, q)
+            if key not in answers:
+                answers[key] = provider(q, limit=50)
+            return answers[key][:limit]
+        ask.__name__ = provider.__name__
+        return ask
+    providers = [_once(pr) for pr in providers]
 
     seen: set[str] = set()
     hits: list[dict] = []

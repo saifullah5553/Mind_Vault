@@ -1,6 +1,6 @@
 ---
 name: mind-vault-production
-description: Write, review and improve Mind_Vault documentaries (psychology, human history, the history of countries). Use when writing a documentary script and its sources file, reviewing a rendered video as producer/director/social media/SEO expert, critiquing a contact sheet, or choosing a title, thumbnail text and tags.
+description: Write, review and improve Mind_Vault documentaries (psychology, human history, the history of countries). Use when writing a documentary script and its sources file, reviewing a rendered video or reel as script writer/chief editor/producer/director/social media/SEO expert, critiquing a contact sheet, or choosing a title, thumbnail text and tags.
 ---
 
 # Mind_Vault production

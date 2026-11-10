@@ -1,7 +1,9 @@
 # Daily review
 
-Every video is reviewed before it goes public, by a reviewer acting as producer,
-director, social media expert and SEO expert. The scheduled task "Mind_Vault daily
+Every video, and every reel, is reviewed on its own before it goes public, by a
+reviewer acting in six roles: script writer, chief editor, producer, film director,
+social media expert and SEO expert. Each role fixes what it finds, and the review
+notes say what each role found. The scheduled task "Mind_Vault daily
 documentary" follows this page. Commands run from `D:\Mind_Vault` with
 `.venv\Scripts\python`.
 
@@ -36,6 +38,22 @@ Look at every picture it writes to `storage/review/<run_id>/qa/`: `sheet.png`
 (one frame every 12 s), `stills.png`, `opening.png`, `end.png`, `thumbnail.png`.
 
 ## 3. Review
+
+**Script writer: does the story work when heard?**
+- The first line names the subject and hooks in under 10 seconds.
+- A clear beginning, middle and end; each section moves the story forward.
+- Short, spoken sentences. No filler, no repeated points, no list-reading.
+- The question or promise of the opening is answered before the end.
+- The closing line asks the viewer to do something (watch the next part,
+  comment, subscribe), after the story ends and before the disclaimer card.
+
+**Chief editor: is every word right?**
+- Every fact, name, date, number and family relation (father, son, wife,
+  brother) matches the sources file. Anything unsourced or doubtful is cut.
+- Names and places are spelled the same way everywhere: script, captions,
+  title, description, tags, thumbnail and reels.
+- Grammar is correct, and English only (the channel's language rule).
+- The title, thumbnail and description promise nothing the video doesn't deliver.
 
 **Producer: is it true, legal and on brand?**
 - Check every line in `claims_to_check.txt` against reliable sources (encyclopaedias,
@@ -162,7 +180,8 @@ uploaded.
    .venv\Scripts\python -m scripts.make_reels render <run_id> --titles content/scripts/<slug>.reels.txt
    ```
 
-   Check each part as producer, director, social media expert and SEO expert:
+   Check each part on its own in all six roles (script writer, chief editor,
+   producer, director, social media expert, SEO expert):
    - the headline is readable and fits the part
    - the opening line hooks, and the part makes sense on its own
    - the captions are clear of the picture

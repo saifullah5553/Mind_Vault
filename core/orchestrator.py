@@ -507,6 +507,10 @@ class Orchestrator:
             # unshown one is uncredited (a CC BY photo reached a thumbnail that way).
             "stills": [s.image_path for s in (ctx.scene_plan.scenes if ctx.scene_plan else [])
                        if s.image_path and not s.clip_path and not s.animation_kind],
+            # What each still shows and the line under it: the thumbnail prefers
+            # a photo of what the title is about.
+            "about": {s.image_path: f"{s.source} {s.narration}"
+                      for s in (ctx.scene_plan.scenes if ctx.scene_plan else []) if s.image_path},
         }, ctx)
         ctx.extra["thumbnails"] = result.get("variants", [])
         ctx.extra["thumbnail"] = result.get("selected")

@@ -36,6 +36,8 @@ length, audio and copyright still block.
 
 Look at every picture it writes to `storage/review/<run_id>/qa/`: `sheet.png`
 (one frame every 12 s), `stills.png`, `opening.png`, `end.png`, `thumbnail.png`.
+Then read `qa/shotlist.txt`: every spoken line with what is on screen under it
+(the photo's title, the footage, the map or the card).
 
 ## 3. Review
 
@@ -66,6 +68,11 @@ Look at every picture it writes to `storage/review/<run_id>/qa/`: `sheet.png`
   Nothing that takes sides in a current political, religious or ethnic dispute.
 
 **Director: does every picture belong to its line?**
+- Go through `qa/shotlist.txt` line by line. Each picture must show what its
+  line is about: the place, person, object or event it names, or for a general
+  line, something from the same time and place. A generic or random picture
+  is a fault, even if it is pretty. Fix it by naming the subject plainly in the
+  line, adding a TOPIC search for it, or blocking the wrong picture's title.
 - No wrong person: a named person is shown only if it is really them, and a
   recognisable stranger never appears over a line about someone else.
 - No religious art or places of worship unless the line is about them. Nothing

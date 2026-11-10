@@ -69,6 +69,24 @@ def _have_moviepy() -> bool:
         return False
 
 
+def _film_look() -> str:
+    """One grade for every filmed or photographed scene (not the animated cards),
+    so clips from many cameras and century-old prints cut together as one film:
+    a gentle contrast curve, slightly muted colour, cool shadows and warm
+    highlights, a soft vignette and fine moving grain. Ends with a comma, or is
+    empty when settings.video.film_look is off."""
+    v = get_settings().video
+    if not getattr(v, "film_look", True):
+        return ""
+    look = ["eq=contrast=1.04:saturation=0.95",
+            "colorbalance=rs=-0.015:bs=0.015:rh=0.02:bh=-0.02",
+            "vignette=angle=PI/9:eval=init"]
+    grain = int(getattr(v, "film_grain", 3))
+    if grain > 0:
+        look.append(f"noise=c0s={grain}:c0f=t")
+    return ",".join(look) + ","
+
+
 def _clip_segment(ffmpeg: str, scene, dur: float, res, fps: int, part: Path) -> bool:
     """One segment cut from REAL stock footage.
 
@@ -78,7 +96,7 @@ def _clip_segment(ffmpeg: str, scene, dur: float, res, fps: int, part: Path) -> 
     w, h = res
     inputs = [ffmpeg, "-y", "-stream_loop", "-1", "-t", f"{dur:.3f}", "-i", scene.clip_path]
     base = (f"[0:v]scale={w}:{h}:force_original_aspect_ratio=increase,"
-            f"crop={w}:{h},setsar=1,fps={fps},{_COLOUR_SCALE},format=yuv420p")
+            f"crop={w}:{h},setsar=1,fps={fps},{_film_look()}{_COLOUR_SCALE},format=yuv420p")
     fc = f"{base}[out]"
     cmd = inputs + ["-filter_complex", fc, "-map", "[out]", "-an",
                     "-r", str(fps), "-c:v", "libx264", "-preset", _preset(),
@@ -123,7 +141,7 @@ def _kenburns_segment(ffmpeg: str, scene, i: int, dur: float, res, fps: int, par
     mode = i % 4
     z0, z1 = {0: (1.0, 1.15), 1: (1.15, 1.0)}.get(mode, (1.08, 1.12))
     cmd = [ffmpeg, "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{w}x{h}",
-           "-r", str(fps), "-i", "-", "-vf", _COLOUR_SCALE, "-c:v", "libx264",
+           "-r", str(fps), "-i", "-", "-vf", _film_look() + _COLOUR_SCALE, "-c:v", "libx264",
            "-preset", _preset(), "-crf", str(_crf()), "-pix_fmt", "yuv420p", *_COLOUR_TAGS,
            "-threads", "2", str(part)]
     try:
@@ -393,14 +411,14 @@ def _composite_presenter(base: Path, overlay: str, out: Path, res, scale: float,
         return False
 
 
-def _mix_music(base: Path, out: Path, seconds: float, seed: str) -> bool:
+def _mix_music(base: Path, out: Path, seconds: float, seed: str, mood: str = "history") -> bool:
     """Lay a background bed UNDER the narration with ducking + intro/outro swell."""
     ffmpeg = _ffmpeg_exe()
     if not ffmpeg:
         return False
     from core.media.music import get_music_bed
     cfg = get_settings().video
-    bed, source = get_music_bed(seconds, seed)
+    bed, source = get_music_bed(seconds, seed, mood)
     if not bed or source == "none":
         return False
     vol = cfg.music_volume
@@ -466,7 +484,8 @@ def _normalize_loudness(src: Path, out: Path) -> bool:
 
 
 def assemble_video(scenes: list[Scene], audio: VoiceResult | None, out_path: str | Path,
-                   video_format: str = "short", presenter_overlay: str | None = None) -> VideoResult:
+                   video_format: str = "short", presenter_overlay: str | None = None,
+                   category: str = "history") -> VideoResult:
     """Assemble the final video. Never raises — always returns a VideoResult."""
     cfg = get_settings()
     fmt = cfg.formats.short if video_format == "short" else cfg.formats.long
@@ -503,21 +522,21 @@ def assemble_video(scenes: list[Scene], audio: VoiceResult | None, out_path: str
         pcfg = _presenter_render_cfg()
         if _composite_presenter(final_path, presenter_overlay, composed, res,
                                  pcfg["scale"], pcfg["corner"]):
-            final_path = composed
+            final_path = _replace(final_path, composed)
             presenter_used = True
 
     # Background music (ducked under narration) on ffmpeg-built videos.
     music_used = False
     if engine_used.startswith("ffmpeg") and cfg.video.background_music:
         mixed = final_path.with_name(final_path.stem + "_music.mp4")
-        if _mix_music(final_path, mixed, total, out.stem):
-            final_path = mixed
+        if _mix_music(final_path, mixed, total, out.stem, category):
+            final_path = _replace(final_path, mixed)
             music_used = True
 
     if engine_used.startswith("ffmpeg"):
         levelled = final_path.with_name(final_path.stem + "_level.mp4")
         if _normalize_loudness(final_path, levelled):
-            final_path = levelled
+            final_path = _replace(final_path, levelled)
 
     tags = ("+presenter" if presenter_used else "") + ("+music" if music_used else "")
     log.info("Assembled video via %s%s -> %s", engine_used, tags, final_path.name)
@@ -528,6 +547,18 @@ def assemble_video(scenes: list[Scene], audio: VoiceResult | None, out_path: str
         engine=engine_used + tags,
         has_captions=cfg.video.captions,
     )
+
+
+def _replace(old: Path, new: Path) -> Path:
+    """Each finishing pass (presenter, music, loudness) writes a new file; the one
+    it replaces is an intermediate of this same build, about 1 GB at 1440p. Three
+    were kept per video and filled the disk; only the finished file is kept."""
+    if new.exists() and new.stat().st_size > 0 and old != new:
+        try:
+            old.unlink()
+        except OSError as exc:
+            log.debug("Could not remove intermediate %s (%s).", old.name, exc)
+    return new
 
 
 def _presenter_render_cfg() -> dict:

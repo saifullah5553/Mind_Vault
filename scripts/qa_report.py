@@ -127,13 +127,29 @@ def main() -> None:
         im.thumbnail((320, 568) if short else (480, 270))
         im.save(qa / "thumbnail.png")
 
+    # Shot list: every line beside what is on screen, so the director can check
+    # that each picture belongs to its line (qa/shotlist.txt, one line per scene).
     print("\n-- scenes (time, length, subject searched, picture, narration)")
     t = 0.0
+    shots = []
     for sc, sub in zip(scenes, carry_subjects([sc["narration"] for sc in scenes])):
-        src = ("ANIM:" + sc["animation_kind"]) if sc.get("animation_kind") else \
-            Path(sc.get("clip_path") or sc.get("image_path") or "").name
+        kind = sc.get("animation_kind") or ""
+        if kind.startswith("map:"):
+            spec = json.loads(kind[4:])
+            shown = f"MAP {spec.get('place') or ''} {spec.get('country') or ''}".strip()
+        elif kind:
+            shown = f"CARD {kind}"
+        else:
+            shown = sc.get("source") or Path(sc.get("clip_path") or sc.get("image_path") or "").name
+        src = ("ANIM:" + kind[:14]) if kind else Path(sc.get("clip_path") or sc.get("image_path") or "").name
         print(f"{t:6.1f} {sc['duration']:4.1f} {str(sub)[:28]:<28} {src:<18} {sc['narration'][:70]}")
+        m, sec = divmod(int(t), 60)
+        shots.append(f"{m}:{sec:02d}  {sc['narration'].strip()}\n      ON SCREEN: {shown}")
         t += sc["duration"]
+    (qa / "shotlist.txt").write_text(
+        "Every line and what is on screen. Check each picture belongs to its line.\n\n"
+        + "\n".join(shots) + "\n", encoding="utf-8")
+    print(f"Shot list: {qa / 'shotlist.txt'}")
 
     # ── licences ───────────────────────────────────────────────────────────
     folder = Path(s.storage_path("images")) / run

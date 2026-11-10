@@ -16,6 +16,20 @@ os.environ["MIND_VAULT_DATABASE_URL"] = "sqlite:///:memory:"
 os.environ["MIND_VAULT_LLM_PROVIDER"] = "stub"
 
 
+@pytest.fixture(autouse=True, scope="session")
+def _empty_test_storage():
+    """storage/_test holds only this suite's throwaway output (random run ids).
+    It was never cleared and grew to 6 GB, on a disk the real renders need."""
+    import shutil
+    from pathlib import Path
+
+    from core.config import ROOT_DIR
+    target = (ROOT_DIR / "storage" / "_test").resolve()
+    if target.parent.name == "storage" and target.name == "_test":
+        shutil.rmtree(target, ignore_errors=True)
+    yield
+
+
 @pytest.fixture(autouse=True)
 def _fresh_db():
     """Fresh in-memory schema per test, with heavy media disabled for speed.

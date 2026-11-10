@@ -55,3 +55,31 @@ def test_a_map_scene_renders(tmp_path):
     assert render_animated_segment("Rotterdam is a port.", "map:" + json.dumps(spec), out,
                                    (320, 180), 10, 1.0)
     assert out.stat().st_size > 1000
+
+
+def test_journey_becomes_a_route_map():
+    ctx = ["Iceland", "Norway"]
+    spec = maps.route_in("The first settlers sailed from Norway to Iceland in 874.", ctx)
+    assert [p["name"] for p in spec["route"]] == ["Norway", "Iceland"]
+    assert spec["country"] == "Iceland"
+    # Norway's point is Natural Earth's label point, inside Norway (not in Sweden).
+    assert spec["route"][0]["lon"] < 12
+    assert maps.route_in("From 1262 to 1800 the king ruled.", ctx) is None
+    assert maps.route_in("They walked from the Law Rock to the river.", ctx) is None
+
+
+def test_route_always_makes_the_plan():
+    lines = ["Title.", "In 874 settlers sailed from Norway to Iceland."] + ["x"] * 6 + \
+        ["They met at Thingvellir."] + ["x"] * 7 + ["Denmark ruled."]
+    plan = maps.plan_maps(lines, limit=2)
+    assert any("route" in s for s in plan.values())
+
+
+def test_route_frames_draw():
+    from PIL import Image
+
+    from core.media.animation import Style
+    spec = maps.route_in("They sailed from Norway to Iceland.", ["Iceland"])
+    img = Image.new("RGB", (640, 360), Style().bg_top)
+    maps.draw(img, spec, Style(), (640, 360), 0.9)
+    assert img.getbbox() is not None

@@ -209,47 +209,54 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
                           topic)
     named_cache: dict[str, dict | None] = {}
     known = known_names(" ".join(s.narration for s in scenes))
-    for scene in scenes:
-        out = out_dir / f"scene_{scene.index:03d}.jpg"
-        done = False
+    done_named: set[int] = set()
 
-        # A named person/place/work gets the actual subject, once per video.
-        # Only for scenes that will show a still (cards and footage don't).
-        if use_stock and not scene.animation_kind and not scene.clip_path:
+    def _shows(scene) -> bool:
+        return not scene.animation_kind and not scene.clip_path
+
+    # A named person/place/work gets the actual subject, once per video.
+    # Only for scenes that will show a still (cards and footage don't).
+    if use_stock:
+        for scene in scenes:
+            if not _shows(scene):
+                continue
+            out = out_dir / f"scene_{scene.index:03d}.jpg"
             meta = _named_image(scene.narration, named_cache, out_dir, category,
                                 width, height, cfg.named_max, known=known)
             if meta and _cinematic_from_photo(Path(meta["path"]), scene, out, width,
                                               height, brand, subtitle=subtitles):
                 shown.append(meta)
-                done = True
+                scene.source = f"named '{meta.get('named', '')}': {meta.get('title', '')}"
+                done_named.add(scene.index)
+
+    # Every other line: the pool picture that fits what it says (stock.assign_pictures).
+    assigned: dict[int, dict | None] = {}
+    if pool and not any("theme" in m for m in pool):
+        from core.media.stock import assign_pictures
+        rest = [s for s in scenes if s.index not in done_named]
+        picks = assign_pictures([s.narration for s in rest],
+                                [parts[s.index] if s.index < len(parts) else 0 for s in rest],
+                                pool, [_shows(s) for s in rest])
+        assigned = {s.index: m for s, m in zip(rest, picks)}
+
+    for scene in scenes:
+        out = out_dir / f"scene_{scene.index:03d}.jpg"
+        done = scene.index in done_named
 
         if pool and not done:
             if any("theme" in m for m in pool):
                 # Only scenes that will show the still count towards "no repeats".
                 # Footage and card scenes get one too, as a fallback, and used to
                 # use the pool up: one picture appeared four times in a video.
-                shows = not scene.animation_kind and not scene.clip_path
-                meta = pick(scene.narration, pool, used if shows else dict(used))
-            elif any("part" in m for m in pool):
-                # A TOPIC with several searches: the least-used picture of the
-                # part this line belongs to (flood photos for the flood, barriers
-                # for the barriers), any least-used picture once that part is spent.
-                shows = not scene.animation_kind and not scene.clip_path
-                want = parts[scene.index] if scene.index < len(parts) else 0
-                same = [m for m in pool if m.get("part") == want]
-                meta = min(same or pool, key=lambda m: (used.get(m["path"], 0), pool.index(m)))
-                if used.get(meta["path"], 0):
-                    meta = min(pool, key=lambda m: (used.get(m["path"], 0), pool.index(m)))
-                if shows:
-                    used[meta["path"]] = used.get(meta["path"], 0) + 1
+                meta = pick(scene.narration, pool, used if _shows(scene) else dict(used))
             else:
-                # Cycle the pool so consecutive scenes differ but stay on-subject.
-                meta = pool[scene.index % len(pool)]
+                meta = assigned.get(scene.index) or pool[scene.index % len(pool)]
             done = _cinematic_from_photo(Path(meta["path"]), scene, out, width, height,
                                          brand, subtitle=subtitles)
             # Every scene gets a still as a fallback; only credit what will show.
-            if done and not scene.animation_kind and not scene.clip_path:
+            if done and _shows(scene):
                 shown.append(meta)
+                scene.source = str(meta.get("title", ""))[:120]
 
         if not done and provider == "stable_diffusion":
             done = _try_stable_diffusion(scene, out)

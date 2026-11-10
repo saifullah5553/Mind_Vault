@@ -94,8 +94,14 @@ def _countries() -> tuple[dict, ...]:
         xs = [x for r in rings for x, _ in r]
         ys = [y for r in rings for _, y in r]
         names = {p.get("NAME"), p.get("NAME_LONG"), p.get("ADMIN")} - {None, ""}
-        out.append({"name": p["NAME"], "names": names, "rings": rings,
-                    "bbox": (min(xs), min(ys), max(xs), max(ys))})
+        bbox = (min(xs), min(ys), max(xs), max(ys))
+        # Natural Earth's label point lies inside the country; a bounding-box
+        # centre can fall in a neighbour (Norway's is in Sweden).
+        label = (p.get("LABEL_X"), p.get("LABEL_Y"))
+        if None in label:
+            label = ((bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2)
+        out.append({"name": p["NAME"], "names": names, "rings": rings, "bbox": bbox,
+                    "label": label})
     return tuple(out)
 
 
@@ -176,6 +182,35 @@ def _resolve(name: str, context: list[str]) -> dict | None:
     return max(pool, key=lambda p: p["pop"])
 
 
+# "sailed from Norway to Iceland", "moved from Edo to Kyoto": a journey.
+_NAME = r"[A-Z][\w'\u2019-]+(?:\s+[A-Z][\w'\u2019-]+){0,2}"
+_ROUTE = re.compile(r"\bfrom\s+(?:the\s+)?(?P<a>" + _NAME + r")[^.;:!?]{0,60}?\bto\s+(?:the\s+)?(?P<b>"
+                    + _NAME + r")")
+
+
+def _point(name: str, context: list[str]) -> dict | None:
+    """A country (its label point) or a known place, by exact name."""
+    for n in dict.fromkeys((name, " ".join(name.split()[:2]), name.split()[0])):
+        c = _country(n)
+        if c and n not in _AMBIGUOUS:
+            return {"name": c["name"], "lon": round(c["label"][0], 4),
+                    "lat": round(c["label"][1], 4), "country": c["name"]}
+        p = _resolve(n, context)
+        if p and _country(p["country"]):
+            return {"name": p["name"], "lon": round(p["lon"], 4), "lat": round(p["lat"], 4),
+                    "country": _country(p["country"])["name"]}
+    return None
+
+
+def route_in(text: str, context: list[str]) -> dict | None:
+    """A map spec for a journey the line describes, or None."""
+    for m in _ROUTE.finditer(text or ""):
+        a, b = _point(m["a"], context), _point(m["b"], context)
+        if a and b and abs(a["lon"] - b["lon"]) + abs(a["lat"] - b["lat"]) > 2:
+            return {"place": "", "country": b["country"], "route": [a, b]}
+    return None
+
+
 def plan_maps(narrations: list[str], limit: int = 4, spacing: int = 6) -> dict[int, dict]:
     """Which scenes become maps: the first line naming each place or country.
 
@@ -200,6 +235,12 @@ def plan_maps(narrations: list[str], limit: int = 4, spacing: int = 6) -> dict[i
         if i == 0:
             continue
         spec = None
+        # A journey beats a single pin: the voyage is the story.
+        route = route_in(text, context)
+        if route and not {route["route"][0]["name"], route["route"][1]["name"]} <= shown:
+            cands.append((i, route))
+            shown.update({route["route"][0]["name"], route["route"][1]["name"]})
+            continue
         # The landmark a line is about beats a city it is measured from:
         # "a lake north of Amsterdam called the Beemster" pins the Beemster.
         named = [(_resolve(n, context), pos) for pos, n in enumerate(places_in(text))]
@@ -226,13 +267,24 @@ def plan_maps(narrations: list[str], limit: int = 4, spacing: int = 6) -> dict[i
     if not cands:
         return plan
     want = min(limit, len(cands))
-    picks = sorted({round(j * (len(cands) - 1) / max(1, want - 1)) for j in range(want)})
-    last = -spacing
-    for j in picks:
+    picks = {round(j * (len(cands) - 1) / max(1, want - 1)) for j in range(want)}
+    # Journeys always make the cut (at most two), replacing the nearest pin.
+    for j in [j for j, (_, sp) in enumerate(cands) if "route" in sp][:2]:
+        if j not in picks:
+            plain = [q for q in picks if "route" not in cands[q][1]]
+            if plain:
+                picks.discard(min(plain, key=lambda q: abs(q - j)))
+            picks.add(j)
+    last, last_i = -spacing, None
+    for j in sorted(picks):
         i, spec = cands[j]
         if i - last >= spacing:
             plan[i] = spec
-            last = i
+            last, last_i = i, i
+        elif "route" in spec and last_i is not None and "route" not in plan[last_i]:
+            del plan[last_i]                 # too close: the journey wins
+            plan[i] = spec
+            last, last_i = i, i
     return plan
 
 
@@ -252,6 +304,17 @@ def _view(country: dict, res) -> tuple[float, float, float, float]:
     return cx, cy, k, max(half_w, 0.6)
 
 
+def _route_view(a: dict, b: dict, res) -> tuple[float, float, float, float]:
+    """Frame both ends of a journey with room around them."""
+    cx, cy = (a["lon"] + b["lon"]) / 2, (a["lat"] + b["lat"]) / 2
+    k = math.cos(math.radians(cy))
+    w, h = res
+    half_w = max(abs(a["lon"] - b["lon"]) * k / 2, abs(a["lat"] - b["lat"]) / 2 * w / h) * 1.6
+    half_w = max(half_w, 2.0)
+    # Look a little north, so the land sits low and clear of the title (top left).
+    return cx, cy + half_w * h / w * 0.22, k, half_w
+
+
 def _area(ring) -> float:
     return sum(x0 * y1 - x1 * y0 for (x0, y0), (x1, y1) in zip(ring, ring[1:] + ring[:1])) / 2
 
@@ -267,9 +330,15 @@ def draw(img, spec: dict, style, res, p: float) -> None:
     focus = _country(spec["country"])
     if focus is None:
         return
-    cx, cy, k, half = _view(focus, res)
-    zoom = _ease(min(1.0, p / 0.45))
-    half_now = half * (3.0 - 2.0 * zoom)                # from 3x wider to the country
+    route = spec.get("route")
+    if route:
+        cx, cy, k, half = _route_view(route[0], route[1], res)
+        zoom = _ease(min(1.0, p / 0.3))
+        half_now = half * (1.5 - 0.5 * zoom)            # a gentle push-in
+    else:
+        cx, cy, k, half = _view(focus, res)
+        zoom = _ease(min(1.0, p / 0.45))
+        half_now = half * (3.0 - 2.0 * zoom)            # from 3x wider to the country
     scale = (w / 2) / half_now                          # pixels per projected degree
 
     def to_px(pts) -> list[tuple[float, float]]:
@@ -311,6 +380,9 @@ def draw(img, spec: dict, style, res, p: float) -> None:
                       outline=style.accent if mine and a > 0.5 else border,
                       width=max(2, w // 900) if mine else max(1, w // 1400))
 
+    if route:
+        _draw_route(d, route, to_px, style, w, p)
+
     # Pin with pulsing rings.
     if spec.get("place"):
         t = _ease(max(0.0, min(1.0, (p - 0.45) / 0.15)))
@@ -332,8 +404,11 @@ def draw(img, spec: dict, style, res, p: float) -> None:
     # Label: the place, big; its country underneath.
     la = _ease(max(0.0, min(1.0, (p - 0.5) / 0.2)))
     if la > 0:
-        title = (spec.get("place") or spec["country"]).upper()
-        sub = spec["country"].upper() if spec.get("place") else ""
+        if route:
+            title, sub = route[1]["name"].upper(), "FROM " + route[0]["name"].upper()
+        else:
+            title = (spec.get("place") or spec["country"]).upper()
+            sub = spec["country"].upper() if spec.get("place") else ""
         tf, sf = _font(int(h * 0.075), True), _font(int(h * 0.034), True)
         x, y = int(w * 0.06), int(h * 0.08) + int((1 - la) * 20)
         ink = tuple(int(c * la + style.bg_top[i] * (1 - la)) for i, c in enumerate(style.ink))
@@ -343,3 +418,36 @@ def draw(img, spec: dict, style, res, p: float) -> None:
             tb = d.textbbox((x, y), title, font=tf)
             muted = tuple(int(c * la + style.bg_top[i] * (1 - la)) for i, c in enumerate(style.muted))
             d.text((x + 4, tb[3] + int(h * 0.02)), sub, font=sf, fill=muted)
+
+
+def _draw_route(d, route: list[dict], to_px, style, w: int, p: float) -> None:
+    """A dashed arc drawn from the start to the end of the journey, with a
+    travelling marker at its head and a dot at each end."""
+    from core.media.animation import _ease
+
+    (ax, ay), (bx, by) = to_px([(route[0]["lon"], route[0]["lat"]),
+                                (route[1]["lon"], route[1]["lat"])])
+    # Bow the line sideways so it reads as a voyage, not a ruler line.
+    mx, my = (ax + bx) / 2, (ay + by) / 2
+    cx, cy = mx - 0.18 * (by - ay), my + 0.18 * (bx - ax)
+    head = _ease(max(0.0, min(1.0, (p - 0.3) / 0.45)))
+    steps = 90
+    pts = []
+    for n in range(int(steps * head) + 1):
+        t = n / steps
+        pts.append(((1 - t) ** 2 * ax + 2 * (1 - t) * t * cx + t * t * bx,
+                    (1 - t) ** 2 * ay + 2 * (1 - t) * t * cy + t * t * by))
+    line = style.palette[1]
+    width = max(3, w // 420)
+    for n in range(0, len(pts) - 1, 2):                 # dashes
+        d.line([pts[n], pts[n + 1]], fill=line, width=width)
+    r = max(8, w // 160)
+    if p > 0.2:
+        d.ellipse([ax - r, ay - r, ax + r, ay + r], fill=style.ink)
+    if pts and head < 1:
+        hx, hy = pts[-1]
+        d.ellipse([hx - r, hy - r, hx + r, hy + r], fill=line, outline=style.ink, width=2)
+    if head >= 1:
+        rr = r * 1.6
+        d.ellipse([bx - rr, by - rr, bx + rr, by + rr], fill=line, outline=style.ink,
+                  width=max(2, w // 900))

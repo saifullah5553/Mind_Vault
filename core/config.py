@@ -108,7 +108,7 @@ class ImagesConfig(BaseModel):
     style: str = "cinematic documentary"
     width: int = 1080
     height: int = 1920
-    pool_max: int = 70              # most stock photos fetched per video
+    pool_max: int = 110             # most stock photos fetched per video
     named_max: int = 12             # named subjects looked up per video
 
 
@@ -126,6 +126,8 @@ class VideoConfig(BaseModel):
     preset: str = "medium"          # slower preset = better quality per bitrate
     frame_quality: int = 95         # JPEG quality for animation frames
     min_footage_height: int = 400   # don't upscale sources smaller than this
+    film_look: bool = True          # one film grade + vignette over footage and photos
+    film_grain: int = 3             # fine moving grain (0 = none; 3 is subtle)
     caption_source: str = "auto"    # auto | audio (word-level) | scenes (estimated)
     caption_model: str = "base"     # faster-whisper model: tiny|base|small|medium
     caption_compute: str = "int8"   # int8 keeps it fast on CPU

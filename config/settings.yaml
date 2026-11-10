@@ -126,6 +126,10 @@ video:
   preset: "medium"
   frame_quality: 95              # JPEG quality of generated animation frames
   min_footage_height: 400        # skip stock sources too low-res to upscale
+  # One film grade over all footage and photos (not the animated cards), so
+  # many cameras and old prints cut together as one film.
+  film_look: true
+  film_grain: 3                  # fine moving grain; 0 = off
   # Captions timed from the ACTUAL narration (faster-whisper, CPU) instead of
   # estimated scene durations - more accurate, and enables short karaoke cues.
   caption_source: "auto"         # auto | audio | scenes

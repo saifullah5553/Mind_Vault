@@ -47,6 +47,28 @@ The hook, then the promise of the story.
 Join Mind Vault for more stories about the human mind and history.
 ```
 
+For a history documentary, TOPIC is one picture search per part of the story, so each
+part shows its own subject:
+
+```
+TOPIC: Thingvellir + Almannagjá + Lögberg Thingvellir = Law Rock lawspeaker @ Thingvellir|rift|Law Rock; Ingólfr Arnarson + Icelandic turf house = booths farmers @ settler|Families|farmed; ...
+```
+
+- Parts are separated by `;`. After `@` come the words (`|` between them) that start
+  that part: from the first line containing one, the lines show that part's pictures.
+- `+` gives a part several searches; each gets an equal share of its pictures, so
+  one subject can't fill the part. Use 4–6 concrete searches per part: landmarks,
+  objects, people, old photographs, paintings.
+- `= words` after a search lists the words the script uses for what that search
+  shows, when the pictures are titled differently: Commons calls the Law Rock
+  "Lögberg", so `Lögberg Thingvellir = Law Rock lawspeaker` puts those photos on the
+  lines about the Law Rock and the lawspeaker.
+- A start word shared by two parts (a country named early and in a later chapter)
+  keeps the story in its current part; prefer words only one part uses.
+- After the render, `qa/shotlist.txt` shows every line with its picture. A wrong
+  picture means a missing search, a missing `= words` link, or a start word in the
+  wrong place.
+
 Save the sources next to it as `content/scripts/<slug>.sources.txt`, one checked fact per
 line, at least 8:
 
@@ -81,6 +103,13 @@ Use `--category psychology` for psychology topics.
   ("at Kinderdijk", "the Maeslant barrier"). Cities over 100,000 people and every
   country are known. Add a landmark, region or small town to
   `content/data/places.json` with its coordinates from Wikipedia before rendering.
+  A journey written as "from X to Y" ("they sailed from Norway to Iceland") becomes an
+  animated route map, so write the key voyage, migration or march that way once.
+- Pictures follow the words: each line gets the photo whose title and description
+  share the most words with it. Name the concrete subject in the line (the Law Rock,
+  turf houses, a longship) rather than an abstraction, and give each TOPIC part
+  searches for the landmarks, objects and people its lines name. A line about an
+  idea with nothing to show should still name a place or thing from that moment.
 - Every 60–90 seconds, add a turn: a surprise, a reversal, or a question answered.
   That's what holds retention.
 - Never "delve", "journey", "tapestry", "in the realm of", "profound", "multifaceted",

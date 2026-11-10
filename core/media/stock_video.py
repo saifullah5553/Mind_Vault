@@ -587,7 +587,7 @@ def fetch_clip_pool(topic: str, count: int, dest_dir: Path,
     terms = [t for t in (topic, search_terms(topic, 3), search_terms(topic, 2)) if t.strip()]
     from core.media.stock import topic_parts
     # Footage uses each part's first search; '+' alternatives are for photos.
-    parts = [q.split("+")[0].strip() for q, _ in topic_parts(topic)]
+    parts = [q.split("+")[0].partition("=")[0].strip() for q, _ in topic_parts(topic)]
     if len(parts) > 1:
         # Several searches: an equal share of footage for each part of the story.
         terms = parts

@@ -34,7 +34,9 @@ class ThumbnailAgent(BaseAgent):
                 else self.config.get("long_size", [1280, 720]))
         styles = self.config.get("styles", [])[: self.config.get("variants", 3)]
         punchy = (payload.get("text") or self._punchy_text(title)).upper()
-        photos = self._best_photos(run_id, len(styles), payload.get("stills"))
+        story = f"{title} {payload.get('text') or ''}"
+        photos = self._best_photos(run_id, len(styles), payload.get("stills"),
+                                   about=payload.get("about"), story=story)
 
         out_dir = Path(self.settings.storage_path("thumbnails"))
         variants: list[str] = []
@@ -60,8 +62,11 @@ class ThumbnailAgent(BaseAgent):
         words = title.split(":")[0].split()
         return " ".join(words[: self.config.get("max_words", 6)]).upper()
 
-    def _best_photos(self, run_id: str, count: int, only: list[str] | None = None) -> list[Path]:
-        """The video's most striking stills: colourful, bright enough, all different."""
+    def _best_photos(self, run_id: str, count: int, only: list[str] | None = None,
+                     about: dict | None = None, story: str = "") -> list[Path]:
+        """The video's stills that show what the title is about, the most striking
+        first: on-story beats colourful (the colour-only pick chose a tulip field
+        for the 1953 flood and a farm for the Althing)."""
         try:
             import numpy as np
             from PIL import Image
@@ -78,9 +83,14 @@ class ThumbnailAgent(BaseAgent):
                 colour = float(np.hypot(rg.std(), yb.std()) + 0.3 * np.hypot(rg.mean(), yb.mean()))
                 light = float(a.mean())
                 key = tuple(int(c) // 12 for c in a.mean(axis=(0, 1)))   # same photo, same key
-                scored.append((colour * (1.0 if light > 55 else 0.5), key, path))
+                tier = 0
+                if about and story:
+                    from core.media.stock import relevance
+                    text = about.get(str(path)) or about.get(str(path.resolve())) or ""
+                    tier = min(3, int(relevance(story, {"title": text})[0] // 2))
+                scored.append(((tier, colour * (1.0 if light > 55 else 0.5)), key, path))
             picked, seen = [], set()
-            for _score, key, path in sorted(scored, key=lambda s: -s[0]):
+            for _score, key, path in sorted(scored, key=lambda s: (-s[0][0], -s[0][1])):
                 if key not in seen:
                     seen.add(key)
                     picked.append(path)

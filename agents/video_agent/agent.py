@@ -80,7 +80,7 @@ class VideoAgent(BaseAgent):
         presenter_overlay = payload.get("presenter_overlay")
         result = assemble_video(with_disclaimer(plan.scenes, video_format, self.settings.brand),
                                 voice, out, video_format=video_format,
-                                presenter_overlay=presenter_overlay)
+                                presenter_overlay=presenter_overlay, category=category)
 
         # Synced SRT captions (platforms reward them; used by the uploaders).
         if self.settings.video.captions:
@@ -261,6 +261,26 @@ class VideoAgent(BaseAgent):
         placed: list[dict] = []
         from core.media.stock import part_per_line
         line_part = dict(zip(map(id, scenes), part_per_line([s.narration for s in scenes], topic)))
+        if category == "history":
+            from core.media.stock import relevance
+            placed = []
+            taken: set[int] = set()
+            for clip in shots:
+                fits = [(relevance(s.narration, {"title": clip.get("title", "")})[0], -n, n)
+                        for n, s in enumerate(free) if n not in taken and not s.clip_path
+                        and ("part" not in clip or line_part.get(id(s)) == clip["part"])]
+                best = max(fits, default=None)
+                if not best or best[0] < 2:
+                    continue          # no line this shot shows: the lines keep stills
+                scene = free[best[2]]
+                taken.update({best[2] - 1, best[2], best[2] + 1})   # not back to back
+                scene.clip_path = clip["path"]
+                scene.source = "footage: " + str(clip.get("title", ""))[:110]
+                placed.append(clip)
+            self.log.info("Footage: %d of %d shot(s) fit a line and were placed.",
+                          len(placed), len(shots))
+            credits.add(out_dir, placed, "footage")
+            return
         for k in range(len(shots)):
             scene = free[int(k * step)]
             # Evenly spread positions; at each, footage of the part of the story
@@ -271,6 +291,7 @@ class VideoAgent(BaseAgent):
             clip = same[0] if same else self._best_clip(scene.narration, remaining)
             remaining.remove(clip)
             scene.clip_path = clip["path"]
+            scene.source = "footage: " + str(clip.get("title", ""))[:110]
             placed.append(clip)
         self.log.info("Footage: %d distinct shot(s) placed across %d scene(s).",
                       len(pool), len(placed))
@@ -300,6 +321,7 @@ class VideoAgent(BaseAgent):
             if clips:
                 clip = clips.pop(0)
                 s.clip_path = clip["path"]
+                s.source = "footage: " + str(clip.get("title", ""))[:110]
                 placed.append(clip)
             else:
                 rest.append(s)

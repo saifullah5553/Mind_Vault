@@ -144,10 +144,11 @@ def test_each_footage_shot_is_used_once(monkeypatch, tmp_path):
     from core.schemas import Scene
     load_all_agents()
     agent = get_agent("video")
-    shots = [{"path": f"shot{i}.mp4", "url": f"u{i}", "title": "t", "source": "IA",
+    shots = [{"path": f"shot{i}.mp4", "url": f"u{i}", "title": "harbour boats", "source": "IA",
               "license": "pd"} for i in range(3)]
     monkeypatch.setattr("core.media.stock_video.fetch_clip_pool", lambda *a, **k: shots)
-    scenes = [Scene(index=i, narration="x", visual_prompt="x", duration=3) for i in range(9)]
+    scenes = [Scene(index=i, narration="The harbour filled with boats.", visual_prompt="x",
+                    duration=3) for i in range(9)]
     scenes[0].animation_kind = "title"
     agent._attach_footage(scenes, tmp_path, "topic", "history", (640, 360))
     used = [s.clip_path for s in scenes if s.clip_path]
@@ -278,3 +279,29 @@ def test_unmentioned_famous_people_stay_out_of_the_mood_pool(title):
 
     assert not acceptable({"title": title, "width": 4000}, "psychology")
     assert acceptable({"title": "Fireworks over a bridge.jpg", "width": 4000}, "psychology")
+
+
+def test_history_footage_goes_only_where_it_fits(monkeypatch, tmp_path):
+    from core.registry import get_agent, load_all_agents
+    from core.schemas import Scene
+    load_all_agents()
+    agent = get_agent("video")
+    shots = [{"path": "plaza.mp4", "url": "u", "title": "plaza, park, bergen, city, aerial",
+              "source": "Pixabay", "license": "Pixabay"}]
+    monkeypatch.setattr("core.media.stock_video.fetch_clip_pool", lambda *a, **k: shots)
+    scenes = [Scene(index=i, narration="Powerful families fought over the farms.",
+                    visual_prompt="x", duration=3) for i in range(4)]
+    agent._attach_footage(scenes, tmp_path, "topic", "history", (640, 360))
+    assert not any(s.clip_path for s in scenes)      # a modern plaza fits no line
+
+
+def test_finishing_pass_replaces_its_intermediate(tmp_path):
+    from core.media.video import _replace
+    old, new = tmp_path / "v_music.mp4", tmp_path / "v_music_level.mp4"
+    old.write_bytes(b"a" * 10)
+    new.write_bytes(b"b" * 10)
+    assert _replace(old, new) == new and not old.exists() and new.exists()
+    missing = tmp_path / "failed.mp4"
+    keep = tmp_path / "keep.mp4"
+    keep.write_bytes(b"c")
+    assert _replace(keep, missing) == missing and keep.exists()   # nothing replaced it

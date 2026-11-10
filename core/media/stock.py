@@ -72,7 +72,9 @@ _OFF_TOPIC = {"psychology": re.compile(
     r"^(?:File:)?The Flood\b|"
     # Modern wind farms read as "today" over any period story (it was the 1953
     # flood video's thumbnail).
-    r"wind ?turbines?|wind ?farm|windpark|offshore wind", re.I)}
+    r"wind ?turbines?|wind ?farm|windpark|offshore wind|"
+    # A road sign showed twice in the Iceland test ("Divers Crossing").
+    r"\bsigns?\b|signpost|crossing sign|traffic", re.I)}
 # Single pictures that passed the filters but were wrong on screen: a modernist
 # painting in the 1953 flood film, and a map lettered in Russian on its thumbnail.
 _BLOCKED_TITLES = re.compile(
@@ -175,9 +177,14 @@ def _commons_search(query: str, limit: int = 3, curated: str | None = None) -> l
         # Skip anything not clearly reusable.
         if not re.search(r"public domain|cc|pd", lic, re.I) or is_restricted(lic):
             continue
+        # What the picture shows, in the uploader's words: used to match each
+        # line to the picture that fits it (relevance), not by the safety filters.
+        about = " ".join(re.sub(r"<[^>]+>", " ", (meta.get(k) or {}).get("value", ""))
+                         for k in ("ImageDescription", "Categories"))
         out.append({
             "url": url,
             "title": (page.get("title") or "").replace("File:", ""),
+            "about": re.sub(r"\s+", " ", about.replace("|", " ")).strip()[:400],
             "width": info.get("width") or 0,
             "page": info.get("descriptionurl") or "",
             "license": lic or "see Commons",
@@ -387,10 +394,159 @@ def part_per_line(lines: list[str], topic: str) -> list[int]:
     parts = topic_parts(topic)
     out, current = [], 0
     for line in lines:
-        for i, (_, cue) in enumerate(parts):
-            if cue and cue.search(line or ""):
-                current = i
+        hits = [i for i, (_, cue) in enumerate(parts) if cue and cue.search(line or "")]
+        if hits and current not in hits:
+            # "the families sailed from Norway" matches the settlers' cue and the
+            # later Norway chapter's: the story moves on to the nearest part ahead.
+            ahead = [i for i in hits if i > current]
+            current = min(ahead) if ahead else max(hits)
         out.append(current)
+    return out
+
+
+# ── matching each line to its picture ───────────────────────────────────────
+# Within a TOPIC part the pictures used to be handed out in search order, so a
+# line about the Law Rock could get a snowy town from the same search. Each line
+# now gets the free picture whose title, description and search words share the
+# most words with it, and a picture that shows a place or person the line NAMES
+# is claimed by that line first.
+_FOLD = str.maketrans({"þ": "th", "Þ": "Th", "ð": "d", "Ð": "D", "æ": "ae", "Æ": "Ae",
+                       "ø": "o", "Ø": "O", "ß": "ss"})
+_WEAK = {"file", "jpg", "jpeg", "photo", "photograph", "image", "picture", "view",
+         "panorama", "category", "categories", "commons", "wikimedia", "taken", "uploaded",
+         "own", "work", "camera", "nikon", "canon", "dsc", "img", "also", "very", "just",
+         "only", "then", "they", "these", "those", "over", "after", "before", "under",
+         "every", "each", "some", "many", "much", "made", "make", "like", "even", "came",
+         "come", "went", "said", "says", "first", "last", "year", "years", "time", "had",
+         "has", "his", "her", "him", "she", "here", "now", "out", "off", "can", "may"}
+STRONG_MATCH = 4.0       # a named subject in the title, or two title words
+
+
+def _fold(text: str) -> str:
+    import unicodedata
+    text = unicodedata.normalize("NFKD", (text or "").translate(_FOLD))
+    return "".join(c for c in text if not unicodedata.combining(c)).lower()
+
+
+def _stem(w: str) -> str:
+    if w.endswith("ies") and len(w) > 4:
+        return w[:-3] + "y"
+    if w.endswith("s") and not w.endswith("ss") and len(w) > 3:
+        return w[:-1]
+    return w
+
+
+def match_words(text: str) -> set[str]:
+    """Content words of a line or a picture's title, accents folded, plurals cut."""
+    words = re.findall(r"[a-z]{3,}|\d{3,4}", _fold(text).replace("'s", ""))
+    return {_stem(w) for w in words if w not in _STOP and w not in _WEAK}
+
+
+def named_words(text: str) -> set[str]:
+    """Names in a line: capitalised words that don't start a sentence."""
+    out: set[str] = set()
+    for sentence in re.split(r"(?<=[.!?])\s+", text or ""):
+        for w in re.findall(r"[\w'-]+", sentence)[1:]:
+            if w[:1].isupper() and len(w) > 2:
+                out |= match_words(w)
+    return out
+
+
+# A picture whose title names a person shows that person: over a line about
+# someone else it is a wrong person on screen (King Inge over Thorgeir).
+_PERSON_PICTURE = re.compile(
+    r"\b(?:king|queen|prince|princess|saint|bishop|jarl|earl|president|emperor|empress|"
+    r"pope|chieftain|portrait|bust of|statue of)\b", re.I)
+
+
+def _common(a: set[str], b: set[str]) -> set[str]:
+    """Words of `a` found in `b`, a long word also matching its longer or shorter
+    form (Althing / Althingi, Thingvellir / Thingvallavatn is not: 6+ letters)."""
+    out = a & b
+    for w in a - out:
+        if len(w) >= 6 and any(len(x) >= 6 and (x.startswith(w) or w.startswith(x)) for x in b):
+            out.add(w)
+    return out
+
+
+def relevance(line: str, hit: dict) -> tuple[float, bool]:
+    """How well a picture fits a line, and whether it shows something the line names.
+
+    Title words count most, then the uploader's description, then the words the
+    TOPIC gave its search ("Lögberg Thingvellir = Law Rock": pictures of the
+    Lögberg fit lines about the Law Rock). A picture of a person the line does
+    not name scores below zero, so it is used only when nothing else is left.
+    """
+    words = match_words(line)
+    if not words:
+        return 0.0, False
+    title = match_words(hit.get("title", ""))
+    about = match_words(f"{hit.get('about', '')} {hit.get('tags', '')}") - title
+    label = match_words(hit.get("label", "")) - title - about
+    query = match_words(hit.get("query", "")) - title - about - label
+    names = _common(named_words(line), title | about | label)
+    score = (2 * len(_common(words, title)) + len(_common(words, about))
+             + 1.5 * len(_common(words, label)) + 0.5 * len(_common(words, query))
+             + 2 * len(names))
+    if _PERSON_PICTURE.search(hit.get("title", "")) and not (named_words(line) & title):
+        score -= 100
+    return score, bool(names)
+
+
+def assign_pictures(lines: list[str], parts: list[int], pool: list[dict],
+                    shows: list[bool]) -> list[dict | None]:
+    """One pool picture per line.
+
+    Lines that show their still each get a different picture where the pool
+    allows: first the strong matches (a picture of the place the line names),
+    then, in story order, the best-fitting free picture of the line's own TOPIC
+    part, then the free picture of the nearest part. Lines that don't show
+    their still (footage, cards) get a fallback that doesn't use a picture up.
+    """
+    if not pool:
+        return [None] * len(lines)
+    has_parts = any("part" in m for m in pool)
+    part_of = (lambda m: m.get("part", 0)) if has_parts else (lambda m: 0)
+    want = [(parts[i] if i < len(parts) else 0) if has_parts else 0 for i in range(len(lines))]
+    scores = [[relevance(line, m) for m in pool] for line in lines]
+    out: list[dict | None] = [None] * len(lines)
+    used = [0] * len(pool)
+
+    # 1) Strong matches claim their picture, best first. Across parts only when
+    #    the picture shows what the line names.
+    strong = sorted(((scores[i][j][0], -i, i, j) for i in range(len(lines)) if shows[i]
+                     for j in range(len(pool))
+                     if scores[i][j][0] >= STRONG_MATCH
+                     and (part_of(pool[j]) == want[i] or scores[i][j][1])), reverse=True)
+    for _s, _neg, i, j in strong:
+        if out[i] is None and not used[j]:
+            out[i], used[j] = pool[j], 1
+
+    # 2) The rest in story order.
+    for i in range(len(lines)):
+        if not shows[i] or out[i] is not None:
+            continue
+        free = [j for j in range(len(pool)) if not used[j]]
+        if free:
+            def rank(j):
+                sc, same = scores[i][j][0], part_of(pool[j]) == want[i]
+                # Own part first; then any picture that fits the line; then the
+                # nearest part. A picture of an unnamed person comes last.
+                return (sc < 0, 0 if same else 1 if sc >= 2 else 2,
+                        0 if same or sc >= 2 else abs(part_of(pool[j]) - want[i]), -sc, j)
+            j = min(free, key=rank)
+        else:      # pool spent: repeat the least-used fitting picture of this part
+            j = min(range(len(pool)), key=lambda j: (part_of(pool[j]) != want[i], used[j],
+                                                     -scores[i][j][0], j))
+        out[i] = pool[j]
+        used[j] += 1
+
+    # 3) Fallback stills behind footage and cards: never use a picture up.
+    for i in range(len(lines)):
+        if not shows[i]:
+            j = min(range(len(pool)), key=lambda j: (part_of(pool[j]) != want[i], used[j],
+                                                     -scores[i][j][0], j))
+            out[i] = pool[j]
     return out
 
 
@@ -412,10 +568,24 @@ def fetch_pool(topic: str, count: int, dest_dir: Path, category: str = "history"
     share = -(-count // len(parts))
     for part, (query, _) in enumerate(parts):
         # 'a + b + c' gives one part several searches, so a narrow subject
-        # still fills its share of photos instead of repeating a few.
-        queries = list(dict.fromkeys(q for alt in query.split("+") if alt.strip()
-                                     for q in search_queries(alt.strip(), category)))
-        found = _pool_hits(queries, share, providers, category, seen)
+        # still fills its share of photos instead of repeating a few. Each
+        # search gets an equal slice first (eight postcards of one Bergen hall
+        # filled a whole part), then the part is topped up in order.
+        # 'Lögberg = Law Rock' labels a search's pictures with the words its
+        # lines use (see relevance).
+        alts = [a.partition("=") for a in query.split("+") if a.strip()]
+        slice_ = -(-share // max(1, len(alts)))
+        found: list[dict] = []
+        for search, _eq, label in alts:
+            qs = list(dict.fromkeys(search_queries(search.strip(), category)))
+            got = _pool_hits(qs, min(slice_, share - len(found)), providers, category, seen)
+            found += [dict(h, label=label.strip()) for h in got]
+        for search, _eq, label in alts:
+            if len(found) >= share:
+                break
+            qs = list(dict.fromkeys(search_queries(search.strip(), category)))
+            got = _pool_hits(qs, share - len(found), providers, category, seen)
+            found += [dict(h, label=label.strip()) for h in got]
         hits += [dict(h, part=part) for h in found] if len(parts) > 1 else found
 
     pool: list[dict] = []
@@ -428,6 +598,9 @@ def fetch_pool(topic: str, count: int, dest_dir: Path, category: str = "history"
             look = _look(dest)
             if look is not None and any(_near(look, other) for other in looks):
                 dest.unlink(missing_ok=True)
+                continue
+            if _too_dark(dest):
+                dest.unlink(missing_ok=True)       # a near-black interior showed as a blank
                 continue
             if look is not None:
                 looks.append(look)
@@ -453,8 +626,26 @@ def _look(path: Path) -> int | None:
         return None
 
 
+def _too_dark(path: Path) -> bool:
+    """Near-black or flat pictures read as a blank frame on screen."""
+    try:
+        from PIL import Image, ImageStat
+        with Image.open(path) as im:
+            st = ImageStat.Stat(im.convert("L").resize((64, 36)))
+        return st.mean[0] < 40 or st.stddev[0] < 14
+    except Exception:
+        return False
+
+
 def _near(a: int, b: int, limit: int = 10) -> bool:
     return bin(a ^ b).count("1") <= limit
+
+
+def _series_key(title: str) -> str:
+    """The same key for every picture of a numbered series: 'Thingvellir-63a-Lögberg'
+    and 'Thingvellir-63b-Lögberg' were four near-identical shots in a row."""
+    t = re.sub(r"\d+[a-z]?\b", "", _fold(str(title)))
+    return re.sub(r"[^a-z]", "", t)[:40]
 
 
 def _pool_hits(queries: list[str], count: int, providers, category: str,
@@ -470,12 +661,12 @@ def _pool_hits(queries: list[str], count: int, providers, category: str,
                 # Ask for more than needed: many results fail the licence,
                 # size or subject checks.
                 for hit in provider(q, limit=min(50, count * 3)):
-                    title_key = re.sub(r"[^a-z]", "", str(hit.get("title", "")).lower())[:40]
+                    title_key = _series_key(hit.get("title", ""))
                     if hit["url"] in seen or (title_key and title_key in seen) \
                             or not acceptable(hit, category):
                         continue
                     seen.update({hit["url"], title_key})
-                    hits.append(hit)
+                    hits.append(dict(hit, query=q))
                     if len(hits) >= count:
                         break
             except Exception as exc:

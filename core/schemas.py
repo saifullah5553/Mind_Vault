@@ -101,6 +101,7 @@ class Scene(BaseModel):
     clip_path: str | None = None      # real HD stock footage for this scene, if found
     animation_kind: str | None = None  # motion-graphics kind, when this beat is animated
     sentences: int = 1                # spoken sentences in this scene (voice alignment)
+    source: str = ""                  # what the picture or clip shows (shot list for review)
 
 
 class ScenePlan(BaseModel):

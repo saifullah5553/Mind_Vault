@@ -124,3 +124,11 @@ def block(items: list[dict], budget: int, full_url: str = "") -> str:
     # Still too long: author and licence are what the licences ask for.
     short = [f"{i['author'] or i['title']} ({i['license']})" for i in required]
     return ("Image credits: " + "; ".join(short))[:budget]
+
+
+def has_ai(out_dir: Path) -> bool:
+    """True if this run shows an AI illustration (core/media/ai_images.py)."""
+    try:
+        return any(i.get("source") == "AI illustration" for i in load(out_dir))
+    except Exception:
+        return False

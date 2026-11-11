@@ -160,6 +160,13 @@ def _kenburns_segment(ffmpeg: str, scene, i: int, dur: float, res, fps: int, par
             y0 = (sh - bh) * fy
             frame = src.transform((w, h), Image.EXTENT, (x0, y0, x0 + bw, y0 + bh),
                                   Image.BICUBIC)
+            if getattr(scene, "label", ""):
+                from core.media.scenes import draw_lower_third
+                draw_lower_third(frame, scene.label, getattr(scene, "label_sub", ""), (w, h),
+                                 f / fps, dur)
+            if getattr(scene, "tag", ""):
+                from core.media.scenes import draw_tag
+                draw_tag(frame, scene.tag, (w, h))
             proc.stdin.write(frame.tobytes())
         proc.stdin.close()
         return proc.wait(timeout=600) == 0 and part.exists()

@@ -21,11 +21,12 @@ def test_user_tracks_by_category(tmp_path, monkeypatch):
     from core.config import get_settings
     (tmp_path / "history").mkdir()
     (tmp_path / "history" / "calm.mp3").write_bytes(b"x")
+    (tmp_path / "history" / "Party (feat. Someone).mp3").write_bytes(b"x")
     (tmp_path / "other.mp3").write_bytes(b"x")
     monkeypatch.setattr(music, "ROOT_DIR", tmp_path)
     monkeypatch.setattr(get_settings().video, "music_dir", ".")
-    assert [p.name for p in music._user_tracks("history")] == ["calm.mp3"]
-    assert [p.name for p in music._user_tracks("psychology")] == ["other.mp3"]
+    assert [p.name for p in music._user_tracks("history")] == ["calm.mp3"]   # no vocals
+    assert music._user_tracks("psychology") == []      # the loose folder is never used
 
 
 def test_thumbnail_prefers_on_story_photo(tmp_path, monkeypatch):

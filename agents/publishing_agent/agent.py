@@ -42,8 +42,9 @@ class PublishingAgent(BaseAgent):
         pub = self.settings.publishing
         allowed = pub.short_platforms if payload.video_format == "short" else pub.long_platforms
         # Last check before a real upload; a dry run sends nothing.
-        problem = "" if dry_run else credits.publish_problem(
-            Path(self.settings.storage_path("images")) / payload.run_id)
+        folder = Path(self.settings.storage_path("images")) / payload.run_id
+        problem = "" if dry_run else credits.publish_problem(folder)
+        synthetic = credits.has_ai(folder)
         for meta in payload.metadata:
             if meta.platform not in allowed:
                 continue
@@ -53,6 +54,7 @@ class PublishingAgent(BaseAgent):
                 tags=meta.tags, hashtags=meta.hashtags, category=meta.category,
                 thumbnail_path=thumbnail, srt_path=srt_path, privacy=privacy,
                 duration=payload.video.duration if payload.video else 0.0,
+                synthetic=synthetic,
             )
             packages.append(pkg)
             if problem:

@@ -263,6 +263,7 @@ def cmd_publish(args) -> None:
     if not all("file" in r for r in plan):
         raise SystemExit("Render the reels first.")
     problem = credits.publish_problem(Path(s.storage_path("images")) / args.run_id)
+    synthetic = credits.has_ai(Path(s.storage_path("images")) / args.run_id)
     if problem:
         raise SystemExit(f"Not publishing: {problem}")
     meta = next(m for m in json.loads((_bundle(args.run_id) / "metadata.json")
@@ -304,7 +305,9 @@ def cmd_publish(args) -> None:
         body = {"snippet": {"title": r["title"], "description": desc[:4900],
                             "tags": meta.get("tags", [])[:30], "categoryId": "27"},
                 "status": {"privacyStatus": "private", "selfDeclaredMadeForKids": False,
-                           "publishAt": slot.strftime("%Y-%m-%dT%H:%M:%SZ")}}
+                           "publishAt": slot.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                           # Realistic AI illustrations in the documentary: declared.
+                           "containsSyntheticMedia": synthetic}}
         h = {"Authorization": f"Bearer {access_token()}"}
         init = httpx.post(_UPLOAD_URL, params={"uploadType": "resumable", "part": "snippet,status"},
                           headers={**h, "X-Upload-Content-Length": str(f.stat().st_size),

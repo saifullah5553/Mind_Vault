@@ -69,6 +69,26 @@ TOPIC: Thingvellir + Almannagjá + Lögberg Thingvellir = Law Rock lawspeaker @ 
   picture means a missing search, a missing `= words` link, or a start word in the
   wrong place.
 
+**AI illustrations (optional, $0, Cloudflare free allowance about 30 a day):** for
+moments no real photo can show (the settlers arriving, the assembly in session,
+daily life in a period), add a header line:
+
+```
+ILLUSTRATE: rode to a crack in the earth = wide shot of Viking Age settlers on horseback riding into a green rift valley in Iceland, about 930, wool cloaks, no buildings; camped in booths = ...
+```
+
+- `cue = prompt`, separated by `;`. The first line containing the cue shows the
+  picture (once). Use 4–8 per video, at most 12, at moments that matter.
+- Write the prompt like a shot description: shot size, who and what, place, period,
+  clothing, light. Name the period and region; say what must NOT appear if the model
+  might add it (no horned helmets, no dragon heads, no stone castles).
+- Never for a real named person, a specific real object or document, or a real
+  event's exact moment presented as a record. Those stay real photos.
+- Each one is tagged "ILLUSTRATION" on screen, credited as AI, covered by the
+  disclaimer, and declared to YouTube as altered or synthetic content automatically.
+- Review each one like any picture: wrong period, invented lettering, fantasy
+  details, modern objects. A bad one: rewrite the prompt and re-render.
+
 Save the sources next to it as `content/scripts/<slug>.sources.txt`, one checked fact per
 line, at least 8:
 
@@ -110,6 +130,22 @@ Use `--category psychology` for psychology topics.
   turf houses, a longship) rather than an abstraction, and give each TOPIC part
   searches for the landmarks, objects and people its lines name. A line about an
   idea with nothing to show should still name a place or thing from that moment.
+- Scenes follow the words too (core/media/scenes.py). The renderer picks the scene
+  type from each line:
+  - a line naming an **object** (a pot, coin, sword, brooch, tool, cloak) whose photo
+    shows it becomes a **museum showcase** (the photo on a lit display with a label);
+  - a **document** (a book, law, treaty, letter, inscription, manuscript) gets a
+    warm-lit document showcase;
+  - **digging, excavation, buried finds or carbon dating** become animated **soil
+    layers** with the line's date glowing at its layer;
+  - the first photo of a **named person or place** gets a name caption;
+  - places and journeys get maps; years, spans and figures get date and number
+    cards; quotations get a quote card; everything else gets the best-matching photo
+    or clip.
+  To get a showcase, name the object plainly in the line AND give the TOPIC a search
+  for it, labelled with the line's word if the photos are titled differently
+  (`Landnámabók manuscript = Book of Settlements book`). One object or document per
+  minute is plenty; at most 6 showcases and 2 layer scenes per video.
 - Every 60–90 seconds, add a turn: a surprise, a reversal, or a question answered.
   That's what holds retention.
 - Never "delve", "journey", "tapestry", "in the realm of", "profound", "multifaceted",

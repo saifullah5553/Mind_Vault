@@ -14,6 +14,7 @@ volume lift. Nothing here downloads or ships any copyrighted audio.
 
 from __future__ import annotations
 
+import re
 import wave
 import zlib
 from pathlib import Path
@@ -26,20 +27,24 @@ from core.logging_setup import get_logger
 log = get_logger("media.music")
 
 _SR = 44100
+_VOCALS = re.compile(r"\bfeat\.?(?!\w)|\bft\.|\bvocals?\b", re.I)
 
 
 def _user_tracks(mood: str = "") -> list[Path]:
-    """Royalty-free tracks the owner added: storage/music/<category>/ first
-    (history, psychology), then storage/music/ itself."""
-    mdir = ROOT_DIR / get_settings().video.music_dir
-    for folder in ([mdir / mood] if mood else []) + [mdir]:
-        if folder.exists():
-            found = sorted(p for p in folder.glob("*")
-                           if p.suffix.lower() in (".wav", ".mp3", ".m4a", ".ogg")
-                           and not p.name.startswith("_generated"))
-            if found:
-                return found
-    return []
+    """Royalty-free tracks the owner chose for this kind of video:
+    storage/music/<category>/ (history, psychology). Tracks left in storage/music/
+    itself are NOT used: 35 mixed downloads there (game themes, pop songs) would
+    have played under a documentary. Songs with vocals ("feat." in the name)
+    are skipped, because singing under narration fights the voice."""
+    if not mood:
+        return []
+    folder = ROOT_DIR / get_settings().video.music_dir / mood
+    if not folder.exists():
+        return []
+    return sorted(p for p in folder.glob("*")
+                  if p.suffix.lower() in (".wav", ".mp3", ".m4a", ".ogg")
+                  and not p.name.startswith("_generated")
+                  and not _VOCALS.search(p.stem))
 
 
 SR = _SR

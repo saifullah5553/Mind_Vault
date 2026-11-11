@@ -74,7 +74,7 @@ class VideoAgent(BaseAgent):
         if self.config.get("generate_images", True):
             self.settings.images.width, self.settings.images.height = fmt.resolution
             generate_images(plan.scenes, img_dir, topic=topic, category=category,
-                            subtitles=False)
+                            subtitles=False, illustrate=payload.get("illustrate", ""))
 
         out = Path(self.settings.storage_path("videos")) / f"{run_id}.mp4"
         presenter_overlay = payload.get("presenter_overlay")
@@ -169,6 +169,22 @@ class VideoAgent(BaseAgent):
             if plan:
                 self.log.info("Maps: %s", ", ".join(s["place"] or s["country"]
                                                    for s in plan.values()))
+
+        # Pass 0b — digging, buried finds and dating: animated soil layers
+        # (core/media/scenes.py). At most two, well apart.
+        if self.config.get("layers", True):
+            import json
+
+            from core.media.scenes import layers_for
+            last = -99
+            for i, scene in enumerate(scenes):
+                if i == 0 or scene.animation_kind or used >= budget or i - last < 8:
+                    continue
+                spec = layers_for(scene.narration)
+                if spec and sum(1 for s in scenes if (s.animation_kind or "").startswith("layers:")) < 2:
+                    scene.animation_kind = "layers:" + json.dumps(spec)
+                    used += 1
+                    last = i
 
         # Pass 1 — confident matches (a headline, a figure, a date range, a
         # cause->effect chain). These are the scenes animation renders best.

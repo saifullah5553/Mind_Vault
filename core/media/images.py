@@ -166,7 +166,7 @@ def _try_stable_diffusion(scene: Scene, out_path: Path) -> bool:  # pragma: no c
 
 def generate_images(scenes: list[Scene], run_dir: str | Path,
                     topic: str = "", category: str = "history",
-                    subtitles: bool = True) -> list[Scene]:
+                    subtitles: bool = True, illustrate: str = "") -> list[Scene]:
     """Render one frame per scene. Sets `scene.image_path`. Never raises.
 
     `subtitles=False` (long-form: captions ship as a caption track) leaves the
@@ -213,6 +213,7 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
     named_cache: dict[str, dict | None] = {}
     known = known_names(" ".join(s.narration for s in scenes))
     done_named: set[int] = set()
+    director = {"showcases": [], "labelled": set(), "labels": []}   # see _direct
 
     def _shows(scene) -> bool:
         return not scene.animation_kind and not scene.clip_path
@@ -231,6 +232,32 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
                 shown.append(meta)
                 scene.source = f"named '{meta.get('named', '')}': {meta.get('title', '')}"
                 done_named.add(scene.index)
+                _direct(scene, meta, out_dir, director, named=meta.get("named", ""))
+
+    # AI illustrations the script asked for ('ILLUSTRATE: cue = prompt; ...'): the
+    # first line containing each cue shows it, tagged on screen (core/media/ai_images.py).
+    if illustrate.strip():
+        from core.media import ai_images
+        made = 0
+        for cue, prompt in ai_images.parse(illustrate):
+            if made >= ai_images.MAX_PER_VIDEO:
+                break
+            scene = next((s for s in scenes if _shows(s) and s.index not in done_named
+                          and cue.search(s.narration)), None)
+            if scene is None:
+                log.info("Illustration cue not found in the script: %s", cue.pattern[:60])
+                continue
+            out = out_dir / f"scene_{scene.index:03d}.jpg"
+            meta = ai_images.generate(prompt, out_dir / f"_ai_{scene.index:03d}.jpg")
+            if meta and _cinematic_from_photo(Path(meta["path"]), scene, out, width, height,
+                                              brand, subtitle=subtitles):
+                shown.append(meta)
+                scene.source = f"AI illustration: {prompt[:100]}"
+                scene.tag = "ILLUSTRATION"
+                done_named.add(scene.index)
+                made += 1
+        if made:
+            log.info("AI illustrations: %d", made)
 
     # Every other line: the pool picture that fits what it says (stock.assign_pictures).
     assigned: dict[int, dict | None] = {}
@@ -260,6 +287,7 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
             if done and _shows(scene):
                 shown.append(meta)
                 scene.source = str(meta.get("title", ""))[:120]
+                _direct(scene, meta, out_dir, director)
 
         if not done and provider == "stable_diffusion":
             done = _try_stable_diffusion(scene, out)
@@ -274,7 +302,7 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
         scene.image_path = str(out) if done else None
 
     # Clean the downloaded originals once they've been composited.
-    for p in [*out_dir.glob("_pool_*"), *out_dir.glob("_named_*")]:
+    for p in [*out_dir.glob("_pool_*"), *out_dir.glob("_named_*"), *out_dir.glob("_ai_*")]:
         try:
             p.unlink()
         except Exception:
@@ -288,6 +316,63 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
 
 
 _SURNAMES = "\0surnames"              # cache entry: surnames of people already looked up
+
+
+SHOWCASE_MAX = 6          # museum showcases per video
+LABEL_MAX = 8             # name captions per video
+
+
+def _story_countries() -> set[str]:
+    try:
+        from core.media import maps
+        if maps.ensure_data():
+            return {n for c in maps._countries() for n in c["names"]}
+    except Exception:
+        pass
+    return set()
+
+
+def _direct(scene, meta: dict, out_dir: Path, state: dict, named: str = "") -> None:
+    """Choose this photo's scene type from what its line says (core/media/scenes.py):
+    a museum showcase when the line names an object or document the photo shows,
+    else a name caption the first time a named person or place is seen."""
+    import json
+    import shutil
+
+    from core.media import scenes
+    from core.media.stock import match_words, named_words
+    spec = scenes.showcase_for(scene.narration, meta)
+    if spec and len(state["showcases"]) < SHOWCASE_MAX \
+            and all(abs(scene.index - i) >= 3 for i in state["showcases"]):
+        exhibit = out_dir / f"scene_{scene.index:03d}_exhibit.jpg"
+        try:
+            shutil.copyfile(meta["path"], exhibit)       # the uncropped original
+            spec["photo"] = str(exhibit)
+            scene.animation_kind = "showcase:" + json.dumps(spec)
+            state["showcases"].append(scene.index)
+            return
+        except OSError as exc:
+            log.debug("showcase copy failed (%s)", exc)
+    # Name caption: a name the line says that the photo's title also carries.
+    if len(state["labels"]) >= LABEL_MAX or any(abs(scene.index - i) < 3 for i in state["labels"]):
+        return
+    if named:
+        name = named
+    else:
+        # One name, said in the line AND in the photo's own title (a description
+        # can mention places the photo doesn't show: 'Althingi.jpg' is in
+        # Reykjavik, not Thingvellir). Countries are left to the maps.
+        shown = match_words(meta.get("title", ""))
+        countries = _story_countries()
+        hits = [re.sub(r"['\u2019]s$", "", w) for w in re.findall(r"[\w'\u2019-]+", scene.narration)[1:]
+                if w[:1].isupper() and len(w) > 3]
+        hits = [w for w in hits if named_words("x " + w) & shown and w not in countries]
+        name = hits[0] if hits else ""
+    key = name.lower()
+    if name and key not in state["labelled"]:
+        state["labelled"].add(key)
+        state["labels"].append(scene.index)
+        scene.label = name.upper()
 
 
 def _named_image(text: str, cache: dict, out_dir: Path, category: str,

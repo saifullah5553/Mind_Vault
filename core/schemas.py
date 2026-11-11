@@ -102,6 +102,9 @@ class Scene(BaseModel):
     animation_kind: str | None = None  # motion-graphics kind, when this beat is animated
     sentences: int = 1                # spoken sentences in this scene (voice alignment)
     source: str = ""                  # what the picture or clip shows (shot list for review)
+    label: str = ""                   # name caption over a photo (first sight of a person/place)
+    label_sub: str = ""
+    tag: str = ""                     # corner tag, e.g. "ILLUSTRATION" on AI pictures
 
 
 class ScenePlan(BaseModel):
@@ -167,6 +170,9 @@ class PublishPackage(BaseModel):
     srt_path: str | None = None
     privacy: str = "private"                 # start PRIVATE for safety; flip to public later
     duration: float = 0.0
+    # Realistic AI illustrations in the video: YouTube's "altered or synthetic
+    # content" declaration must be on (core/media/ai_images.py).
+    synthetic: bool = False
 
 
 class PublishResult(BaseModel):

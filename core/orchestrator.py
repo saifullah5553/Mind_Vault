@@ -194,7 +194,7 @@ class Orchestrator:
         if head.get("topic") and ctx.topic is not None:
             ctx.topic = ctx.topic.model_copy(update={"topic": head["topic"]})
         for field, key in (("description", "description"), ("thumbnail", "thumbnail_text"),
-                           ("tags", "tags")):
+                           ("tags", "tags"), ("illustrate", "illustrate")):
             if head.get(field):
                 ctx.extra[key] = head[field]
         self._update_content(ctx, title=ctx.script.title, script=ctx.script.full_text)
@@ -443,6 +443,8 @@ class Orchestrator:
             "presenter_overlay": ctx.presenter_path,
             "topic": (ctx.topic.topic if ctx.topic else ""),
             "category": ctx.category,
+            # 'cue = prompt; ...' from the script header: AI illustrations (core/media/ai_images.py)
+            "illustrate": ctx.extra.get("illustrate", ""),
         }, ctx)
         self._update_content(ctx, status=ContentStatus.PRODUCED.value,
                              video_path=ctx.video.video_path,

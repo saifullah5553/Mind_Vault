@@ -73,6 +73,10 @@ Then read `qa/shotlist.txt`: every spoken line with what is on screen under it
   line, something from the same time and place. A generic or random picture
   is a fault, even if it is pretty. Fix it by naming the subject plainly in the
   line, adding a TOPIC search for it, or blocking the wrong picture's title.
+- Check every SHOWCASE label and name caption in the shot list: the photo must be
+  that very object, document, person or place, not one with the same name (the
+  Greek biblical Codex Regius is not the Icelandic one). A wrong one is fixed like
+  a wrong picture: a better search, or block the title.
 - No wrong person: a named person is shown only if it is really them, and a
   recognisable stranger never appears over a line about someone else.
 - No religious art or places of worship unless the line is about them. Nothing

@@ -116,7 +116,9 @@ class YouTubePublisher(PlatformPublisher):
                     "tags": pkg.tags[:30],
                     "categoryId": _CATEGORY_ID,
                 },
-                "status": {"privacyStatus": pkg.privacy, "selfDeclaredMadeForKids": False},
+                "status": {"privacyStatus": pkg.privacy, "selfDeclaredMadeForKids": False,
+                           # Realistic AI illustrations: YouTube requires this declaration.
+                           "containsSyntheticMedia": bool(getattr(pkg, "synthetic", False))},
             }
             size = video.stat().st_size
             # 1) Start a resumable session.

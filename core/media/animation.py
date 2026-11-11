@@ -450,6 +450,16 @@ def render_animated_segment(text: str, kind: str, out_path: Path, res, fps: int,
 
         def renderer(img, _text, st, rs, p):
             maps.draw(img, spec, st, rs, p)
+    elif kind.startswith(("showcase:", "layers:")):
+        # Scene types chosen from the line (core/media/scenes.py).
+        import json
+
+        from core.media import scenes
+        spec = json.loads(kind.split(":", 1)[1])
+        draw = scenes.draw_showcase if kind.startswith("showcase:") else scenes.draw_layers
+
+        def renderer(img, _text, st, rs, p):
+            draw(img, spec, st, rs, p)
 
     try:
         bg = _background(res, style)

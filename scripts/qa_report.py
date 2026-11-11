@@ -137,12 +137,17 @@ def main() -> None:
         if kind.startswith("map:"):
             spec = json.loads(kind[4:])
             shown = f"MAP {spec.get('place') or ''} {spec.get('country') or ''}".strip()
+        elif kind.startswith(("showcase:", "layers:")):
+            from core.media.scenes import describe
+            shown = describe(kind)
         elif kind:
             shown = f"CARD {kind}"
         else:
             shown = sc.get("source") or Path(sc.get("clip_path") or sc.get("image_path") or "").name
         src = ("ANIM:" + kind[:14]) if kind else Path(sc.get("clip_path") or sc.get("image_path") or "").name
         print(f"{t:6.1f} {sc['duration']:4.1f} {str(sub)[:28]:<28} {src:<18} {sc['narration'][:70]}")
+        if sc.get("label"):
+            shown += f"  [caption: {sc['label']}]"
         m, sec = divmod(int(t), 60)
         shots.append(f"{m}:{sec:02d}  {sc['narration'].strip()}\n      ON SCREEN: {shown}")
         t += sc["duration"]

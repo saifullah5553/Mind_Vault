@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import shutil
 import json
+import math
+import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -418,22 +420,61 @@ def _composite_presenter(base: Path, overlay: str, out: Path, res, scale: float,
         return False
 
 
-def _mix_music(base: Path, out: Path, seconds: float, seed: str, mood: str = "history") -> bool:
-    """Lay a background bed UNDER the narration with ducking + intro/outro swell."""
+def _long_bed(bed: str, seconds: float, work: Path) -> str:
+    """A track shorter than the video, repeated with 4-second crossfades instead
+    of a hard restart (a 3-minute track plays about three times in 8 minutes)."""
+    ffmpeg = _ffmpeg_exe()
+    try:
+        info = subprocess.run([ffmpeg, "-hide_banner", "-i", bed], capture_output=True).stderr.decode(
+            "utf-8", "replace")
+        m = re.search(r"Duration: (\d+):(\d+):([\d.]+)", info)
+        length = int(m[1]) * 3600 + int(m[2]) * 60 + float(m[3])
+    except Exception:
+        return bed
+    if length >= seconds + 2 or length < 20:
+        return bed
+    copies = int(math.ceil((seconds + 2) / (length - 4))) + 1
+    inputs = [x for _ in range(copies) for x in ("-i", bed)]
+    chain, last = [], "[0:a]"
+    for k in range(1, copies):
+        chain.append(f"{last}[{k}:a]acrossfade=d=4:c1=tri:c2=tri[x{k}]")
+        last = f"[x{k}]"
+    out = work / "_bed_long.wav"
+    try:
+        subprocess.run([ffmpeg, "-y", *inputs, "-filter_complex", ";".join(chain), "-map", last,
+                        "-t", f"{seconds + 1:.2f}", "-ar", "48000", "-ac", "2", str(out)],
+                       check=True, capture_output=True)
+        return str(out)
+    except Exception as exc:
+        log.debug("crossfaded bed failed (%s); looping instead", str(exc)[:120])
+        return bed
+
+
+def _mix_music(base: Path, out: Path, seconds: float, seed: str, mood: str = "history",
+               generated: bool = False, audio_only: bool = False) -> str:
+    """Lay a background bed UNDER the narration with ducking + intro/outro swell.
+
+    Returns the bed it used ("" on failure). `generated=True` uses the generated
+    score whatever the owner added; `audio_only=True` writes just the mixed audio."""
     ffmpeg = _ffmpeg_exe()
     if not ffmpeg:
-        return False
+        return ""
     from core.media.music import get_music_bed
     cfg = get_settings().video
-    bed, source = get_music_bed(seconds, seed, mood)
+    bed, source = get_music_bed(seconds, seed, mood, generated=generated)
     if not bed or source == "none":
-        return False
+        return ""
+    used = bed
+    if source == "user":
+        bed = _long_bed(bed, seconds, out.parent)
     vol = cfg.music_volume
     io = cfg.music_intro_outro_seconds
     end = max(io, seconds - io)
     # Louder at the intro (t<io) and outro (t>end), quieter in the middle; then
     # sidechain-compress so the music dips whenever the narration is speaking.
-    env = f"volume='if(lt(t,{io}),{vol*2.4}, if(gt(t,{end}),{vol*2.4},{vol}))':eval=frame"
+    env = (f"volume='if(lt(t,{io}),{vol*2.4}, if(gt(t,{end}),{vol*2.4},{vol}))':eval=frame,"
+           # The music ends with the picture instead of being cut off.
+           f"afade=t=out:st={max(0.0, seconds - 3):.2f}:d=3")
     # Both inputs go to 48 kHz stereo first: amix adopts the first input's format,
     # so the music bed used to be squashed to Piper's 22 kHz mono.
     fmt = "aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo"
@@ -441,16 +482,34 @@ def _mix_music(base: Path, out: Path, seconds: float, seed: str, mood: str = "hi
           f"[1:a]{fmt},{env}[bed];"
           f"[bed][key]sidechaincompress=threshold=0.04:ratio=8:attack=5:release=320[duck];"
           f"[voice][duck]amix=inputs=2:duration=first:dropout_transition=2:normalize=0[a]")
+    maps = ["-map", "[a]", "-vn"] if audio_only else ["-map", "0:v", "-map", "[a]", "-c:v", "copy"]
     cmd = [ffmpeg, "-y", "-i", str(base), "-stream_loop", "-1", "-i", bed,
-           "-filter_complex", fc, "-map", "0:v", "-map", "[a]",
-           "-c:v", "copy", *_AUDIO_OUT, "-shortest", str(out)]
+           "-filter_complex", fc, *maps, *_AUDIO_OUT, "-shortest", str(out)]
     # (video is stream-copied here, so only the base build + presenter pass encode)
     try:
         subprocess.run(cmd, check=True, capture_output=True)
-        log.info("Mixed %s background music (ducked).", source)
-        return out.exists()
+        log.info("Mixed %s background music (ducked)%s.", source, " for the other platforms"
+                 if generated else "")
+        return used if out.exists() else ""
     except Exception as exc:
         log.warning("Music mix failed (%s); keeping video without music.", exc)
+        return ""
+
+
+def _normalize_audio(src: Path, out: Path) -> bool:
+    """The same two-pass loudness pass as the video, for an audio-only file."""
+    ffmpeg = _ffmpeg_exe()
+    try:
+        probe = subprocess.run([ffmpeg, "-hide_banner", "-nostats", "-i", str(src), "-af",
+                                f"loudnorm={_LOUDNESS}:print_format=json", "-f", "null", "-"],
+                               check=True, capture_output=True)
+        text = probe.stderr.decode("utf-8", "replace")
+        m = json.loads(text[text.rindex("{"):text.rindex("}") + 1])
+        subprocess.run([ffmpeg, "-y", "-i", str(src), "-af", _loudness_filter(m), *_AUDIO_OUT,
+                        str(out)], check=True, capture_output=True)
+        return out.exists()
+    except Exception as exc:
+        log.warning("Loudness pass (audio) failed (%s).", str(exc)[:160])
         return False
 
 
@@ -536,11 +595,26 @@ def assemble_video(scenes: list[Scene], audio: VoiceResult | None, out_path: str
 
     # Background music (ducked under narration) on ffmpeg-built videos.
     music_used = False
+    track, alt_audio = None, None
     if engine_used.startswith("ffmpeg") and cfg.video.background_music:
+        from core.media.music import _user_tracks
+        if _user_tracks(category):
+            # The owner's track is licensed for YouTube: the copies for other
+            # platforms get the same mix with the generated score instead.
+            raw = out.with_name(out.stem + "_alt_raw.m4a")
+            alt = out.with_name(out.stem + "_alt_audio.m4a")
+            if _mix_music(final_path, raw, total, out.stem, category, generated=True,
+                          audio_only=True) and _normalize_audio(raw, alt):
+                alt_audio = str(alt)
+            raw.unlink(missing_ok=True)
         mixed = final_path.with_name(final_path.stem + "_music.mp4")
-        if _mix_music(final_path, mixed, total, out.stem, category):
+        used = _mix_music(final_path, mixed, total, out.stem, category)
+        if used:
             final_path = _replace(final_path, mixed)
             music_used = True
+            if "_generated" not in Path(used).name:
+                track = used
+        (out.parent / "_bed_long.wav").unlink(missing_ok=True)
 
     if engine_used.startswith("ffmpeg"):
         levelled = final_path.with_name(final_path.stem + "_level.mp4")
@@ -555,6 +629,8 @@ def assemble_video(scenes: list[Scene], audio: VoiceResult | None, out_path: str
         resolution=list(res),
         engine=engine_used + tags,
         has_captions=cfg.video.captions,
+        music_track=track,
+        alt_audio_path=alt_audio,
     )
 
 

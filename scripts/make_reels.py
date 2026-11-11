@@ -147,6 +147,18 @@ def _render_part(src: Path, part: reels.Part, headline: str, card: Path, out: Pa
     shutil.rmtree(work, ignore_errors=True)
 
 
+def _swap_reel_audio(reel: Path, alt: Path, start: float, length: float, out: Path) -> None:
+    """A reel copy for Facebook/TikTok: the same picture, the narration with the
+    generated score (the YouTube cut carries a YouTube-only track), silence under
+    the disclaimer card."""
+    from core.media.video import _ffmpeg_exe
+    ffmpeg = _ffmpeg_exe()
+    subprocess.run([ffmpeg, "-y", "-i", str(reel), "-ss", f"{start:.3f}", "-t", f"{length:.3f}",
+                    "-i", str(alt), "-filter_complex", "[1:a]apad[a]", "-map", "0:v", "-map", "[a]",
+                    "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-shortest",
+                    "-movflags", "+faststart", str(out)], check=True, capture_output=True)
+
+
 def _next_png(path: Path, text: str) -> None:
     """The call to action shown under the picture over the part's last seconds."""
     from PIL import Image, ImageDraw
@@ -293,7 +305,11 @@ def cmd_publish(args) -> None:
     for r, slot in zip(plan, slots):
         desc = _description(meta, args.long_id, r["part"], r["total"])
         f = out / r["file"]
-        shutil.copyfile(f, ready / r["file"])
+        alt = _bundle(args.run_id) / "audio_off_youtube.m4a"
+        if alt.exists():
+            _swap_reel_audio(f, alt, r["start"], r["end"] - r["start"], ready / r["file"])
+        else:
+            shutil.copyfile(f, ready / r["file"])
         (ready / f"{f.stem}.txt").write_text(f"{r['title']}\n\n{desc}\n", encoding="utf-8")
         when = f"{slot.astimezone(tz):%a %d %b %H:%M} ET / {slot.astimezone(home):%H:%M} Dubai"
         if r["file"] in done:

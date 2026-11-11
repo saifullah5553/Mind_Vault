@@ -82,6 +82,10 @@ class VideoAgent(BaseAgent):
                                 voice, out, video_format=video_format,
                                 presenter_overlay=presenter_overlay, category=category)
 
+        if result.music_track:
+            from core.media.music import track_credit
+            credits.add(img_dir, [track_credit(result.music_track)], "music")
+
         # Synced SRT captions (platforms reward them; used by the uploaders).
         if self.settings.video.captions:
             from core.media.captions import build_srt, build_srt_from_audio

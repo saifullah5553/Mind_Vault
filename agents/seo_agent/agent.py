@@ -42,6 +42,10 @@ class SEOAgent(BaseAgent):
         # Append the AI-presenter disclosure (transparency + platform compliance).
         disclosure = extra.get("presenter", {}).get("disclosure")
         used = credits.load(Path(self.settings.storage_path("images")) / payload.run_id)
+        # Music is credited on its own line, on YouTube only: the copies for other
+        # platforms carry the generated score instead (core/media/video.py).
+        music = [i for i in used if i.get("source") == "YouTube Audio Library"]
+        used = [i for i in used if i.get("source") != "YouTube Audio Library"]
         chapters = self._chapters(payload)
         base = self.settings.publishing.credits_url
         full_url = f"{base}{payload.run_id}.txt" if base and used else ""
@@ -58,6 +62,10 @@ class SEOAgent(BaseAgent):
                 parts.append(chapters)
             if disclosure:
                 parts.append(disclosure)
+            if platform == "youtube" and music:
+                parts.append("Music: " + "; ".join(
+                    f"{m['title']} by {m['credit']} (YouTube Audio Library)" if m.get("credit")
+                    else f"{m['title']} (YouTube Audio Library)" for m in music))
             notice = (self.settings.brand.disclaimer_description or "").strip()
             if notice:
                 parts.append(notice)

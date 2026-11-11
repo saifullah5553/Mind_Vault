@@ -51,7 +51,11 @@ def build(run_id: str, root: Path | None = None) -> Path:
             continue
         pdir = out / platform
         pdir.mkdir(parents=True, exist_ok=True)
-        _link(bundle / "video.mp4", pdir / "video.mp4")
+        alt = bundle / "audio_off_youtube.m4a"
+        if platform != "youtube" and alt.exists():
+            _swap_audio(bundle / "video.mp4", alt, pdir / "video.mp4")
+        else:
+            _link(bundle / "video.mp4", pdir / "video.mp4")
         for name in ("thumbnail.png", "captions.srt"):
             if (bundle / name).exists():
                 shutil.copy2(bundle / name, pdir / name)
@@ -67,6 +71,17 @@ def build(run_id: str, root: Path | None = None) -> Path:
         public.mkdir(parents=True, exist_ok=True)
         shutil.copy2(bundle / "credits.txt", public / f"{run_id}.txt")
     return out
+
+
+def _swap_audio(video: Path, audio: Path, out: Path) -> None:
+    """The same picture with the other platforms' audio (generated score, not the
+    YouTube Audio Library track). Stream copies: no quality loss."""
+    import subprocess
+
+    from core.media.video import _ffmpeg_exe
+    subprocess.run([_ffmpeg_exe(), "-y", "-i", str(video), "-i", str(audio), "-map", "0:v",
+                    "-map", "1:a", "-c", "copy", "-shortest", "-movflags", "+faststart", str(out)],
+                   check=True, capture_output=True)
 
 
 def main() -> None:

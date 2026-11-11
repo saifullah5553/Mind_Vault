@@ -83,6 +83,12 @@ class ReviewAgent(BaseAgent):
 
             self._write_claims(payload.script.full_text, rdir / "claims_to_check.txt")
 
+        # 3b) The audio for Facebook/TikTok copies when the YouTube cut carries a
+        #     YouTube Audio Library track (scripts/upload_pack.py, make_reels.py).
+        alt = payload.video.alt_audio_path if payload.video else None
+        if alt and Path(alt).exists():
+            shutil.copy2(alt, rdir / "audio_off_youtube.m4a")
+
         # 4b) Full credits, with source links.
         credit_file = Path(self.settings.storage_path("images")) / payload.run_id / "credits.txt"
         if credit_file.exists():

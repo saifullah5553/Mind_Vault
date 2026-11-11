@@ -129,6 +129,10 @@ class VideoResult(BaseModel):
     engine: str
     has_captions: bool = False
     srt_path: str | None = None
+    # When an owner track (YouTube Audio Library) is the bed: that track, and the
+    # same mix with the generated score for Facebook/TikTok copies.
+    music_track: str | None = None
+    alt_audio_path: str | None = None
 
 
 class QualityReport(BaseModel):

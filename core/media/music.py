@@ -180,10 +180,23 @@ def _procedural_bed(seconds: float, out: Path, seed_text: str = "mind_vault",
     return str(out)
 
 
+def track_credit(path: str | Path) -> dict:
+    """The credit for an owner track named 'Title - Artist.mp3' (YouTube Audio Library)."""
+    title, _, artist = Path(path).stem.rpartition(" - ")
+    return {"title": (title or Path(path).stem).strip(), "credit": artist.strip(),
+            "license": "YouTube Audio Library licence (YouTube only)",
+            "source": "YouTube Audio Library", "url": "",
+            "page": "https://studio.youtube.com/channel/UC/music", "kind": "music"}
+
+
 def get_music_bed(seconds: float, seed_text: str = "mind_vault",
-                  mood: str = "history") -> tuple[str | None, str]:
-    """Return (path, source) for a background bed. source in {user, procedural, none}."""
-    tracks = _user_tracks(mood)
+                  mood: str = "history", generated: bool = False) -> tuple[str | None, str]:
+    """Return (path, source) for a background bed. source in {user, procedural, none}.
+
+    `generated=True` skips the owner's tracks: the copies for Facebook and TikTok
+    carry the generated score, because YouTube Audio Library tracks are licensed
+    for YouTube."""
+    tracks = [] if generated else _user_tracks(mood)
     if tracks:
         # crc32, not hash(): Python salts hash() per process, so the pick changed per run.
         pick = tracks[zlib.crc32(seed_text.encode()) % len(tracks)]

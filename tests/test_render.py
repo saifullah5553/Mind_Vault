@@ -101,7 +101,8 @@ def test_loudness_pass_ends_with_a_limiter():
          "target_offset": "0.2"}
     f = _loudness_filter(m)
     assert f.startswith("loudnorm=") and "measured_I=-20" in f
-    assert f.endswith("alimiter=limit=0.708:level=disabled")
+    # limited at 192 kHz (4x oversampled, catches peaks between samples), then 48 kHz
+    assert "aresample=192000,alimiter=limit=0.6" in f and f.endswith("aresample=48000")
 
 
 def test_rerender_script_file_updates_the_topic(tmp_path):

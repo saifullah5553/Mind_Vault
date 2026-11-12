@@ -99,7 +99,7 @@ _NOT_FILMED = re.compile(
     r"coronavirus|covid|quarantine|\bmasks?\b", re.I)
 # Clips that pass every tag check but show something wrong for this channel.
 # 132048: kindergarten class in face masks, which dates a story about the 1970s.
-_BLOCKED_IDS = {132048}
+_BLOCKED_IDS = {132048, 221210}   # 221210: a marina in Perry, Kansas (the Japan film's Perry)
 # Pixabay's CDN answers bursts with empty files, which silently cost a video its
 # subject shots (20 of 85 in one render). Wait and try again.
 _RETRIES = 3

@@ -64,7 +64,9 @@ class SEOAgent(BaseAgent):
                 parts.append(disclosure)
             if platform == "youtube" and music:
                 parts.append("Music: " + "; ".join(
-                    f"{m['title']} by {m['credit']} (YouTube Audio Library)" if m.get("credit")
+                    # credits.json keeps the artist as 'author' (core/media/credits.py)
+                    f"{m['title']} by {m.get('credit') or m['author']} (YouTube Audio Library)"
+                    if m.get("credit") or m.get("author")
                     else f"{m['title']} (YouTube Audio Library)" for m in music))
             notice = (self.settings.brand.disclaimer_description or "").strip()
             if notice:

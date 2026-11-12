@@ -521,9 +521,11 @@ def _loudness_filter(m: dict) -> str:
             f"offset={m['target_offset']}:linear=true,"
             # -3 dBFS sample peak leaves room for the AAC encoder's overshoot:
             # -2 dBFS still let one 1953 flood render reach a true peak of 0.0 dB.
-            # loudnorm works at 192 kHz; limiting after the return to 48 kHz stops
-            # the resampler's overshoot (the generated score's bells reached -0.5 dB).
-            "aresample=48000,alimiter=limit=0.708:level=disabled")
+            # loudnorm works at 192 kHz. Limiting there (4x oversampled) catches the
+            # peaks between samples: a 48 kHz limit let a real music track's transient
+            # reach +1.3 dB true peak after AAC (the Japan film); this gave -4.0 dB.
+            "aresample=192000,alimiter=limit=0.6:attack=2:release=60:level=disabled,"
+            "aresample=48000")
 
 
 def _normalize_loudness(src: Path, out: Path) -> bool:

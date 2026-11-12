@@ -1234,3 +1234,55 @@ def test_history_lines_get_no_psychology_b_roll(monkeypatch, tmp_path):
 def test_wrong_iceland_pictures_are_blocked(title):
     from core.media.stock import acceptable
     assert not acceptable({"title": title, "license": "CC0", "width": 3000}, "history")
+
+
+@pytest.mark.parametrize("title", [
+    "80th Shimoda Black Ship Festival (5374683).jpg",
+    "CUNY School of Medicine - Townsend Harris Hall (48170427627).jpg",
+    "Dr. Francis Townsend & Rep. A.J. Elliott LCCN2016875233.jpg",
+    "E.D Morel, ca. 1900-1915 (IMP-CSCNWW33-OS10-23).jpg",
+    "DuchesneDeBellecourt1860.JPG",
+    "02023 Single-edged sword from the Przeworsk Culture found in Masów.jpg",
+    "Site of Ichi-tamon Gate historical marker - 2-2 Osakajo, Chuo Ward, Osaka, 540-0002, Japan.jpg",
+    "US Navy 100514-N-0051B-209 Rear Adm. Richard Wren.jpg",
+    "Dr. Townsend & Sen. Lodge LCCN2016873559.jpg",
+    "Francis Townsend, seated at desk, reading papers hec.27729.jpg",
+    "AmputationOsaka.jpg",
+    "Bijin Oiran.jpg",
+    "Otani Hiroji as Kurofune Chiemon",
+    "French and American treaty from 1922 LCCN2016863071.jpg",
+    "February 2024, buildings in Yokohama 10.jpg",
+    "Izukyu Resort21 Kurofune Kawana Futo.jpg",
+    "Harris Hall 1589 Amst Av jeh.jpg",
+    "Air shot, Cape May (N.J.) Coast Guard Station Airport by Harris & Ewing, photographer",
+    "Rivers and bridges in Yokohama 16.jpg",
+    "CFAY, NAVSUP FLC Yokosuka Clean Yokohama Foreign General Cemetery (9051043).jpg",
+])
+def test_wrong_japan_pictures_are_blocked(title):
+    from core.media.stock import acceptable
+    assert not acceptable({"title": title, "license": "CC0", "width": 3000}, "history")
+
+
+def test_japan_pictures_still_allowed():
+    from core.media.stock import acceptable
+    for title in ("Iwakura mission.jpg", "Townsend Harris portrait.jpg", "Commodore Matthew Calbraith Perry.jpg",
+                  "Iron window door on brick wall of warehouse, Tomioka Silk Mill.jpg"):
+        assert acceptable({"title": title, "license": "CC0", "width": 3000}, "history")
+
+
+def test_peoples_are_not_captioned(tmp_path):
+    from PIL import Image
+
+    from core.media.images import _direct
+    from core.media import maps
+    from core.schemas import Scene
+    if not maps.ensure_data():
+        pytest.skip("map data not available")
+    photo = tmp_path / "p.jpg"
+    Image.new("RGB", (100, 100)).save(photo)
+    state = {"showcases": [], "labelled": set(), "labels": []}
+    s = Scene(index=0, narration="It said that Americans accused of crimes would be tried.",
+              visual_prompt="", duration=3)
+    _direct(s, {"title": "Alexander Gardner (American, born Scotland) Japanese Ambassadors",
+                "path": str(photo)}, tmp_path, state)
+    assert s.label == ""

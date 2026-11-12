@@ -91,7 +91,25 @@ _BLOCKED_TITLES = re.compile(
     # Re-render: 20th-century Haakon VII over the 1262 king, blank Íslendingabók
     # pages, a 1918 committee photo over the year 930, modern ships over 874.
     r"Haakon VII|Kong Haakon|Haakon 7\.|Haakon in 20\d\d|slendingab|Sambandslaganefnd|"
-    r"Coast Guard ship|from V\w+kin museum", re.I)
+    r"Coast Guard ship|from V\w+kin museum|"
+    # The Japan film: modern Black Ship Festival parades over 1853, a New York hall
+    # and a 1930s Dr Townsend over Townsend Harris, the journalist E. D. Morel over
+    # the railway engineer Edmund Morel, a French diplomat over Paul Brunat, a 1778
+    # Franco-American treaty, a Polish Iron Age sword, Peking, Osaka plaques.
+    r"Black Ship Festival|Townsend Harris Hall|Dr\. Francis Townsend|E\. ?D\.? Morel|"
+    r"DuchesneDeBellecourt|Treaty of Amity and Commerce and of Alliance between France|"
+    r"Przeworsk|Pekin castle|Chuo Ward,? Osaka|Antigone ?Coaling|Ch\. Etienne|"
+    r"Tor Hotel|Gankir|US Army Map Service|^(?:File:)?US Navy \d{6}-N|Grave of Toshimichi|"
+    r"^(?:File:)?Tsuba |Minton|"
+    # Second Japan render: Dr Francis Townsend again, a surgery photo, a courtesan
+    # print, a kabuki actor named Kurofune, a 1922 treaty, a 2024 street.
+    r"^(?!.*Harris).*Townsend|Amputation|Oiran|as Kurofune|treaty from 1922|"
+    r"^(?:File:)?(?:January|February|March|April|May|June|July|August|September|"
+    r"October|November|December) 20\d\d, buildings|"
+    # Third Japan render: a modern 'Kurofune' train, the New York hall again, a 1930s
+    # airfield credited to 'Harris & Ewing' as the Harris Treaty, a modern Yokohama
+    # bridge, US Navy volunteers in a cemetery.
+    r"Izukyu|Harris Hall|Harris (?:&|&amp;) Ewing|Rivers and bridges in Yokohama|CFAY|NAVSUP", re.I)
 MIN_WIDTH = 1600   # below this a 1440p frame is visibly upscaled
 # "Sarah Chepchirchir - Paris Half Marathon": a photo titled with a person's name
 # shows that person. In the mood pool they'd appear over a line about someone else.

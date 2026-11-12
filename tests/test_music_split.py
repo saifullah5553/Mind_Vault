@@ -76,3 +76,13 @@ def test_track_credit():
     c = track_credit("storage/music/history/Wind-Up Mountains - Schwartzy.mp3")
     assert (c["title"], c["credit"], c["source"]) == ("Wind-Up Mountains", "Schwartzy",
                                                       "YouTube Audio Library")
+
+
+def test_music_credit_keeps_the_artist_through_the_credits_record(tmp_path):
+    """credits.add stores the artist as 'author'; the description must still name it
+    (the Japan film's description said 'Listen To Me' with no artist)."""
+    from core.media import credits
+    from core.media.music import track_credit
+    credits.add(tmp_path, [track_credit("x/Listen To Me - Asher Fulero.mp3")], "music")
+    m = [i for i in credits.load(tmp_path) if i.get("source") == "YouTube Audio Library"][0]
+    assert (m.get("credit") or m.get("author")) == "Asher Fulero"

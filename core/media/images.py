@@ -332,6 +332,21 @@ def _story_countries() -> set[str]:
     return set()
 
 
+def _demonym(word: str) -> bool:
+    """'Americans', 'Dutch', 'Japanese': a people, not a name to caption (a photo
+    by 'Alexander Gardner (American, born Scotland)' of Japanese envoys got
+    'AMERICANS')."""
+    try:
+        from core.media import maps
+        if not maps.ensure_data():
+            return False
+        bare = re.sub(r"s$", "", word)
+        return bool(maps.countries_in(word) or any(p.search(word) or p.search(bare)
+                                                   for p, _ in maps.adjective_patterns()))
+    except Exception:
+        return False
+
+
 def _direct(scene, meta: dict, out_dir: Path, state: dict, named: str = "") -> None:
     """Choose this photo's scene type from what its line says (core/media/scenes.py):
     a museum showcase when the line names an object or document the photo shows,
@@ -366,7 +381,8 @@ def _direct(scene, meta: dict, out_dir: Path, state: dict, named: str = "") -> N
         countries = _story_countries()
         hits = [re.sub(r"['\u2019]s$", "", w) for w in re.findall(r"[\w'\u2019-]+", scene.narration)[1:]
                 if w[:1].isupper() and len(w) > 3]
-        hits = [w for w in hits if named_words("x " + w) & shown and w not in countries]
+        hits = [w for w in hits if named_words("x " + w) & shown and w not in countries
+                and not _demonym(w)]
         name = hits[0] if hits else ""
     key = name.lower()
     if name and key not in state["labelled"]:

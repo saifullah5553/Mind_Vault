@@ -1,19 +1,119 @@
 {
   "_about": "Places the Natural Earth city list lacks (landmarks, regions, small towns). Coordinates are approximate centres from Wikipedia; a pin on a country-scale map needs about 1 km accuracy. Add a place the first time a script names it.",
   "places": [
-    {"name": "Zeeland", "lat": 51.45, "lon": 3.85, "country": "Netherlands"},
-    {"name": "Kinderdijk", "lat": 51.884, "lon": 4.639, "country": "Netherlands"},
-    {"name": "Afsluitdijk", "lat": 53.07, "lon": 5.17, "country": "Netherlands"},
-    {"name": "Ouwerkerk", "lat": 51.62, "lon": 3.98, "country": "Netherlands"},
-    {"name": "Stavenisse", "lat": 51.59, "lon": 4.01, "country": "Netherlands"},
-    {"name": "Zierikzee", "lat": 51.65, "lon": 3.92, "country": "Netherlands"},
-    {"name": "Beemster", "lat": 52.55, "lon": 4.92, "country": "Netherlands"},
-    {"name": "IJsselmeer", "lat": 52.80, "lon": 5.40, "country": "Netherlands"},
-    {"name": "Zuiderzee", "lat": 52.75, "lon": 5.35, "country": "Netherlands"},
-    {"name": "Eastern Scheldt", "lat": 51.64, "lon": 3.70, "country": "Netherlands"},
-    {"name": "Maeslant barrier", "lat": 51.955, "lon": 4.163, "country": "Netherlands"},
-    {"name": "Thingvellir", "lat": 64.2559, "lon": -21.1299, "country": "Iceland"},
-    {"name": "Edo Bay", "lat": 35.45, "lon": 139.80, "country": "Japan"},
-    {"name": "Uraga", "lat": 35.24, "lon": 139.72, "country": "Japan"}
+    {
+      "name": "Zeeland",
+      "lat": 51.45,
+      "lon": 3.85,
+      "country": "Netherlands"
+    },
+    {
+      "name": "Kinderdijk",
+      "lat": 51.884,
+      "lon": 4.639,
+      "country": "Netherlands"
+    },
+    {
+      "name": "Afsluitdijk",
+      "lat": 53.07,
+      "lon": 5.17,
+      "country": "Netherlands"
+    },
+    {
+      "name": "Ouwerkerk",
+      "lat": 51.62,
+      "lon": 3.98,
+      "country": "Netherlands"
+    },
+    {
+      "name": "Stavenisse",
+      "lat": 51.59,
+      "lon": 4.01,
+      "country": "Netherlands"
+    },
+    {
+      "name": "Zierikzee",
+      "lat": 51.65,
+      "lon": 3.92,
+      "country": "Netherlands"
+    },
+    {
+      "name": "Beemster",
+      "lat": 52.55,
+      "lon": 4.92,
+      "country": "Netherlands"
+    },
+    {
+      "name": "IJsselmeer",
+      "lat": 52.8,
+      "lon": 5.4,
+      "country": "Netherlands"
+    },
+    {
+      "name": "Zuiderzee",
+      "lat": 52.75,
+      "lon": 5.35,
+      "country": "Netherlands"
+    },
+    {
+      "name": "Eastern Scheldt",
+      "lat": 51.64,
+      "lon": 3.7,
+      "country": "Netherlands"
+    },
+    {
+      "name": "Maeslant barrier",
+      "lat": 51.955,
+      "lon": 4.163,
+      "country": "Netherlands"
+    },
+    {
+      "name": "Thingvellir",
+      "lat": 64.2559,
+      "lon": -21.1299,
+      "country": "Iceland"
+    },
+    {
+      "name": "Edo Bay",
+      "lat": 35.45,
+      "lon": 139.8,
+      "country": "Japan"
+    },
+    {
+      "name": "Uraga",
+      "lat": 35.24,
+      "lon": 139.72,
+      "country": "Japan"
+    },
+    {
+      "name": "Dejima",
+      "lat": 32.7437,
+      "lon": 129.8728,
+      "country": "Japan"
+    },
+    {
+      "name": "Shimoda",
+      "lat": 34.6797,
+      "lon": 138.9453,
+      "country": "Japan"
+    },
+    {
+      "name": "Hakodate",
+      "lat": 41.7687,
+      "lon": 140.7288,
+      "country": "Japan"
+    },
+    {
+      "name": "Tomioka",
+      "lat": 36.2553,
+      "lon": 138.8875,
+      "country": "Japan"
+    },
+    {
+      "name": "Kanagawa",
+      "lat": 35.4766,
+      "lon": 139.6297,
+      "country": "Japan"
+    }
   ]
 }

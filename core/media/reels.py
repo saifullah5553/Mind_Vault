@@ -93,6 +93,31 @@ def sentences(cues: list[Cue], cta: str = "") -> list[Sentence]:
     return out
 
 
+# A reel is watched on its own: its first sentence must not lean on the one before.
+# Channel numbers (content/analytics/lessons.md, 2026-11-13): parts opening "It was
+# only the start", "They also hoped" sat in the bottom third of all Shorts.
+_LEANS = re.compile(r"^(?:it|its|they|them|their|this|that|these|those|he|she|his|her|him|"
+                    r"but|and|so|then|also|there|here|which|who|yet|still|instead|meanwhile|"
+                    r"next|later|now|even|such)\b", re.I)
+# ...or within its first words ('In 1866, those two domains', 'In that, they failed').
+_LEANS_SOON = re.compile(r"^\W*(?:[\w']+\W+){1,3}(?:those|these|they|them|their|its|it|he|she|"
+                         r"his|her|that)\b", re.I)
+_STRONG = re.compile(r"^(?:[Ii]n|[Oo]n|[Bb]y|[Ff]rom)\s+(?:the\s+)?(?:\d|[A-Z])|^\d|^[A-Z][a-z]+\s+[A-Z]|\?$")
+
+
+def opening_cost(text: str) -> float:
+    """How badly a sentence opens a reel: high for one that leans on the sentence
+    before ('It was only the start.'), low for a date, a number, a name or a question."""
+    s = (text or "").strip().strip("\"'“”‘’")
+    if _LEANS.match(s) or _LEANS_SOON.match(s):
+        return 6.0
+    if len(s.split()) < 4:                     # a fragment ('The Dutch.') opens nothing
+        return 5.0
+    if _STRONG.search(s):
+        return -2.0
+    return 0.0
+
+
 def part_count(seconds: float) -> int:
     """5-10 parts of about a minute each."""
     n = round(seconds / TARGET_SECONDS)
@@ -121,6 +146,8 @@ def split(sents: list[Sentence], parts: int | None = None) -> list[Part]:
         if not MIN_SECONDS <= dur <= MAX_SECONDS and n > 1:
             return inf
         c = ((dur - target) / 8.0) ** 2
+        if i > 0:                                       # a part must open on its own feet
+            c += opening_cost(sents[i].text)
         if j + 1 < k:                                   # reward a pause at the break
             c -= 2.0 * min(1.5, sents[j + 1].start - sents[j].end)
         return c

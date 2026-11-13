@@ -38,3 +38,12 @@ def test_build_marks_lines():
                "source": "Commodore Perry portrait"}]
     text, flagged = build(scenes)
     assert flagged == 1 and "!! namesake" in text and "CARD title" in text
+
+
+def test_reels_open_on_their_own_feet():
+    from core.media.reels import opening_cost
+    assert opening_cost("It was only the start.") > 0
+    assert opening_cost("In 1866, those two domains joined forces.") > 0
+    assert opening_cost("The Dutch.") > 0
+    assert opening_cost("In 1858, the American consul Townsend Harris won a far bigger deal.") < 0
+    assert opening_cost("Tokugawa Yoshinobu offered to give up his power.") < 0

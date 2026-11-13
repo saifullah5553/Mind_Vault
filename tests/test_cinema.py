@@ -84,6 +84,8 @@ def test_directed_segment_renders(tmp_path):
     s = Scene(index=3, narration="x", visual_prompt="", duration=2.0, image_path=str(still))
     part = tmp_path / "p.mp4"
     assert _directed_segment(ff, s, 3, 2.0, (320, 180), 10, part)
+    # the pipeline passes the resolution as a list (settings): must work too
+    assert _directed_segment(ff, s, 3, 2.0, [320, 180], 10, tmp_path / "q.mp4")
     assert part.stat().st_size > 1000
 
 

@@ -195,6 +195,7 @@ def _brand_overlay(res):
     """The fixed brand mark and the soft dark floor under it, as (mask, text layer):
     drawn on every frame so they stay put while the camera moves."""
     from PIL import Image, ImageDraw
+    res = (int(res[0]), int(res[1]))
     w, h = res
     cache = _brand_overlay.__dict__.setdefault("_cache", {})
     if res not in cache:
@@ -214,6 +215,7 @@ def _directed_segment(ffmpeg: str, scene, i: int, dur: float, res, fps: int, par
 
     from core.media import camera
     from core.media.images import source_copy
+    res = (int(res[0]), int(res[1]))        # settings give a list; caches need a tuple
     w, h = res
     try:
         src = Image.open(source_copy(scene.image_path)).convert("RGB")

@@ -167,6 +167,7 @@ def portrait_frame(src, box_frac, res):
     """A tall picture shown whole over a blurred, darkened fill of itself; box_frac
     zooms the composition slightly (0..1 fractions of the fill)."""
     from PIL import Image, ImageEnhance, ImageFilter
+    res = (int(res[0]), int(res[1]))
     w, h = res
     cache = portrait_frame.__dict__.setdefault("_cache", {})
     key = (id(src), res)
@@ -189,6 +190,7 @@ def portrait_frame(src, box_frac, res):
 def frames(src, seconds: float, fps: int, res, index: int):
     """Every output frame for a still, as (PIL image, shot kind)."""
     from PIL import Image
+    res = (int(res[0]), int(res[1]))
     shots = plan(src.size, interest(src), seconds, fps, res[0], index)
     for shot in shots:
         for box in boxes(shot):

@@ -305,14 +305,21 @@ class VideoAgent(BaseAgent):
             placed = []
             taken: set[int] = set()
             for clip in shots:
-                fits = [(relevance(s.narration, {"title": clip.get("title", "")})[0], -n, n)
-                        for n, s in enumerate(free) if n not in taken and not s.clip_path
-                        and ("part" not in clip or line_part.get(id(s)) == clip["part"])]
+                fits = []
+                for n, s in enumerate(free):
+                    if n in taken or s.clip_path or (
+                            "part" in clip and line_part.get(id(s)) != clip["part"]):
+                        continue
+                    score, named = relevance(s.narration, {"title": clip.get("title", "")})
+                    fits.append((score, named, -n, n))
                 best = max(fits, default=None)
-                if not best or best[0] < 2:
+                # A clip's title is its tags: one shared everyday word is not enough
+                # ('stone' put waves on rocks over a line about the Rosetta Stone).
+                # Two shared words, or a shared name.
+                if not best or (best[0] < 4 and not best[1]):
                     continue          # no line this shot shows: the lines keep stills
-                scene = free[best[2]]
-                taken.update({best[2] - 1, best[2], best[2] + 1})   # not back to back
+                scene = free[best[3]]
+                taken.update({best[3] - 1, best[3], best[3] + 1})   # not back to back
                 scene.clip_path = clip["path"]
                 scene.source = "footage: " + str(clip.get("title", ""))[:110]
                 placed.append(clip)

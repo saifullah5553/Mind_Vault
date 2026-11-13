@@ -305,3 +305,22 @@ def test_finishing_pass_replaces_its_intermediate(tmp_path):
     keep = tmp_path / "keep.mp4"
     keep.write_bytes(b"c")
     assert _replace(keep, missing) == missing and keep.exists()   # nothing replaced it
+
+
+def test_history_footage_needs_more_than_one_shared_word(monkeypatch, tmp_path):
+    """Waves on rocks were placed over a Rosetta Stone line on the word 'stone'."""
+    from core.registry import get_agent, load_all_agents
+    from core.schemas import Scene
+    load_all_agents()
+    agent = get_agent("video")
+    shots = [{"path": "waves.mp4", "url": "u", "title": "water, stone, rocks, splash, sea",
+              "source": "Pixabay", "license": "Pixabay"}]
+    monkeypatch.setattr("core.media.stock_video.fetch_clip_pool", lambda *a, **k: shots)
+    scenes = [Scene(index=i, narration="By the end you will know what that stone really did.",
+                    visual_prompt="x", duration=3) for i in range(3)]
+    agent._attach_footage(scenes, tmp_path, "topic", "history", (640, 360))
+    assert not any(s.clip_path for s in scenes)
+    scenes = [Scene(index=i, narration="Waves broke over the rocks and the sea splashed the stone.",
+                    visual_prompt="x", duration=3) for i in range(3)]
+    agent._attach_footage(scenes, tmp_path, "topic", "history", (640, 360))
+    assert any(s.clip_path for s in scenes)          # a line about the sea and rocks still gets it

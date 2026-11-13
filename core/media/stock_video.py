@@ -99,7 +99,7 @@ _NOT_FILMED = re.compile(
     r"coronavirus|covid|quarantine|\bmasks?\b", re.I)
 # Clips that pass every tag check but show something wrong for this channel.
 # 132048: kindergarten class in face masks, which dates a story about the 1970s.
-_BLOCKED_IDS = {132048, 221210}   # 221210: a marina in Perry, Kansas (the Japan film's Perry)
+_BLOCKED_IDS = {132048, 221210, 295209, 14476, 214940, 80817, 200023, 45132}   # 221210: a marina in Perry, Kansas (the Japan film's Perry); 295209: hibiscus "marshmallow" plant; 14476/214940/80817: a Turkish street, Kyoto's Kinkakuji and a girl's hair in the Rosetta Stone film; 200023/45132: a Bangalore temple and a model's face in its re-render
 # Pixabay's CDN answers bursts with empty files, which silently cost a video its
 # subject shots (20 of 85 in one render). Wait and try again.
 _RETRIES = 3

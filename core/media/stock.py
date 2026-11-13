@@ -109,7 +109,47 @@ _BLOCKED_TITLES = re.compile(
     # Third Japan render: a modern 'Kurofune' train, the New York hall again, a 1930s
     # airfield credited to 'Harris & Ewing' as the Harris Treaty, a modern Yokohama
     # bridge, US Navy volunteers in a cemetery.
-    r"Izukyu|Harris Hall|Harris (?:&|&amp;) Ewing|Rivers and bridges in Yokohama|CFAY|NAVSUP", re.I)
+    r"Izukyu|Harris Hall|Harris (?:&|&amp;) Ewing|Rivers and bridges in Yokohama|CFAY|NAVSUP|"
+    # The marshmallow test film: the marshmallow plant, Bing Crosby over the Bing
+    # Nursery School, Marx Brothers 'Animal Crackers' adverts, a Connecticut census
+    # map over Brooklyn, military and medical photos over 'test', named strangers
+    # (President Johnson, a Maldives graduation), old paintings and a church.
+    r"Althaea|Bing Crosby|Animal Crackers|Strand Theater Ad|Census Enumeration District|"
+    r"Belovodski|Orphanage|HopMonk|Oscar the Grouch|Alice's Adventures|Singing As We Go|"
+    r"Balık kraker|Air assault|Guantanamo|AF Secretary|Brain-to-brain|Jedi' helmet|"
+    r"Brain Tumor|Mohamed Qasim|Auto mechanics at work|Rochester Gold Min|Abraham Solomon|"
+    r"BM 1868,0808|BM 1857,1222|Ary Scheffer|Lyndon B\. Johnson|Ellis family home|"
+    r"Erlöserkirche|BernhardWilma|Kongressbad|Galofre|Cassatt|"
+    r"Children Play, Probably|Memorial Church at Stanford|20121106-FS-KR|Gideon's Bakehouse|"
+    # Its third render: protest graffiti on the Stanford Quad, military photos (USMC,
+    # Fort Drum, Helmand, US Navy), a Chevrolet colour named 'Toasted Marshmallow',
+    # Hoover Dam for Hoover Tower, a USC coach named Irvine, a pink hare, sheet music,
+    # restaurant plates, a battleship, a Basque politician at an MRI unit.
+    r"Vandalism|Pro-Palestine|USMC-|DIVARTY|Fort Drum|Helmand|Official U\.S\. Navy|"
+    r"Chevrolet|Hoover Dam|E\. A\. Irvine|Pink Young Hare|Columbia v\. Amherst|"
+    r"Away with melancoly|Richelieu|Gwennie|Lehendakari|Convair|olb-by-RalfR|"
+    r"Church Windows Dessert|Fortnum|BBQMarshmallows|Banned Books Week|20171027-AMS-LSC|"
+    r"Food cooking \(|Snowbush|Stay Puft|"
+    # The Rosetta Stone film: a conceptual artwork over Bouchard, a Prague
+    # Tutankhamun show, battle paintings, a Gibraltar cave captioned Mediterranean,
+    # typeface specimens over 'basalt', a portrait 'said to be' someone else
+    # captioned Thomas, a Greek vase as 'Ancient Greek', a Mercator map cartouche,
+    # and two named strangers over the closing lines.
+    r"Joseph Kosuth|Tutankhamun exhib|Destruction of the French Fleet|Battle of the Pyramids|"
+    r"Mediterranean Cave|Breite Egyptienne|slab-serif|typeface|said to be John Millington|"
+    r"Loutrophoros|Sarmatia map|Dagestani|"
+    # Its re-render: a Botticelli portrait captioned YOUNG over Thomas Young, an
+    # Israeli army photo over the 1999 cleaning, a type specimen, St Peter's Square.
+    r"Botticelli|Ashdod|IDF soldiers|Caslon|Pietersplein|"
+    # The Pavlov film: present-day politicians and generals, weapons, a 1917 riot,
+    # religious and mythological prints, surgery on dogs, people named Koki, the
+    # wrong Watson, a Czech church in a town called Pavlov, and off-topic fillers.
+    r"Putin|Medvedev|Tod D\. Wolters|EUCOM|\bKoki\b|Revolver|Belt, shooting|Plevna|"
+    r"Balders dood|Hoder krijgt|Daniel in der L|Riot on Nevsky|Christmas parade|"
+    r"Elkanah Watson|Minarik Guitars|Mahjong|Atomic Force Microscopy|Kostel Pavlov|"
+    r"operating on a dog|undergoing experiments|cranial cavity|Arduino Laboratory|"
+    r"Barbara McClintock|Croquet party|perished physicians|Student Council, 1981|"
+    r"Architecture for Human Interaction|Ergaki|Olkhon|M5 Ural|Poselok Suchan", re.I)
 MIN_WIDTH = 1600   # below this a 1440p frame is visibly upscaled
 # "Sarah Chepchirchir - Paris Half Marathon": a photo titled with a person's name
 # shows that person. In the mood pool they'd appear over a line about someone else.

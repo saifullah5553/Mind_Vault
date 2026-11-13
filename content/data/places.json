@@ -114,6 +114,48 @@
       "lat": 35.4766,
       "lon": 139.6297,
       "country": "Japan"
+    },
+    {
+      "name": "Rashid",
+      "lat": 31.404,
+      "lon": 30.417,
+      "country": "Egypt"
+    },
+    {
+      "name": "Figeac",
+      "lat": 44.6086,
+      "lon": 2.0317,
+      "country": "France"
+    },
+    {
+      "name": "Memphis",
+      "lat": 29.8446,
+      "lon": 31.2505,
+      "country": "Egypt"
+    },
+    {
+      "name": "Philae",
+      "lat": 24.0256,
+      "lon": 32.8842,
+      "country": "Egypt"
+    },
+    {
+      "name": "Saint Petersburg",
+      "lat": 59.9386,
+      "lon": 30.3141,
+      "country": "Russia"
+    },
+    {
+      "name": "Leningrad",
+      "lat": 59.9386,
+      "lon": 30.3141,
+      "country": "Russia"
+    },
+    {
+      "name": "Koltushi",
+      "lat": 59.927,
+      "lon": 30.646,
+      "country": "Russia"
     }
   ]
 }

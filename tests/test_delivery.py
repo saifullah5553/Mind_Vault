@@ -1263,6 +1263,36 @@ def test_wrong_japan_pictures_are_blocked(title):
     assert not acceptable({"title": title, "license": "CC0", "width": 3000}, "history")
 
 
+@pytest.mark.parametrize("title", [
+    "Althaea officinalis, 2020-10-04, Carnegie, 01.jpg",
+    "Bing Crosby looking at his newborn son.jpg",
+    "Animal Crackers (1928) 02.jpg",
+    "1940 Census Enumeration District Maps - Connecticut - Windham County - Brooklyn - ED 8-3 - NARA - 5829561.jpg",
+    "Air assault slingload test.jpg",
+    "President Lyndon B. Johnson at the dedication of University of California Irvine (13768686434).jpg",
+    "Ary Scheffer - Les ombres de Francesca da Rimini et de Paolo Malatesta.jpg",
+    "1934 Erlöserkirche Am Schüttel img01.jpg",
+    "Memorial Church at Stanford University.jpg",
+    "Pro-Palestine Vandalism of Stanford Quad (53772388133).jpg",
+    "USMC-12733.jpg",
+    "2021 Chevrolet Spark LS in Toasted Marshmallow, front left, 07-13-2022.jpg",
+    "Hoover Dam Spillway Tower.jpg",
+    "University of Southern California assistant football coach E. A. Irvine, USC campus, Los Angeles, 1915.jpg",
+    "Helmand's largest hospital introduces new MRI capabilities 111015-M-DF801-032.jpg",
+])
+def test_wrong_marshmallow_pictures_are_blocked(title):
+    from core.media.stock import acceptable
+    assert not acceptable({"title": title, "license": "CC0", "width": 3000}, "history")
+
+
+def test_marshmallow_pictures_still_allowed():
+    from core.media.stock import acceptable
+    for title in ("Crayola crayons.jpg", "Low Library2.jpg", "Stanford University Aerial View.jpg",
+                  "Pink Marshmallow squashed into a Strange Shape.jpg",
+                  "Tower at Stanford.jpg", "Reading room in Rush Rhees library at the University of Rochester.jpg"):
+        assert acceptable({"title": title, "license": "CC0", "width": 3000}, "history"), title
+
+
 def test_japan_pictures_still_allowed():
     from core.media.stock import acceptable
     for title in ("Iwakura mission.jpg", "Townsend Harris portrait.jpg", "Commodore Matthew Calbraith Perry.jpg",
@@ -1286,3 +1316,60 @@ def test_peoples_are_not_captioned(tmp_path):
     _direct(s, {"title": "Alexander Gardner (American, born Scotland) Japanese Ambassadors",
                 "path": str(photo)}, tmp_path, state)
     assert s.label == ""
+
+
+@pytest.mark.parametrize("title", [
+    "Self Described and Self Defined (1965) - Joseph Kosuth (1948) (24010621475).jpg",
+    "2024-12-20 13-26-11 CZ PRG Tutankhamun exhib JHe N9.jpg",
+    "Battle of the Pyramids 1798.jpg",
+    "Destruction of the French Fleet at Toulon 18th December 1793.jpg",
+    "Mediterranean Cave in Gibraltar 1902 Illustrated London News photo.jpg",
+    "Caslon 1841 specimen Eight-line Pica antique (slab-serif) shaded typeface.jpg",
+    "2017-02 Sir Thomas Lawrence - Portrait of a young man, said to be John Millington, Esq..jpg",
+    "Ancient Greek Loutrophoros.jpg",
+    "Basic cartouche on a Sarmatia map by Mercator.jpg",
+    "Dagestani man and woman.jpg",
+    "Botticelli - Portrait of a Young Man Holding a Roundel.jpg",
+    "Laying a corner stone for a new club for IDF soldiers in Ashdod (FL63120169).jpg",
+    'Caslon shaded slab serif, 1841 "Gin".jpg',
+    "De oprichting van de obelisk op het St. Pietersplein, RP-P-OB-207.655.jpg",
+])
+def test_wrong_rosetta_pictures_are_blocked(title):
+    from core.media.stock import acceptable
+    assert not acceptable({"title": title, "license": "CC0", "width": 3000}, "history")
+
+
+def test_rosetta_pictures_still_allowed():
+    from core.media.stock import acceptable
+    for title in ("June 2008 Rosetta stone.jpg", "Portrait of Thomas Young.jpg",
+                  "Jean-François Champollion, by Léon Cogniet.jpg", "Hiéroglyphes - Temple de Karnak.jpg",
+                  "The Rosetta Stone (Left Side) - British Museum.jpg", "Egyptienne frigate.jpg"):
+        assert acceptable({"title": title, "license": "CC0", "width": 3000}, "history"), title
+
+
+def test_rosetta_clips_blocked():
+    from core.media.stock_video import _BLOCKED_IDS
+    assert {14476, 214940, 80817, 200023, 45132} <= _BLOCKED_IDS
+
+
+@pytest.mark.parametrize("title", [
+    "2017-01-19 Vladimir Putin and Dmitry Medvedev with Mintimer Shaimiyev on the eve of his 80th birthday, 01.jpg",
+    "Gen. Tod D. Wolters EUCOM.jpg",
+    "Koki Ozora.jpg",
+    "Revolver, percussion (AM 559402-1).jpg",
+    "Hans Thoma - Daniel in der Löwengrube (1886).jpg",
+    "19170704 Riot on Nevsky prosp Petrograd (original).jpg",
+    "I.P. Pavlov with three colleagues operating on a dog in the Wellcome L0022540.jpg",
+    "Elkanah Watson (NYPL b13476046-EM11399).jpg",
+    "Kostel Pavlov1 (Žďár).JPG",
+])
+def test_wrong_pavlov_pictures_are_blocked(title):
+    from core.media.stock import acceptable
+    assert not acceptable({"title": title, "license": "CC0", "width": 3000}, "history")
+
+
+def test_pavlov_pictures_still_allowed():
+    from core.media.stock import acceptable
+    for title in ("Ivan-Pavlov06.jpg", "Dogs with their keepers at the Physiology Department Wellcome L0022519.jpg",
+                  "Metronome (2555843095).jpg", "House where I. P. Pavlov.jpg"):
+        assert acceptable({"title": title, "license": "CC0", "width": 3000}, "history"), title

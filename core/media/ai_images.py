@@ -27,6 +27,7 @@ log = get_logger("media.ai_images")
 MODEL = "@cf/black-forest-labs/flux-2-klein-4b"
 LICENSE = "AI illustration (FLUX.2 klein 4B, Apache 2.0)"
 SIZE = (1920, 1088)
+CACHE_DIR = Path(__file__).resolve().parents[2] / "storage" / "ai_cache"   # one file per prompt
 # Added to every prompt: the look of a documentary still, and what must not appear.
 STYLE = ("cinematic documentary film still, natural light, realistic, muted film colours, "
          "historically accurate clothing, buildings and objects for the period, "
@@ -43,7 +44,19 @@ def generate(prompt: str, dest: Path) -> dict | None:
 
     The token goes only in the Authorization header to api.cloudflare.com and is
     never logged."""
-    if not available() or not prompt.strip():
+    if not prompt.strip():
+        return None
+    # Made once, reused by every later plan and render: re-planning a video used
+    # to redraw its illustrations each time and spent the free daily allowance.
+    import hashlib
+    import shutil
+    key = hashlib.sha1(f"{MODEL}|{SIZE}|{prompt.strip()}|{STYLE}".encode("utf-8")).hexdigest()[:20]
+    cached = CACHE_DIR / f"{key}.jpg"
+    if cached.exists() and cached.stat().st_size > 5000:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(cached, dest)
+        return _meta(prompt, dest)
+    if not available():
         return None
     import httpx
     account = os.environ["CLOUDFLARE_ACCOUNT_ID"].strip()
@@ -64,9 +77,15 @@ def generate(prompt: str, dest: Path) -> dict | None:
             return None
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(raw)
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        cached.write_bytes(raw)
     except Exception as exc:
         log.warning("Cloudflare illustration failed (%s).", type(exc).__name__)
         return None
+    return _meta(prompt, dest)
+
+
+def _meta(prompt: str, dest: Path) -> dict:
     return {"path": str(dest), "title": f"Illustration: {prompt.strip()[:100]}", "url": "",
             "page": "https://developers.cloudflare.com/workers-ai/models/flux-2-klein-4b/",
             "license": LICENSE, "credit": "AI illustration, FLUX.2 klein 4B on Cloudflare Workers AI",

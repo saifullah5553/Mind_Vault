@@ -85,3 +85,24 @@ def test_ai_credit_sets_the_youtube_declaration(tmp_path):
     assert credits.has_ai(tmp_path)
     assert not credits.publish_problem(tmp_path)        # Apache 2.0 is fine to publish
     assert not credits.has_ai(tmp_path / "none")
+
+
+def test_illustrations_are_drawn_once_and_reused(tmp_path, monkeypatch):
+    from core.media import ai_images
+    monkeypatch.setattr(ai_images, "CACHE_DIR", tmp_path / "cache")
+    calls = []
+
+    class R:
+        status_code = 200
+        headers = {"content-type": "image/jpeg"}
+        content = b"x" * 6000
+    monkeypatch.setattr(ai_images, "available", lambda: True)
+    monkeypatch.setenv("CLOUDFLARE_ACCOUNT_ID", "acct")
+    monkeypatch.setenv("CLOUDFLARE_API_TOKEN", "tok")
+    import httpx
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: calls.append(1) or R())
+    assert ai_images.generate("a ship at sea", tmp_path / "a.jpg")
+    assert ai_images.generate("a ship at sea", tmp_path / "b.jpg")     # from the cache
+    assert len(calls) == 1 and (tmp_path / "b.jpg").stat().st_size == 6000
+    monkeypatch.setattr(ai_images, "available", lambda: False)        # quota gone / no key
+    assert ai_images.generate("a ship at sea", tmp_path / "c.jpg")     # still served

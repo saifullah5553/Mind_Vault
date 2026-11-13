@@ -95,3 +95,17 @@ def test_captions_come_from_the_photo_title_only(tmp_path):
     _direct(b, {"title": "Reykjavik Standbeeld van Ingolfur Arnarsson", "path": str(photo)},
             tmp_path, state)
     assert b.label == "REYKJAVÍK"           # one name, no possessive
+
+
+def test_caption_carries_the_whole_name(tmp_path):
+    from PIL import Image
+
+    from core.media.images import _direct
+    from core.schemas import Scene
+    photo = tmp_path / "p.jpg"
+    Image.new("RGB", (100, 100)).save(photo)
+    state = {"showcases": [], "labelled": set(), "labels": []}
+    s = Scene(index=0, narration="The first man to make real progress was Thomas Young, an English doctor.",
+              visual_prompt="", duration=3)
+    _direct(s, {"title": "Portrait of Thomas Young.jpg", "path": str(photo)}, tmp_path, state)
+    assert s.label == "THOMAS YOUNG"

@@ -47,3 +47,14 @@ def test_reels_open_on_their_own_feet():
     assert opening_cost("The Dutch.") > 0
     assert opening_cost("In 1858, the American consul Townsend Harris won a far bigger deal.") < 0
     assert opening_cost("Tokugawa Yoshinobu offered to give up his power.") < 0
+
+
+def test_namesakes_lose_to_the_real_person():
+    from core.media.stock import relevance
+    line = "The first man to make real progress was Thomas Young, an English doctor."
+    assert relevance(line, {"title": "Portrait of Thomas Young.jpg"})[0] > 0
+    assert relevance(line, {"title": "Walter Thomas [young man bow"})[0] < 0
+    assert relevance(line, {"title": "A Young Art Student (Portrait of Thomas Eakins).jpg"})[0] < 0
+    # not a person picture: left for the reviewer, not penalised
+    assert relevance("Captured in Egypt by the British Army in 1801.",
+                     {"title": "The Rosetta Stone (Left Side) - British Museum.jpg"})[0] > 0

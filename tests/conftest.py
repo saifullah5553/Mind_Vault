@@ -74,3 +74,10 @@ def stub_settings():
     s = get_settings()
     s.llm.provider = "stub"
     return s
+
+
+@pytest.fixture(autouse=True)
+def _private_ai_cache(tmp_path, monkeypatch):
+    """Tests never read or fill the real illustration cache (storage/ai_cache)."""
+    from core.media import ai_images
+    monkeypatch.setattr(ai_images, "CACHE_DIR", tmp_path / "_ai_cache")

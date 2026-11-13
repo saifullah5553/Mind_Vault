@@ -18,15 +18,49 @@ _YEAR = re.compile(r"(?<!\d)(19[5-9]\d|20\d\d)(?!\d)")
 _NOW = re.compile(r"\b(?:today|now|still|survives?|surviving|museum|UNESCO|modern|"
                   r"present|restored|rebuilt|ruins?|remains)\b", re.I)
 _CREDIT = re.compile(r"\b(?:by|photo(?:graph)?(?:ed)? by|photographer)\b.*$", re.I)
-_NAME = re.compile(r"(?<![.!?]\s)(?<!^)\b([A-Z][a-z'’-]+(?:\s+[A-Z][a-z'’-]+)+)")
+# Two or more capitalised words in a row (a sentence-opening 'The'/'In' is dropped
+# as an honorific-like word below, so 'Thomas Young was there' still counts).
+_NAME = re.compile(r"\b([A-Z][a-z'’-]+(?:\s+[A-Z][a-z'’-]+)+)")
 _HONORIFIC = {"commodore", "president", "emperor", "empress", "king", "queen", "sir", "lord",
               "general", "admiral", "captain", "consul", "prince", "princess", "saint", "st",
               "pope", "the", "of", "and", "in", "at", "with"}
 
 
+# Often fine (the subject carries over from the line before): a "?", not a "!!".
+_LOOSE = {"shares no word with the line"}
+
+
 def _words(text: str) -> set[str]:
     from core.media.stock import match_words
     return match_words(text or "")
+
+
+def namesakes(line: str, title: str) -> list[str]:
+    """Another person or thing sharing a name the line uses: 'Dr. Francis Townsend'
+    for Townsend Harris, 'A Young Art Student (Portrait of Thomas Eakins)' for
+    Thomas Young."""
+    out: list[str] = []
+    for m in _NAME.finditer(line):
+        tokens = [re.sub(r"['’]s$", "", w) for w in m.group(1).split() if w.lower() not in _HONORIFIC]
+        if len(tokens) < 2:
+            continue
+        hits = [w for w in tokens if re.search(rf"(?<![A-Za-z]){re.escape(w)}(?![A-Za-z])", title)]
+        # The name in order, allowing up to two middle names or initials
+        # ('Ivan Petrovich Pavlov' is Ivan Pavlov).
+        in_order = re.search(r"(?<![A-Za-z])" + r"(?:[\s_.-]+[\w.]+){0,2}[\s_.-]+".join(
+            map(re.escape, tokens)) + r"(?![A-Za-z])", title, re.I)
+        if len(hits) == len(tokens) and not in_order:
+            # Every part of the name, but not as the name: 'A Young Art Student
+            # (Portrait of Thomas Eakins)' for Thomas Young.
+            out.append(f"namesake? the words of '{m.group(1)}' but not the name")
+        elif hits and len(hits) < len(tokens):
+            # One part of a two-part name: is it beside a different name in the title?
+            w = hits[0]
+            near = re.search(rf"([A-Z][\w.]*\.?)\s+{re.escape(w)}|{re.escape(w)}\s+([A-Z]\w+)", title)
+            other = near and (near.group(1) or near.group(2))
+            if other and other.lower().strip(".") not in {x.lower() for x in tokens} | _HONORIFIC:
+                out.append(f"namesake? '{near.group(0)}' for '{m.group(1)}'")
+    return out
 
 
 def risks(line: str, title: str, about: str = "", category: str = "history") -> list[str]:
@@ -44,18 +78,7 @@ def risks(line: str, title: str, about: str = "", category: str = "history") -> 
         out.append("shares no word with the line")
     if category == "history" and _YEAR.search(title) and not _NOW.search(line):
         out.append("modern photo over a past event")
-    for m in _NAME.finditer(line):
-        tokens = [w for w in m.group(1).split() if w.lower() not in _HONORIFIC]
-        if len(tokens) < 2:
-            continue
-        hits = [w for w in tokens if re.search(rf"(?<![A-Za-z]){re.escape(w)}(?![A-Za-z])", title)]
-        if hits and len(hits) < len(tokens):
-            # One part of a two-part name: is it beside a different name in the title?
-            w = hits[0]
-            near = re.search(rf"([A-Z][\w.]*\.?)\s+{re.escape(w)}|{re.escape(w)}\s+([A-Z]\w+)", title)
-            other = near and (near.group(1) or near.group(2))
-            if other and other.lower().strip(".") not in {x.lower() for x in tokens} | _HONORIFIC:
-                out.append(f"namesake? '{near.group(0)}' for '{m.group(1)}'")
+    out += namesakes(line, title)
     return out
 
 
@@ -85,12 +108,13 @@ def build(scenes: list, category: str = "history") -> tuple[str, int]:
         flags = [] if (sc.get("animation_kind") or sc.get("tag")) else \
             risks(sc["narration"], sc.get("source") or "", category=category)
         m, sec = divmod(int(t), 60)
+        strong = [f for f in flags if f not in _LOOSE]
         rows.append(f"{m}:{sec:02d}  {sc['narration'].strip()}\n      ON SCREEN: {shown}"
-                    + "".join(f"\n      !! {f}" for f in flags))
-        flagged += bool(flags)
+                    + "".join(f"\n      {'?' if f in _LOOSE else '!!'} {f}" for f in flags))
+        flagged += bool(strong)
         t += float(sc.get("duration") or 0)
     head = ("Every line and what is on screen. Check each picture belongs to its line.\n"
-            f"Lines marked !! need a second look ({flagged}).\n\n")
+            f"Lines marked !! are likely faults ({flagged}); ? marks a loose match to check.\n\n")
     return head + "\n".join(rows) + "\n", flagged
 
 

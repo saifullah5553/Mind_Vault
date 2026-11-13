@@ -254,7 +254,10 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
     # Only for scenes that will show a still (cards and footage don't).
     if use_stock:
         for scene in scenes:
-            if not _shows(scene):
+            if not _shows(scene) or getattr(scene, "title", ""):
+                # The cold open shows the story's subject (the best pool match),
+                # not a place it happens to name: 'Nile Delta' opened the Rosetta
+                # film on a statue base in Oxford.
                 continue
             out = out_dir / f"scene_{scene.index:03d}.jpg"
             meta = _named_image(scene.narration, named_cache, out_dir, category,
@@ -416,6 +419,12 @@ def _direct(scene, meta: dict, out_dir: Path, state: dict, named: str = "") -> N
         hits = [w for w in hits if named_words("x " + w) & shown and w not in countries
                 and not _demonym(w)]
         name = hits[0] if hits else ""
+        # The whole name when the line and the title both carry it ('THOMAS YOUNG',
+        # not 'THOMAS').
+        if name:
+            m = re.search(rf"(?<![\w-]){re.escape(name)}\s+([A-Z][\w'’-]+)", scene.narration)
+            if m and named_words("x " + m.group(1)) & shown and not _demonym(m.group(1)):
+                name = f"{name} {re.sub(r'[\'’]s$', '', m.group(1))}"
     key = name.lower()
     if name and key not in state["labelled"]:
         state["labelled"].add(key)

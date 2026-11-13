@@ -1373,3 +1373,17 @@ def test_pavlov_pictures_still_allowed():
     for title in ("Ivan-Pavlov06.jpg", "Dogs with their keepers at the Physiology Department Wellcome L0022519.jpg",
                   "Metronome (2555843095).jpg", "House where I. P. Pavlov.jpg"):
         assert acceptable({"title": title, "license": "CC0", "width": 3000}, "history"), title
+
+
+@pytest.mark.parametrize("title", [
+    "Angelelli Franco-Tuscan Expedition to Egypt.jpg",
+    "Jérusalem, Village de Siloam, Monolithe de forme égyptienne, 1 MET DP131257.jpg",
+    "Papyrus Amherst 63, obverse, columns i-iv.jpg",
+    "Charles Lewis Fussell - A Young Art Student (Portrait of Thomas Eakins).jpg",
+    "21-10-27, le roi d'Egypte à l'Institut - btv1b53190355q.jpg",
+    "Nile Delta enemies on the base of the Ashmolean statue of pharaoh Khasekhemwy.jpg",
+    "Ancient Greek theatre (Tyndaris) 02.jpg",
+])
+def test_wrong_rosetta_pictures_are_blocked(title):
+    from core.media.stock import acceptable
+    assert not acceptable({"title": title, "license": "CC0", "width": 3000}, "history")

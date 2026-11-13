@@ -149,7 +149,30 @@ _BLOCKED_TITLES = re.compile(
     r"Elkanah Watson|Minarik Guitars|Mahjong|Atomic Force Microscopy|Kostel Pavlov|"
     r"operating on a dog|undergoing experiments|cranial cavity|Arduino Laboratory|"
     r"Barbara McClintock|Croquet party|perished physicians|Student Council, 1981|"
-    r"Architecture for Human Interaction|Ergaki|Olkhon|M5 Ural|Poselok Suchan", re.I)
+    r"Architecture for Human Interaction|Ergaki|Olkhon|M5 Ural|Poselok Suchan|"
+    # The Rosetta Stone picture plan: Champollion's 1828 expedition over Bouchard in
+    # 1799, a Jerusalem monolith, one Aramaic papyrus three times, the painter Thomas
+    # Eakins over Thomas Young, a 1927 King of Egypt under the closing line, an
+    # Ashmolean statue base as the 'Nile Delta', a Sicilian theatre as 'Ancient Greek'.
+    r"Franco-Tuscan|Siloam|Papyrus Amherst 63|Thomas Eakins|roi d'Egypte|"
+    r"Khasekhemwy|Greek theatre \(Tyndaris\)|"
+    # The Pavlov picture plan: Soviet postal envelopes, a modern physicist, early-1900s
+    # astronomers, a Victorian painter named Watson, modern Johns Hopkins buildings, a
+    # 2014 parade, a 2011 flood, a 2005 trolleybus, a prince, a Slovak mine.
+    r"Envelope of the (?:USSR|Russia)|Bleszynski|Schwarzschild|John Dawson Watson|Johns Hopkins|"
+    r"4th of July Parade|Наводнение декабрь 2011|trolleybus|Obolensky|Baňa Mária|"
+    # Rosetta plan 2: a 2013 union summit (Augusta Y. Thomas) as Thomas Young, a
+    # mummy as Bouchard, Champollion's brother over Young, a Figeac industrial zone.
+    r"Augusta Y\. Thomas|AFGE|女性木乃伊|Champollion-Figeac - né|Figeac Vue Aérienne|"
+    # Rosetta plan 3: a French château, a Malta map as Bouchard, Napoleon's return
+    # to France over the stone's Greek text.
+    r"Château de Naucaze|Archipel maltais|Arrivée en France de Bonaparte|"
+    # Pavlov plan 2: other John Watsons (a racing driver, a painter, a 2010 photo),
+    # war in Leningrad, a dinosaur, frog skin, crop circles, hunting prints.
+    r"Watkins Glen|John Watson \(1802\)|John S\. Watson|Gibson Lockhart|Red dinosaur|frog rana|"
+    r"Siege of Leningrad|Anti aircraft Leningrad|Crop Circles|anti-exposure suit|Ooty Hunt|"
+    r"Medici Kennel|Billy-ranger|Gloeden|Department of Agriculture-Historical|perilous ride|"
+    r"Local man looks scene|Else Mauhs|Garden in Blossom", re.I)
 MIN_WIDTH = 1600   # below this a 1440p frame is visibly upscaled
 # "Sarah Chepchirchir - Paris Half Marathon": a photo titled with a person's name
 # shows that person. In the mood pool they'd appear over a line about someone else.
@@ -521,6 +544,9 @@ _PERSON_PICTURE = re.compile(
     r"pope|chieftain|portrait|bust of|statue of|coronation|royalty|royals)\b", re.I)
 
 
+_LOOKS_PERSON = re.compile(r"\b(?:portrait|young man|man|woman|girl|boy|dr|mr|mrs|miss|professor|prof|sir|lady|lord|speaking|seated|standing)\b\.?", re.I)
+
+
 def _common(a: set[str], b: set[str]) -> set[str]:
     """Words of `a` found in `b`, a long word also matching its longer or shorter
     form (Althing / Althingi, Thingvellir / Thingvallavatn is not: 6+ letters)."""
@@ -550,8 +576,20 @@ def relevance(line: str, hit: dict) -> tuple[float, bool]:
     score = (2 * len(_common(words, title)) + len(_common(words, about))
              + 1.5 * len(_common(words, label)) + 0.5 * len(_common(words, query))
              + 2 * len(names))
-    if _PERSON_PICTURE.search(hit.get("title", "")) and not (named_words(line) & title):
+    raw_title = hit.get("title", "")
+    # A portrait must carry the line's name as a name (capitalised): 'Portrait young
+    # man pondering' is not Thomas Young.
+    as_name = any(re.search(rf"(?<![A-Za-z]){re.escape(w)}(?![A-Za-z])", raw_title)
+                  for w in re.findall(r"\b[A-Z][a-z]{2,}", line))
+    if _PERSON_PICTURE.search(raw_title) and not (named_words(line) & title and as_name):
         score -= 100
+    elif _LOOKS_PERSON.search(hit.get("title", "")):
+        # A namesake of the line's person ('Walter Thomas [young man]' for Thomas
+        # Young, a portrait of Thomas Eakins titled 'A Young Art Student').
+        from core.media.shotlist import namesakes
+        if namesakes(line, hit.get("title", "")):
+            score -= 100
+            names = set()
     return score, bool(names)
 
 

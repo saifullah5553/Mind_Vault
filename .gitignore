@@ -69,3 +69,4 @@ storage/_test/
 upload_ready/
 storage/previews/
 storage/analytics/*
+storage/ai_cache/*

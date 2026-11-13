@@ -13,6 +13,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 
 from core.database.session import init_db
 from core.logging_setup import get_logger
@@ -60,6 +61,9 @@ def main() -> None:
                         help="redo a finished run from --from onward, keeping its script")
     parser.add_argument("--from", dest="from_stage", default="visual",
                         help="first stage to redo with --rerender (default: visual)")
+    parser.add_argument("--plan-only", action="store_true",
+                        help="stop after the pictures: write the picture plan (shot list + sheet) "
+                             "to storage/images/<run_id>/ and skip the long render")
     parser.add_argument("--script-file", default=None,
                         help="use this human-edited script (see core/script_file.py)")
     parser.add_argument("--new-from-script", metavar="FILE", default=None,
@@ -74,6 +78,9 @@ def main() -> None:
                         help="output height for landscape (or width for vertical). "
                              "1440/4k look sharper on YouTube but render slower.")
     args = parser.parse_args()
+    if args.plan_only:
+        import os
+        os.environ["MIND_VAULT_PLAN_ONLY"] = "1"
 
     orch = Orchestrator()
     if args.rerender:
@@ -115,7 +122,15 @@ def main() -> None:
     if ctx.publish_results:
         for r in ctx.publish_results:
             print(f"Publish   : {r.platform:<10} {r.status}  {r.note}")
-    if ctx.extra.get("failed_stage"):
+    if args.plan_only and "PLAN ONLY" in str(ctx.extra.get("error", "")):
+        plan_dir = Path("storage") / "images" / ctx.run_id
+        print(f"PLAN      : {plan_dir / 'picture_plan.txt'}  and  {plan_dir / 'picture_plan.jpg'}")
+        print("Next      : fix the script (TOPIC searches, lines, ILLUSTRATE) and plan again with")
+        print(f"            python -m scripts.run_pipeline --rerender {ctx.run_id} --from visual "
+              "--script-file <script> --plan-only")
+        print(f"            then render: python -m scripts.run_pipeline --rerender {ctx.run_id} "
+              "--from visual --script-file <script>")
+    elif ctx.extra.get("failed_stage"):
         print(f"FAILED at : {ctx.extra['failed_stage']} -> {ctx.extra.get('error')}")
         print(f"Resume    : python -m scripts.run_pipeline --resume {ctx.run_id}")
     print("=" * 64 + "\n")

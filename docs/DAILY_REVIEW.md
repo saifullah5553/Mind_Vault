@@ -16,13 +16,31 @@ not used, because the company network blocks it.
    following `.claude/skills/mind-vault-production/SKILL.md`. That file covers topic
    choice, the header lines, 1,050–1,250 words, the hook, sources (at least 8), and
    writing for the ear.
-2. Render it:
+2. Plan the pictures first (about 10 minutes, no video rendered):
 
    ```bash
-   .venv\Scripts\python -m scripts.run_pipeline --new-from-script content/scripts/<slug>.txt --category history --format long
+   .venv\Scripts\python -m scripts.run_pipeline --new-from-script content/scripts/<slug>.txt --category history --format long --plan-only
    ```
 
-   Use `--category psychology` for psychology topics.
+   Use `--category psychology` for psychology topics. It prints `RUN <id>` and writes
+   `storage/images/<id>/picture_plan.txt` (every line and its picture) and
+   `picture_plan.jpg` (the planned stills, numbered by scene). Read every line and
+   look at the sheet. Lines marked `!!` are the usual faults: a namesake (another
+   person or building with the same name), a word matched only in the photographer's
+   credit, a modern photo over a past event, a picture sharing no word with its
+   line. Fix each wrong picture before rendering: a better TOPIC search or `= words`
+   label, a plainer line, an ILLUSTRATE cue for a moment no photo can show, or a
+   block in `core/media/stock.py`. Then plan again:
+
+   ```bash
+   .venv\Scripts\python -m scripts.run_pipeline --rerender <id> --from visual --script-file content/scripts/<slug>.txt --plan-only
+   ```
+
+3. When the plan is clean, render it (40–60 minutes):
+
+   ```bash
+   .venv\Scripts\python -m scripts.run_pipeline --rerender <id> --from visual --script-file content/scripts/<slug>.txt
+   ```
 
 The run id is printed as `RUN <id>` and is the newest folder in `storage/review/`.
 The hook and overall scores are advice for a written script. Facts, originality,

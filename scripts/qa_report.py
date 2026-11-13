@@ -151,10 +151,11 @@ def main() -> None:
         m, sec = divmod(int(t), 60)
         shots.append(f"{m}:{sec:02d}  {sc['narration'].strip()}\n      ON SCREEN: {shown}")
         t += sc["duration"]
-    (qa / "shotlist.txt").write_text(
-        "Every line and what is on screen. Check each picture belongs to its line.\n\n"
-        + "\n".join(shots) + "\n", encoding="utf-8")
-    print(f"Shot list: {qa / 'shotlist.txt'}")
+    from core.media import shotlist
+    text, flagged = shotlist.build(scenes, ctx.get("category", "history"))
+    (qa / "shotlist.txt").write_text(text, encoding="utf-8")
+    print(f"Shot list: {qa / 'shotlist.txt'}"
+          + (f"  ({flagged} line(s) flagged !! for a second look)" if flagged else ""))
 
     # ── licences ───────────────────────────────────────────────────────────
     folder = Path(s.storage_path("images")) / run

@@ -96,13 +96,24 @@ line, at least 8:
 Commodore Matthew Perry's ships arrived at Uraga, near Edo, in July 1853 | https://www.britannica.com/...
 ```
 
-Then render it:
+Then plan the pictures before rendering (about 10 minutes):
 
 ```bash
-.venv\Scripts\python -m scripts.run_pipeline --new-from-script content/scripts/<slug>.txt --category history --format long
+.venv\Scripts\python -m scripts.run_pipeline --new-from-script content/scripts/<slug>.txt --category history --format long --plan-only
 ```
 
-Use `--category psychology` for psychology topics.
+Use `--category psychology` for psychology topics. Read
+`storage/images/<id>/picture_plan.txt` and look at `picture_plan.jpg`; fix every
+wrong picture (lines marked `!!` first) in the script, plan again with
+`--rerender <id> --from visual --script-file <file> --plan-only`, and render only a
+clean plan (`--rerender <id> --from visual --script-file <file>`). A render costs
+40–60 minutes; a plan costs 10. Never spend a render finding a wrong picture.
+
+The camera (core/media/camera.py) films each photo like a director: it frames the
+subject, pans across wide scrolls and maps, shows tall portraits whole, and cuts a
+shot of 6 seconds or more from a wide view to a close-up when the photo is large.
+So prefer large, sharp photos with one clear subject, and give long lines a
+picture worth a close-up (a face, a seal, a ship, an inscription).
 
 ## 3. Writing for the ear
 

@@ -76,6 +76,17 @@ class VideoAgent(BaseAgent):
             generate_images(plan.scenes, img_dir, topic=topic, category=category,
                             subtitles=False, illustrate=payload.get("illustrate", ""))
 
+        if os.getenv("MIND_VAULT_PLAN_ONLY") == "1":
+            # The picture plan: the shot list and a sheet of the planned stills,
+            # checked BEFORE the long render (scripts.run_pipeline --plan-only).
+            from core.errors import NonRetryableError
+            from core.media import shotlist
+            text, flagged = shotlist.build(plan.scenes, category)
+            (img_dir / "picture_plan.txt").write_text(text, encoding="utf-8")
+            shotlist.contact_sheet(plan.scenes, img_dir / "picture_plan.jpg")
+            self.log.info("Picture plan: %s (%d line(s) flagged)", img_dir / "picture_plan.txt", flagged)
+            raise NonRetryableError(f"PLAN ONLY: picture plan written to {img_dir / 'picture_plan.txt'}")
+
         out = Path(self.settings.storage_path("videos")) / f"{run_id}.mp4"
         presenter_overlay = payload.get("presenter_overlay")
         result = assemble_video(with_disclaimer(plan.scenes, video_format, self.settings.brand),

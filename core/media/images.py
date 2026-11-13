@@ -75,6 +75,32 @@ def _draw_subtitle(img, text: str, width: int, height: int) -> None:
                         spacing=8, align="center")
 
 
+SOURCE_MAX = 4096   # the camera's copy: enough pixels for a sharp close-up at 1440p
+
+
+def source_copy(still: str | Path) -> Path:
+    """Where the camera finds the whole picture behind a 16:9 scene still."""
+    p = Path(still)
+    return p.with_name(p.stem + "_src.jpg")
+
+
+def _save_source(img, out: Path) -> None:
+    """Keep the whole picture, graded like the still, for the camera
+    (core/media/camera.py): it frames, pans and cuts to close-ups from this."""
+    try:
+        from PIL import Image, ImageEnhance
+        from core.media.camera import trim
+        pic = trim(img)
+        if max(pic.size) > SOURCE_MAX:
+            r = SOURCE_MAX / max(pic.size)
+            pic = pic.resize((round(pic.width * r), round(pic.height * r)), Image.LANCZOS)
+        pic = ImageEnhance.Contrast(pic).enhance(1.05)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        pic.save(source_copy(out), "JPEG", quality=92, subsampling=0)
+    except Exception as exc:
+        log.debug("camera source copy failed (%s)", exc)
+
+
 def _cinematic_from_photo(src: Path, scene: Scene, out: Path, width: int, height: int,
                           brand: str, subtitle: bool = True) -> bool:
     """Full-bleed cover-crop of a real photo + cinematic grade + subtitle."""
@@ -82,6 +108,8 @@ def _cinematic_from_photo(src: Path, scene: Scene, out: Path, width: int, height
         from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
 
         img = Image.open(src).convert("RGB")
+        if not subtitle:
+            _save_source(img, out)
         # Cover-crop to the target aspect (no letterboxing, no stretching).
         tr = width / height
         w, h = img.size
@@ -176,6 +204,10 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
     brand = get_settings().brand.name
     out_dir = Path(run_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    # A re-render may give a scene a different picture (or a card): never let the
+    # camera film an earlier render's copy.
+    for old in out_dir.glob("scene_*_src.jpg"):
+        old.unlink(missing_ok=True)
     provider = cfg.provider.lower()
     width, height = cfg.width, cfg.height
 

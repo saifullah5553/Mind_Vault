@@ -134,6 +134,8 @@ video:
   # many cameras and old prints cut together as one film.
   film_look: true
   film_grain: 3                  # fine moving grain; 0 = off
+  director: true                 # film stills like a director: framing, pans, close-ups
+  sound_design: true             # subtle whooshes and hits on cuts (generated, $0)
   # Captions timed from the ACTUAL narration (faster-whisper, CPU) instead of
   # estimated scene durations - more accurate, and enables short karaoke cues.
   caption_source: "auto"         # auto | audio | scenes

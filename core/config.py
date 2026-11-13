@@ -128,6 +128,8 @@ class VideoConfig(BaseModel):
     min_footage_height: int = 400   # don't upscale sources smaller than this
     film_look: bool = True          # one film grade + vignette over footage and photos
     film_grain: int = 3             # fine moving grain (0 = none; 3 is subtle)
+    director: bool = True           # camera director: framing, pans, close-ups (core/media/camera.py)
+    sound_design: bool = True       # whooshes on card cuts, a hit after the title (core/media/sfx.py)
     caption_source: str = "auto"    # auto | audio (word-level) | scenes (estimated)
     caption_model: str = "base"     # faster-whisper model: tiny|base|small|medium
     caption_compute: str = "int8"   # int8 keeps it fast on CPU

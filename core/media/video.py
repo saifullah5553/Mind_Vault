@@ -21,6 +21,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+import numpy as np
+
 from core.config import get_settings
 from core.logging_setup import get_logger
 from core.schemas import Scene, VideoResult, VoiceResult
@@ -124,6 +126,11 @@ def _kenburns_segment(ffmpeg: str, scene, i: int, dur: float, res, fps: int, par
     """
     from PIL import Image
 
+    if getattr(get_settings().video, "director", True):
+        from core.media.images import source_copy
+        if scene.image_path and source_copy(scene.image_path).exists():
+            return _directed_segment(ffmpeg, scene, i, dur, res, fps, part)
+
     w, h = res
     frames = max(2, round(dur * fps))
     # Cover-fit the still to 1.15x the frame: room to move, but the tightest
@@ -178,6 +185,68 @@ def _kenburns_segment(ffmpeg: str, scene, i: int, dur: float, res, fps: int, par
             proc.kill()
         except Exception:
             pass
+        return False
+
+
+def _brand_overlay(res):
+    """The fixed brand mark and the soft dark floor under it, as (mask, text layer):
+    drawn on every frame so they stay put while the camera moves."""
+    from PIL import Image, ImageDraw
+    w, h = res
+    cache = _brand_overlay.__dict__.setdefault("_cache", {})
+    if res not in cache:
+        col = np.array([int(70 * max(0.0, (y / max(1, h - 1) - 0.80) / 0.20) ** 2)
+                        for y in range(h)], dtype=np.uint8)
+        mask = Image.fromarray(np.repeat(col[:, None], w, axis=1), "L")
+        from core.media.images import _font
+        brand = get_settings().brand.name
+        cache[res] = (mask, brand, _font(max(16, w // 60)))
+    return cache[res]
+
+
+def _directed_segment(ffmpeg: str, scene, i: int, dur: float, res, fps: int, part: Path) -> bool:
+    """A still filmed by the camera director (core/media/camera.py): framed on its
+    subject, panned or tilted to its shape, cut to a close-up when the shot is long."""
+    from PIL import Image, ImageDraw
+
+    from core.media import camera
+    from core.media.images import source_copy
+    w, h = res
+    try:
+        src = Image.open(source_copy(scene.image_path)).convert("RGB")
+    except Exception as exc:
+        log.debug("camera source unreadable (%s).", exc)
+        return False
+    mask, brand, font = _brand_overlay(res)
+    black = Image.new("RGB", res, (0, 0, 0))
+    cmd = [ffmpeg, "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{w}x{h}",
+           "-r", str(fps), "-i", "-", "-vf", _film_look() + _COLOUR_SCALE, "-c:v", "libx264",
+           "-preset", _preset(), "-crf", str(_crf()), "-pix_fmt", "yuv420p", *_COLOUR_TAGS,
+           "-threads", "2", str(part)]
+    proc = None
+    try:
+        proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL)
+        for f, (frame, _kind) in enumerate(camera.frames(src, dur, fps, res, i)):
+            frame = Image.composite(black, frame, mask)
+            ImageDraw.Draw(frame).text((30, h - 46), brand, font=font, fill=(210, 210, 220))
+            if getattr(scene, "label", ""):
+                from core.media.scenes import draw_lower_third
+                draw_lower_third(frame, scene.label, getattr(scene, "label_sub", ""), res,
+                                 f / fps, dur)
+            if getattr(scene, "tag", ""):
+                from core.media.scenes import draw_tag
+                draw_tag(frame, scene.tag, res)
+            proc.stdin.write(frame.tobytes())
+        proc.stdin.close()
+        return proc.wait(timeout=900) == 0 and part.exists()
+    except Exception as exc:
+        log.debug("directed segment failed (%s).", exc)
+        if proc:
+            try:
+                proc.kill()
+            except Exception:
+                pass
         return False
 
 
@@ -307,7 +376,31 @@ def _kenburns_build(scenes, audio: VoiceResult | None, out_path: Path, res, fps:
         subprocess.run([ffmpeg, "-y", "-f", "concat", "-safe", "0", "-i", str(lst),
                         "-c", "copy", str(silent)], check=True, capture_output=True)
 
-        if audio and Path(audio.audio_path).exists():
+        sfx_track = ""
+        if audio and Path(audio.audio_path).exists() and getattr(get_settings().video,
+                                                                 "sound_design", True):
+            try:
+                from core.media import sfx
+                kept = [job for job, kind in zip(jobs, kinds) if kind]
+                starts, t = [], 0.0
+                for job in kept:
+                    starts.append(t)
+                    t += job[1].duration
+                evts = sfx.events([job[1].animation_kind for job in kept], starts)
+                if evts:
+                    sfx_track = sfx.track(evts, t, tdp / "sfx.wav")
+                    log.info("Sound design: %d cue(s).", len(evts))
+            except Exception as exc:
+                log.debug("sound design skipped (%s)", exc)
+                sfx_track = ""
+        if audio and Path(audio.audio_path).exists() and sfx_track:
+            fc = ("[1:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,apad[v];"
+                  "[2:a]aformat=sample_fmts=fltp:channel_layouts=stereo[s];"
+                  "[v][s]amix=inputs=2:duration=first:normalize=0[a]")
+            cmd2 = [ffmpeg, "-y", "-i", str(silent), "-i", audio.audio_path, "-i", sfx_track,
+                    "-filter_complex", fc, "-map", "0:v", "-map", "[a]", "-c:v", "copy",
+                    *_AUDIO_OUT, "-shortest", str(out_path)]
+        elif audio and Path(audio.audio_path).exists():
             cmd2 = [ffmpeg, "-y", "-i", str(silent), "-i", audio.audio_path,
                     "-c:v", "copy", "-af", "apad", *_AUDIO_OUT, "-shortest", str(out_path)]
         else:

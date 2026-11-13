@@ -375,6 +375,64 @@ def draw_lower_third(frame, label: str, sub: str, res, t: float, dur: float) -> 
     frame.paste(over, (0, 0), over)
 
 
+TITLE_IN = 1.0          # the cold open's title fades in here (and the low hit lands)
+
+
+def film_title(title: str, thumbnail: str = "") -> str:
+    """The words for the cold open's title: the title's subject before a colon
+    ('Meiji Restoration: How Japan…' -> 'MEIJI RESTORATION'), else the thumbnail
+    text, else the title itself, cut to a few words."""
+    head = (title or "").split(":", 1)[0].strip()
+    if ":" in (title or "") and 1 <= len(head.split()) <= 5:
+        return head.upper()
+    if thumbnail and len(thumbnail.split()) <= 5:
+        return thumbnail.strip().upper()
+    return " ".join((title or "").split()[:5]).upper()
+
+
+def draw_film_title(frame, text: str, res, t: float, dur: float) -> None:
+    """The cold open's title over the first shot: spaced capitals with a thin rule,
+    fading in after a second and out before the cut, like a film's main title."""
+    from PIL import Image, ImageDraw
+
+    from core.media.animation import Style, _font
+    end = min(dur - 0.6, TITLE_IN + 5.0)
+    a = min(_ease((t - TITLE_IN) / 0.9), _ease((end - t) / 0.8))
+    if a <= 0 or not text:
+        return
+    w, h = res
+    st = Style()
+    spaced = " ".join(text)                               # letter-spaced, like a title card
+    size = int(h * 0.085)
+    font = _font(size, True)
+    probe = ImageDraw.Draw(frame)
+    while probe.textlength(spaced, font=font) > w * 0.86 and size > 20:
+        size = int(size * 0.92)
+        font = _font(size, True)
+    tw = probe.textlength(spaced, font=font)
+    over = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(over)
+    band = int(size * 4.2)
+    y = int(h * 0.5 - size * 0.7)
+    # A soft shadow band, feathered top and bottom (not a hard grey bar).
+    import math
+    top = int(y + size * 0.55 - band / 2)
+    col = Image.new("L", (1, band))
+    for r in range(band):
+        col.putpixel((0, r), int(165 * a * math.sin(math.pi * r / max(1, band - 1)) ** 1.2))
+    shade = Image.new("RGBA", (w, band), (0, 0, 0, 255))
+    shade.putalpha(col.resize((w, band)))
+    over.paste(shade, (0, max(0, top)), shade)
+    rise = (1 - a) * h * 0.012
+    d.text(((w - tw) / 2 + 2, y + rise + 2), spaced, font=font, fill=(0, 0, 0, int(160 * a)))
+    d.text(((w - tw) / 2, y + rise), spaced, font=font, fill=(*st.ink, int(255 * a)))
+    rw = int(w * 0.12 * a)
+    ry = int(y + size * 1.35 + rise)
+    d.rectangle([(w - rw) // 2, ry, (w + rw) // 2, ry + max(2, h // 360)],
+                fill=(*st.accent, int(255 * a)))
+    frame.paste(over, (0, 0), over)
+
+
 def describe(kind: str) -> str:
     """For the shot list: 'SHOWCASE carved pillars', 'LAYERS 580 BCE'."""
     import json

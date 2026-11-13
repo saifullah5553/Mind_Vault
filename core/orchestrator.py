@@ -445,6 +445,8 @@ class Orchestrator:
             "category": ctx.category,
             # 'cue = prompt; ...' from the script header: AI illustrations (core/media/ai_images.py)
             "illustrate": ctx.extra.get("illustrate", ""),
+            "title": ctx.script.title if ctx.script else "",
+            "thumbnail_text": ctx.extra.get("thumbnail_text", ""),
         }, ctx)
         self._update_content(ctx, status=ContentStatus.PRODUCED.value,
                              video_path=ctx.video.video_path,

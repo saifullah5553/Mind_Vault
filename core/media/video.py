@@ -176,6 +176,9 @@ def _kenburns_segment(ffmpeg: str, scene, i: int, dur: float, res, fps: int, par
             if getattr(scene, "tag", ""):
                 from core.media.scenes import draw_tag
                 draw_tag(frame, scene.tag, (w, h))
+            if getattr(scene, "title", ""):
+                from core.media.scenes import draw_film_title
+                draw_film_title(frame, scene.title, (w, h), f / fps, dur)
             proc.stdin.write(frame.tobytes())
         proc.stdin.close()
         return proc.wait(timeout=600) == 0 and part.exists()
@@ -237,6 +240,9 @@ def _directed_segment(ffmpeg: str, scene, i: int, dur: float, res, fps: int, par
             if getattr(scene, "tag", ""):
                 from core.media.scenes import draw_tag
                 draw_tag(frame, scene.tag, res)
+            if getattr(scene, "title", ""):
+                from core.media.scenes import draw_film_title
+                draw_film_title(frame, scene.title, res, f / fps, dur)
             proc.stdin.write(frame.tobytes())
         proc.stdin.close()
         return proc.wait(timeout=900) == 0 and part.exists()
@@ -386,7 +392,9 @@ def _kenburns_build(scenes, audio: VoiceResult | None, out_path: Path, res, fps:
                 for job in kept:
                     starts.append(t)
                     t += job[1].duration
-                evts = sfx.events([job[1].animation_kind for job in kept], starts)
+                from core.media.scenes import TITLE_IN
+                title_at = TITLE_IN if kept and getattr(kept[0][1], "title", "") else None
+                evts = sfx.events([job[1].animation_kind for job in kept], starts, title_at)
                 if evts:
                     sfx_track = sfx.track(evts, t, tdp / "sfx.wav")
                     log.info("Sound design: %d cue(s).", len(evts))

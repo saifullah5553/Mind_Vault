@@ -105,6 +105,7 @@ class Scene(BaseModel):
     label: str = ""                   # name caption over a photo (first sight of a person/place)
     label_sub: str = ""
     tag: str = ""                     # corner tag, e.g. "ILLUSTRATION" on AI pictures
+    title: str = ""                   # cold open: the film title over the first shot
 
 
 class ScenePlan(BaseModel):

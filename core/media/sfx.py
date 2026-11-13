@@ -69,10 +69,12 @@ def hit(seconds: float = 2.6, seed: int = 2) -> np.ndarray:
     return (st / (np.abs(st).max() + 1e-9)).astype(np.float32)
 
 
-def events(kinds: list[str | None], starts: list[float]) -> list[tuple[str, float]]:
+def events(kinds: list[str | None], starts: list[float],
+           title_at: float | None = None) -> list[tuple[str, float]]:
     """Where the sounds go: (sound, time in seconds). `kinds` are the scenes'
-    animation kinds (None for a photo or clip), `starts` their start times."""
-    out: list[tuple[str, float]] = []
+    animation kinds (None for a photo or clip), `starts` their start times;
+    `title_at` is when a cold open's title appears (the hit lands on it)."""
+    out: list[tuple[str, float]] = [("hit", title_at)] if title_at is not None else []
     last_whoosh = -99.0
     for k, (kind, start) in enumerate(zip(kinds, starts)):
         name = (kind or "").split(":", 1)[0]

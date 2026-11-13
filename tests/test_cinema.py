@@ -85,3 +85,16 @@ def test_directed_segment_renders(tmp_path):
     part = tmp_path / "p.mp4"
     assert _directed_segment(ff, s, 3, 2.0, (320, 180), 10, part)
     assert part.stat().st_size > 1000
+
+
+def test_cold_open_title_and_hit():
+    from core.media.scenes import draw_film_title, film_title
+    assert film_title("Meiji Restoration: How Japan Remade Itself", "SHUT FOR 200 YEARS") == "MEIJI RESTORATION"
+    assert film_title("How Iceland Ruled Itself Without a King", "NO KING") == "NO KING"
+    frame = Image.new("RGB", (640, 360), (120, 120, 120))
+    draw_film_title(frame, "MEIJI RESTORATION", (640, 360), 0.2, 10)
+    assert frame.getextrema() == ((120, 120), (120, 120), (120, 120))     # not yet
+    draw_film_title(frame, "MEIJI RESTORATION", (640, 360), 3.0, 10)
+    assert frame.getextrema() != ((120, 120), (120, 120), (120, 120))     # on screen
+    ev = sfx.events([None, "map:{}", None], [0, 14, 20], title_at=1.0)
+    assert ev[0] == ("hit", 1.0) and ("whoosh", 13.45) in ev

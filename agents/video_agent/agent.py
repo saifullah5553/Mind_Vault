@@ -62,6 +62,14 @@ class VideoAgent(BaseAgent):
         #    on a plain background is a weak first second to swipe past.
         if self.config.get("use_animation", True) and video_format != "short":
             self._mark_animated(plan.scenes)
+        # COLD OPEN: the first line plays over its picture, filmed, with the film's
+        # title fading in over it (core/media/scenes.draw_film_title), instead of a
+        # text card. A film opens on its strongest image, not on a slide.
+        if (video_format != "short" and self.config.get("cold_open", True)
+                and plan.scenes and payload.get("title")):
+            from core.media.scenes import film_title
+            plan.scenes[0].animation_kind = None
+            plan.scenes[0].title = film_title(payload["title"], payload.get("thumbnail_text", ""))
 
         # 2) REAL FOOTAGE: each shot used once, spread through the video.
         import os
@@ -254,7 +262,7 @@ class VideoAgent(BaseAgent):
         seen_names: set[str] = set()
         free = []
         for s in scenes:
-            if s.animation_kind:
+            if s.animation_kind or s.title:      # the cold open is a filmed still
                 continue
             new = [n for n in named_subjects(s.narration, known) if n not in seen_names]
             seen_names.update(new)

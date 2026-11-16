@@ -29,3 +29,21 @@ keeps repeating, and mark it "tentative" until it does.
 
 Missing: retention, average view percentage, shares and subscribers per video need the
 YouTube Analytics API enabled in the Google Cloud project (owner action).
+
+## 2026-11-16 (1,135 views, 2 subscribers; retention data now available)
+
+6. **The first seconds decide a Short (repeats in 10 of 12 retention curves).** The
+   steepest drop is before 10–20% of every reel but one. The headline and the first
+   spoken line must carry the hook; open on the turn, never on set-up.
+7. **Lesson 2 revised: "lists of names do worst" is contradicted.** Counts on 13 Nov
+   were taken when the Japan reels were a day old. Three days later "Tsuda Umeko,
+   Japan's First Railway and the Tomioka Silk Mill" has 56 views and "Japan's Leaders
+   Sail to See the West" 55. Compare reels only at a similar age (views per day).
+   Conflict and reversal still lead (North Sea 130, Unequal Treaties Ended 79, Hobby
+   Died 73, Lost Its Althing 66): keep lesson 2's first part, still tentative.
+8. **Part 1 still leads: 57 views on average, later parts 33 (repeats, 3 series).**
+   Exception: Iceland Part 1 ("A Parliament Born in a Rift", 3 views) — a descriptive
+   headline with no turn, which fits lesson 2.
+9. **Long videos keep 8–18% of viewers on average (4 videos, tentative).** Viewers leave
+   early; the cold open and first 30 seconds must show the strongest picture and state
+   the twist, and the title must promise a turn the video delivers.

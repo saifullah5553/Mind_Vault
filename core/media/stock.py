@@ -182,7 +182,10 @@ _BLOCKED_TITLES = re.compile(
     # postal cover, a Pisa cement works, a market building.
     r"Harvey Alter|Andhra Medical College|Balmoral Keepers|Ferreting|breaker boys|"
     r"John Mackintosh\. Mezzotint|John Watson\. Pastel|Edward Skinner|postal cover|"
-    r"Arc-city-at-pisa|^(?:File:)?Skin of|Main Fair building", re.I)
+    r"Arc-city-at-pisa|^(?:File:)?Skin of|Main Fair building|"
+    # Final plans: more namesakes (Skinner, Thomas) and late-Soviet street photos.
+    r"W\.W\. Skinner|Skinners Weir|Otis Skinner|Skinner, Otis|Master Skinner|"
+    r"Curwen Thomas|Leningrad 1991|Leningrad May 1 1977", re.I)
 MIN_WIDTH = 1600   # below this a 1440p frame is visibly upscaled
 # "Sarah Chepchirchir - Paris Half Marathon": a photo titled with a person's name
 # shows that person. In the mood pool they'd appear over a line about someone else.

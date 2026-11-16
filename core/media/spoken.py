@@ -45,6 +45,13 @@ def spoken_text(full_text: str, speak_chapters: bool | None = None) -> str:
     return re.sub(r"\n{3,}", "\n\n", text).strip()
 
 
+# A sentence ends at . ! or ? and a space, but not after an initial or a title:
+# 'John B. Watson' and 'B. F. Skinner' were split mid-name, which broke the line
+# in two and captioned 'JOHN'.
+_SENTENCE_BREAK = re.compile(r"(?<!\b[A-Z]\.)(?<!\bDr\.)(?<!\bMr\.)(?<!\bMs\.)(?<!\bSt\.)"
+                             r"(?<!\bMrs\.)(?<=[.!?])\s+")
+
+
 def sentences(text: str) -> list[tuple[str, bool]]:
     """Spoken sentences in order, as (sentence, ends_paragraph).
 
@@ -53,7 +60,7 @@ def sentences(text: str) -> list[tuple[str, bool]]:
     """
     out: list[tuple[str, bool]] = []
     for para in re.split(r"\n\s*\n", (text or "").strip()):
-        parts = [p.strip() for p in re.split(r"(?<=[.!?])\s+", para.strip()) if p.strip()]
+        parts = [p.strip() for p in _SENTENCE_BREAK.split(para.strip()) if p.strip()]
         out += [(p, i == len(parts) - 1) for i, p in enumerate(parts)]
     return out
 

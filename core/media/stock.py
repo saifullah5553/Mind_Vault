@@ -172,7 +172,17 @@ _BLOCKED_TITLES = re.compile(
     r"Watkins Glen|John Watson \(1802\)|John S\. Watson|Gibson Lockhart|Red dinosaur|frog rana|"
     r"Siege of Leningrad|Anti aircraft Leningrad|Crop Circles|anti-exposure suit|Ooty Hunt|"
     r"Medici Kennel|Billy-ranger|Gloeden|Department of Agriculture-Historical|perilous ride|"
-    r"Local man looks scene|Else Mauhs|Garden in Blossom", re.I)
+    r"Local man looks scene|Else Mauhs|Garden in Blossom|"
+    # Rosetta plan 5: a modern bunker door, a Napoleon caricature, a battle painting,
+    # a 1958 dress, a 'young man' portrait, street signs.
+    r"DSCF7797|Buonaparte leaving Egypt|Gros-Battle|Egyptienne, 1958|Walter Thomas|"
+    r"carrièra Drècha|"
+    # Pavlov plan 4: a 2020 Nobel winner, an Indian medical college, hunting prints,
+    # child-labour photos, other men named Mackintosh, Watson and Skinner, a Soviet
+    # postal cover, a Pisa cement works, a market building.
+    r"Harvey Alter|Andhra Medical College|Balmoral Keepers|Ferreting|breaker boys|"
+    r"John Mackintosh\. Mezzotint|John Watson\. Pastel|Edward Skinner|postal cover|"
+    r"Arc-city-at-pisa|^(?:File:)?Skin of|Main Fair building", re.I)
 MIN_WIDTH = 1600   # below this a 1440p frame is visibly upscaled
 # "Sarah Chepchirchir - Paris Half Marathon": a photo titled with a person's name
 # shows that person. In the mood pool they'd appear over a line about someone else.

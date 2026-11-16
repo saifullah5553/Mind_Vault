@@ -201,3 +201,10 @@ def test_blocked_titles_match_as_commons_returns_them():
     for title in ("Nederland 1916 rus.jpg", "File:Nederland 1916 rus.jpg",
                   "North Sea Edward Wadsworth 1928.jpg"):
         assert not acceptable({"title": title, "license": "PD", "width": 3000}, "history")
+
+
+def test_initials_do_not_end_a_sentence():
+    from core.media.spoken import sentences
+    got = [s for s, _ in sentences("It spread through John B. Watson and B. F. Skinner. It offered a way.")]
+    assert got == ["It spread through John B. Watson and B. F. Skinner.", "It offered a way."]
+    assert [s for s, _ in sentences("He met Dr. Smith. Then he left.")] == ["He met Dr. Smith.", "Then he left."]

@@ -57,7 +57,11 @@ class SEOAgent(BaseAgent):
             hashtags = self._platform_hashtags(category, platform, payload.video_format,
                                                r.get("hashtags", 3))
             limit = r.get("desc_max", 2000)
-            parts = [self._platform_desc(description, platform)]
+            parts = [self._platform_desc(description, platform),
+                     # The owner's standing ask, in every description.
+                     ("Like, subscribe and share to stay updated with new videos."
+                      if platform == "youtube" else
+                      "Like, follow and share to stay updated with new videos.")]
             if platform == "youtube" and chapters:
                 parts.append(chapters)
             if disclosure:

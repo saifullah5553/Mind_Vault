@@ -90,6 +90,15 @@ def test_reel_slots_follow_the_long_video_and_skip_taken():
 
 
 def test_every_part_ends_by_asking_the_viewer_to_act():
-    assert reels.next_step(1, 5) == "FOLLOW FOR PART 2/5"
-    assert reels.next_step(4, 5) == "FOLLOW FOR PART 5/5"
-    assert reels.next_step(5, 5) == "FULL VIDEO: LINK BELOW"
+    assert reels.next_step(1, 5) == "LIKE & SUBSCRIBE FOR PART 2/5"
+    assert reels.next_step(4, 5) == "LIKE & SUBSCRIBE FOR PART 5/5"
+    assert reels.next_step(5, 5).startswith("LIKE, SHARE & SUBSCRIBE") and "FULL VIDEO" in reels.next_step(5, 5)
+
+
+def test_closing_ask_is_cut_from_reels_old_and_new_wording():
+    from core.config import get_settings
+    for cta in (get_settings().brand.cta, "Join Mind Vault for more stories about the human mind and history."):
+        srt = _srt([(0, 3, "In 1953, a storm came."), (3.3, 6.0, "The dikes broke."), (6.5, 9, cta)])
+        s = reels.sentences(reels.parse_srt(srt), get_settings().brand.cta)
+        assert [x.text for x in s] == ["In 1953, a storm came.", "The dikes broke."]
+    assert "subscribe" in get_settings().brand.cta and "share" in get_settings().brand.cta

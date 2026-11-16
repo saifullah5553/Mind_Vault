@@ -44,7 +44,7 @@ The hook, then the promise of the story.
 ...
 
 [CTA]
-Join Mind Vault for more stories about the human mind and history.
+If you enjoyed this story, like, subscribe and share it, to stay updated with new videos from Mind Vault.
 ```
 
 For a history documentary, TOPIC is one picture search per part of the story, so each

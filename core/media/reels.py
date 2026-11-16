@@ -85,11 +85,12 @@ def sentences(cues: list[Cue], cta: str = "") -> list[Sentence]:
             cur = []
     if cur:
         out.append(Sentence(cur[0].start, cur[-1].end, " ".join(x.text for x in cur), cur))
-    key = _letters(cta)[:30]
-    if key:
-        for i, s in enumerate(out):
-            if _letters(s.text).startswith(key):
-                return out[:i]
+    # The closing call to action (current wording, or the one older videos use)
+    # is not a reel's story: the reel asks on its own end card instead.
+    keys = [k for k in (_letters(cta)[:30], "join mind vault for more stor") if k]
+    for i, s in enumerate(out):
+        if any(_letters(s.text).startswith(k) for k in keys):
+            return out[:i]
     return out
 
 
@@ -240,5 +241,5 @@ NEXT_STEP_SECONDS = 4.0
 def next_step(number: int, total: int) -> str:
     """What the reel asks the viewer to do before the disclaimer card."""
     if number < total:
-        return f"FOLLOW FOR PART {number + 1}/{total}"
-    return "FULL VIDEO: LINK BELOW"
+        return f"LIKE & SUBSCRIBE FOR PART {number + 1}/{total}"
+    return "LIKE, SHARE & SUBSCRIBE \u00b7 FULL VIDEO BELOW"

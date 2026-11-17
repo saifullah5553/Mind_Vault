@@ -185,7 +185,34 @@ _BLOCKED_TITLES = re.compile(
     r"Arc-city-at-pisa|^(?:File:)?Skin of|Main Fair building|"
     # Final plans: more namesakes (Skinner, Thomas) and late-Soviet street photos.
     r"W\.W\. Skinner|Skinners Weir|Otis Skinner|Skinner, Otis|Master Skinner|"
-    r"Curwen Thomas|Leningrad 1991|Leningrad May 1 1977", re.I)
+    r"Curwen Thomas|Leningrad 1991|Leningrad May 1 1977|"
+    # Pavlov plan 6: a medical photo of a boy, a named stranger with a tuning fork,
+    # Kharkiv, a cattle-feed advert, a telephone magazine, a navy crew, a General
+    # Staff bookplate, a Czech railway view, museum boots and dresses, cathedrals
+    # used as fillers, a 2017 house photo over the 1935 dog monument, vivisection.
+    r"Microcephalic|Randy Garner|Charkow|Thorley's horse|Bell telephone magazine|"
+    r"October crew|Library of the General Staff|Výhled ze železnice|Boots - 17c|"
+    r"Dress \(19th c\.|Acriculture university|Sailor's university|Kolpino-i-kolpinci|"
+    r"Omut II Mostok|Charles de Brocktorff|Archangel, Kola|Cathedral of Transfiguration\. Ryazan|"
+    r"St'Isaac's cathedral|Pavlov's House\), April 2017|vivisection|"
+    # Pavlov plan 7: other people named Pavlov or Ivan Petrovich, modern stock fillers.
+    r"Vladimir Pavlov|Daniel Carl Pavlov|Alexander Pavlov|Ivan Petrovich Kartsev|"
+    r"Ivan Petrovich Botkin|Ivan Martos|Ivan Petrovich Martos|Yaquina Head|Colorful lines of code|"
+    r"Oxygen mask|Nervous Tissue Spinal Cord|U\.S\. Department of Energy|Group shot, Northwood|"
+    r"Kremlintowers|Glowing eyes keeper|Keeper patch|Hunting dogs chasing|Ilya Pavlov|"
+    r"Leonid-pavlov|Lazar cemetery|Manhole Cover|"
+    # Pavlov plan 9: space probes, the ISS, a radium lab, an insect face, an airfield,
+    # a stranger boy, a pharmaceutical factory, a 2016 science building.
+    r"GRAIL|Iss030e|Radium tubes|Calliphora|Threshing Pierson|Michael Mc Nelis|ABIC PHARMACEUTICS|"
+    r"Bridge for Laboratory Sciences|"
+    # Rosetta plan 7: a Napoleon satire over Bouchard, a battle painting, a stranger over
+    # Thomas Young, mummies, a moth plate, a mountain-heights chart under the CTA.
+    r"Sketch of the Life of Buonaparte|Bataille des Pyramides|George Muirhead|Momies Egyptiennes|"
+    r"Moria Egyptienne|Comparative Heights of the Principal Mountains|"
+    # Rosetta plan 8: a portrait of an unknown young woman captioned THOMAS YOUNG.
+    r"Unidentified young woman|LE LOT ILLUSTRE - La Gare|"
+    # Rosetta render 3: the Flitscher Klause fort in Slovenia (1881) over the opening.
+    r"DSCF7802|Flitscher Klause", re.I)
 MIN_WIDTH = 1600   # below this a 1440p frame is visibly upscaled
 # "Sarah Chepchirchir - Paris Half Marathon": a photo titled with a person's name
 # shows that person. In the mood pool they'd appear over a line about someone else.

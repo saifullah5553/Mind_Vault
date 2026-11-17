@@ -1387,3 +1387,57 @@ def test_pavlov_pictures_still_allowed():
 def test_wrong_rosetta_pictures_are_blocked(title):
     from core.media.stock import acceptable
     assert not acceptable({"title": title, "license": "CC0", "width": 3000}, "history")
+
+
+@pytest.mark.parametrize("title", [
+    "Microcephalic age 22.jpg",
+    "Classmate tests reaction to tuning fork on Randy Garner.jpg",
+    "Charkow.jpg",
+    "Bell telephone magazine (1922) (14756320995).jpg",
+    "October crew in Leningrad.jpg",
+    "Boots - 17c - Ryazan Kremlin Museum.jpg",
+    "Bronze Horseman and St'Isaac's cathedral 1890-1900.jpg",
+    "Дом Павлова (Pavlov's House), April 2017 (40030086705).jpg",
+    "I.P. Pavlov and students in the vivisection room, Physiology Wellcome L0022524.jpg",
+    "Chairman of the People's Khural of the Republic of Buryatia Vladimir Pavlov.jpg",
+    "Daniel Carl Pavlov, photo courtesy by Mr. Arthur Beveridge, a friend.jpg",
+    "Exhibition by Alexander Pavlov, Moskow, 2000.jpg",
+    "Ivan Petrovich Kartsev.jpg",
+    "Yaquina Head Lighthouse interior (22392365855).jpg",
+    "Ilya Pavlov 2016 (Unsplash).jpg",
+    "Leonid-pavlov-ltp-pechatniki-shosseynaya-92-.jpg",
+    "Morris Manhole Cover for monitoring well.jpg",
+    "Keeper patch (1646813976).jpg",
+    "GRAIL-spacecraft4 cropped.jpg",
+    "Measurement of Radium tubes at the Raduim Institute. Wellcome M0015305.jpg",
+    "Bridge for Laboratory Sciences interior looking north, March 2016.jpg",
+])
+def test_pavlov_plan6_pictures_are_blocked(title):
+    from core.media.stock import acceptable
+    assert not acceptable({"title": title, "license": "CC0", "width": 3000}, "history")
+
+
+def test_pavlov_lab_photos_still_allowed_after_plan6():
+    from core.media.stock import acceptable
+    for title in ("I.P. Pavlov at his desk Wellcome L0022523.jpg", "Keltto1912.jpg",
+                  "Interior of the laboratory in the Physiology department, Wellcome L0022528.jpg"):
+        assert acceptable({"title": title, "license": "CC0", "width": 3000}, "history"), title
+
+
+@pytest.mark.parametrize("title", [
+    "Democracy;-or-a Sketch of the Life of Buonaparte. (BM 1851,0901.1030).jpg",
+    "Bataille des Pyramides, 21 juillet 1798 - Francois André Vincent.jpg",
+    "Rev Dr George Muirhead, Rev.jpg",
+    "Momies Egyptiennes (Egyptian Mummies).jpg",
+    "Unidentified young woman, vignette-style Thomas.jpg",
+    "Baudel 11 - FIGEAC - LE LOT ILLUSTRE - La Gare, coté de la voie.JPG",
+    "DSCF7802 (53371430025).jpg",
+])
+def test_rosetta_plan7_pictures_are_blocked(title):
+    from core.media.stock import acceptable
+    assert not acceptable({"title": title, "license": "CC0", "width": 3000}, "history")
+
+
+def test_rosetta_dancing_clip_blocked():
+    from core.media.stock_video import _BLOCKED_IDS
+    assert 44686 in _BLOCKED_IDS

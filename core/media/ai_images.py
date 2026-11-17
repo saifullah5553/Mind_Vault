@@ -92,7 +92,10 @@ def _meta(prompt: str, dest: Path) -> dict:
             "source": "AI illustration", "width": SIZE[0], "ai": True}
 
 
-MAX_PER_VIDEO = 12
+# Abstract psychology lines ("It is also the detail that is wrong") pull random
+# stock pictures: Pavlov needed 21 illustrations, not 12. The free allowance is
+# about 30 new pictures a day, and cached ones cost nothing.
+MAX_PER_VIDEO = 24
 
 
 def parse(spec: str) -> list[tuple]:

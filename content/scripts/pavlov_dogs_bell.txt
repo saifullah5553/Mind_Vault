@@ -1,0 +1,91 @@
+TOPIC: Ivan Pavlov + Ivan Pavlov 1904 = Pavlov portrait + Pavlov dog experiment = dogs drool bell + Physiology Department Imperial Institute Experimental Medicine = laboratory @ Everyone; Ryazan Kremlin + Ryazan seminary = seminary church school + Saint Petersburg University Twelve Collegia = university natural science @ 1849|Ryazan|priest|seminary|1870; Institute of Experimental Medicine Saint Petersburg = institute laboratory + Physiology Department Imperial Institute Wellcome = Pavlov team laboratory digestion + Pavlov laboratory 1904 = Pavlov team laboratory + Pavlov Nobel Prize 1904 = Nobel Prize @ 1891|Institute|digestion|Nobel; Pavlov dog = dogs salivate + Dogs with their keepers Physiology Department = dogs technician fed + Pavlov with staff and dog + Pavlov experiment Wellcome = experiment dog @ salivate before the food|technician|psychic; Metronome + antique metronome = metronome ticking + tuning fork + whistle brass @ metronome|extinction; Russian zvonok doorbell = buzzer zvonok + old electric doorbell buzzer + Pavlov laboratory buzzer + Physiology Department Imperial Institute Wellcome = laboratory Pavlov signals tool @ where did the bell come from|zvonok; Pavlov dogs kennel + I.P. Pavlov Wellcome = Pavlov himself scientist + Dogs with their keepers Physiology Department = laboratory dogs names + Koltushi Pavlovo = Koltushi village @ cold scientist|psychical|personalit; 1924 Leningrad flood = flood Leningrad + Neva flood 1924 @ 1924|flood|neurosis; Pavlov 1920s = Pavlov old age + Pavlov 1930s = Pavlov old age + Koltushi church = church Koltushi @ 1917|Bolshevik|critic; behaviorism psychology = behaviourism psychology habits learned + psychology laboratory 1920s = psychology + Pavlov experiments with dog Wellcome = Pavlov ideas @ behaviourism|Watson; Monument to Pavlov's dog = dog monument Bezpalov + Pavlov at his desk Wellcome = Pavlov mind man + Pavlov and his associates Wellcome = laboratory dogs work + Памятник собаке Павлова = dog monument + Pavlov grave Volkovo = Pavlov died 1936 + Dogs with their keepers Physiology Department = laboratory dogs honours @ 1936|monument|statue|Bezpalov; Pavlov experiments with dog Wellcome = Pavlov dog drool + I.P. Pavlov at his desk Wellcome = man mind scientist + Interior of the laboratory Physiology department Wellcome = laboratory + Dogs with their keepers Physiology Department = dogs + antique metronome = metronome @ drooling like
+SUBCATEGORY: conditioning
+ILLUSTRATE: who normally fed them = a friendly mixed-breed dog in an 1890s Russian laboratory room sitting on a scrubbed wooden floor and looking eagerly toward an open door, where an attendant in a white apron is seen only from the waist down carrying a metal food bowl, soft window light, no harness, no surgery, no medical equipment, no text; at a seminary = interior of a plain provincial Russian seminary classroom in the 1860s, rows of young students in dark coats seen from behind at wooden desks, icons not visible, tall windows, winter light, no text; their own personalities = several dogs of different breeds in a fenced kennel yard beside wooden kennels and birch trees in the 1900s, one curious, one shy, one playful, autumn daylight, no people, no harness, no text; set out to study it = a cluttered 1900s laboratory desk with a brass metronome, notebooks, glass flasks and an oil lamp, wooden shelves behind, warm light, no person, no animal, no readable writing; Food in the mouth makes a dog salivate = close shot of a brown mixed-breed dog eating from a plain metal bowl on a scrubbed wooden laboratory floor, 1900s, soft window light, no person, no harness, no surgery, no text; learns to link the two = a calm dog sitting on a wooden laboratory stand beside a ticking brass metronome on a small table, 1900s Russian laboratory, plain plaster walls, soft light, no person, no harness, no tubes, no text; Nothing about the sound itself is tasty = extreme close-up of a brass metronome pendulum in motion on a dark wooden table, warm lamp light, shallow depth of field, no text; nervous breakdowns in dogs = an anxious dog lying curled on straw in a dim wooden kennel, 1920s, low light, no injury, no people, no text; especially difficult conditioning tasks = a dog sitting very still and watching a white circle and a white oval painted on a dark board in a plain 1920s laboratory room, no person, no harness, no text; Far away, in America = a 1920s American university lecture hall seen from the back, rows of students in dark suits listening, tall windows, a blackboard with no readable writing, no named people; And the bell stuck = an old brass hand bell standing on a dark wooden table in a quiet room, soft window light, no person, no text; the detail that is wrong = a scruffy mixed-breed dog sitting on a wooden laboratory floor and looking away, bored, beside an old brass hand bell lying on its side, 1900s, soft window light, no person, no text; could not be controlled precisely = a 1900s laboratory bench with a brass clockwork timing device, a pocket stopwatch and coiled wires, close shot, warm lamp light, no person, no animal, no readable writing; comes from a translation = two old books lying open side by side on a wooden desk under a lamp, one Russian and one English, the letters too small to read, a fountain pen between them, 1920s, no person, no readable text; zvonok means a buzzer = an early 1900s electric buzzer: a small polished wooden box with brass contacts, a push button and coiled cloth-covered wire on a laboratory table, close shot, no person, no text; cold scientist = an empty, cold 1900s physiology laboratory with steel instruments and glass jars under grey winter light, tiled walls, no people, no animals, no text; Todes argues the opposite = a warm lamp-lit 1900s study with an open notebook and a pen on the desk and a dog asleep on a rug at the foot of the desk, no person, no readable writing; exploring the animal and human psyche = an old anatomical drawing of a human brain on yellowed paper pinned beside a sketch of a dog's head, on a 1900s laboratory wall, warm light, no readable writing; names that matched their characters = a row of wooden kennel doors in a 1900s courtyard with small blank name boards above them, several different dogs looking out, daylight, no people, no readable text; how habits are learned = a dog waiting patiently by a closed wooden door, with a wall clock above it, in a plain 1920s room, late afternoon light, no person, no text; There was probably no bell = an empty wooden laboratory table in soft light with a faint round mark in the dust where something once stood, 1900s, no objects, no person, no text
+TITLE: Pavlov's Dogs: The Bell Myth and the Real Discovery
+DESCRIPTION: Ivan Pavlov's dogs are famous for drooling at the sound of a bell, but his biographer says Pavlov didn't use one for his real experiments. This is the true story of Pavlov and his dogs: how a priest's son from Ryazan won a Nobel Prize for digestion, discovered the conditioned reflex, and set out to study the mind.
+THUMBNAIL: THERE WAS NO BELL
+TAGS: pavlov's dogs, ivan pavlov, classical conditioning, conditioned reflex, pavlov bell myth, psychic secretion, history of psychology, behaviourism, john b watson, daniel todes, nobel prize 1904, pavlov's dog monument, psychology documentary
+
+[INTRODUCTION]
+Everyone knows the story of Ivan Pavlov's dogs. A bell rings, and the dogs begin to drool. It is one of the most famous experiments in the history of psychology.
+
+There is just one problem. According to his biographer, Daniel Todes, Pavlov didn't use a bell. And for his real scientific work, he couldn't.
+
+By the end of this story, you will know who Pavlov really was, what his dogs actually taught us, and why the man who gave us the conditioned reflex believed he was studying something much bigger than drool. He was studying the mind.
+
+So how did a story about drool become one of the best-known ideas in psychology? And how did it get the most famous detail wrong?
+
+[CHAPTER: The Priest's Son]
+Ivan Pavlov was born on the twenty-sixth of September, 1849, in Ryazan, a city south-east of Moscow. His father was a village priest of the Russian Orthodox Church.
+
+Pavlov was expected to follow him. He studied at a seminary, the local school for priests. But he left without graduating.
+
+In 1870, he travelled from Ryazan to Saint Petersburg, then the capital of the Russian Empire, and enrolled at the university to study natural science. He would become a physiologist, a scientist of how the body works.
+
+Success came slowly. He got his first real job, Todes notes, at the age of forty-one.
+
+[CHAPTER: The Digestion Machine]
+In 1891, Pavlov was invited to the Institute of Experimental Medicine in Saint Petersburg, to organise and direct its department of physiology.
+
+His great subject was digestion. How does the body turn a meal into fuel? And what tells the stomach when to start? Using surgery, his team redirected the dogs' digestive juices to the outside of the body, where they could be collected and measured.
+
+It worked. In 1904, Pavlov won the Nobel Prize in Physiology or Medicine, in recognition of his work on the physiology of digestion. He was fifty-five years old, and at last he was famous.
+
+Here is the first surprise. The Nobel Prize was not for the dogs and the bell. It was not for conditioning at all. It was for the stomach.
+
+[CHAPTER: The Wrong Kind of Drool]
+But the dogs did something unexpected. They began to salivate before the food arrived. They drooled in the presence of the technician who normally fed them.
+
+Pavlov called it psychic secretion. And instead of ignoring it, he set out to study it.
+
+The idea was simple. Food in the mouth makes a dog salivate. No learning is needed. That is an unconditioned reflex, and the food is the unconditioned stimulus. But if another signal comes again and again just before the food, the dog learns to link the two. Soon the signal alone brings the drool. The signal has become a conditioned stimulus. Nothing about the sound itself is tasty. The dog has learned what it means.
+
+Pavlov's question was never about dogs alone. It was about how any animal, including us, learns to expect what comes next.
+
+In the classic example, that signal was the sound of a metronome. Pavlov called the learned response a conditional reflex. In English, it became the conditioned reflex.
+
+And it can be undone. Sound the signal again and again with no food, and the drool fades away. Psychologists call this extinction.
+
+Today, this kind of learning is called classical conditioning, or Pavlovian conditioning, after the man who studied it in his dogs.
+
+[CHAPTER: The Bell That Never Rang]
+Ask most people about Pavlov, and the bell is the one detail they know. It is also the detail that is wrong.
+
+So where did the bell come from?
+
+Todes says a bell could not be controlled precisely enough. Pavlov needed signals he could control exactly. His laboratory used metronomes, buzzers, whistles, tuning forks, visual signals, and even electric shocks.
+
+The bell, Todes suggests, comes from a translation. The Russian word zvonok means a buzzer. In English, it became a bell. And the bell stuck.
+
+[CHAPTER: Dogs With Personalities]
+The bigger myth is about Pavlov himself. He is often pictured as a cold scientist who cared only about reflexes and ignored the mind.
+
+Todes argues the opposite. In Pavlov's own words, "Essentially, only one thing in life is of real interest to us." For Pavlov, that one thing was our inner, psychical experience.
+
+He saw the conditional reflex as a tool for exploring the animal and human psyche. He believed his dogs had their own personalities, emotions and thoughts. His laboratory dogs were even given names that matched their characters.
+
+He even studied what he saw as nervous breakdowns in dogs. Some of his best-known cases followed a severe flood in 1924, in Saint Petersburg, which by then had been renamed Leningrad. Others came from giving dogs especially difficult conditioning tasks. A mind, even a dog's mind, could be pushed too far.
+
+[CHAPTER: A Critic in Leningrad]
+Then came revolution. After the Bolsheviks seized power in 1917, Pavlov seriously considered leaving Russia.
+
+He stayed. He became one of very few public critics of the Bolsheviks' political repression. He protested when the new state repressed religion, and he gave money to the local church near his laboratory at Koltushi, outside the city. Yet he also praised the state for its great support of science. Lenin himself praised him. And Pavlov kept working to the end of his life.
+
+[CHAPTER: The Legacy]
+Far away, in America, his ideas spread. Classical conditioning became the foundation of behaviourism, a school of psychology spread by the writings of the American psychologist John Watson, and later B. F. Skinner. It offered a way to explain how habits are learned, and how they can fade.
+
+Ivan Pavlov died in Leningrad on the twenty-seventh of February, 1936. He was eighty-six, and the cause was double pneumonia.
+
+A year before, a bronze monument to a dog by the sculptor Bezpalov was set up on the grounds of his institute, where it still stands. It carries carved scenes and texts written by Pavlov himself. It was built on Pavlov's own initiative. It honours the laboratory dogs that made his work possible.
+
+[CONCLUSION]
+So the next time you hear someone say they are drooling like Pavlov's dog, remember the real story.
+
+The man remembered for a bell was really chasing the mind. And the bell itself was a mistake of translation.
+
+There was probably no bell. There was a metronome, a buzzer, and a scientist who noticed the wrong kind of drool, and refused to ignore it.
+
+The famous bell is mostly a myth. But the idea Pavlov found in his dogs still shapes how we understand learning, habits and the mind.
+
+[CTA]
+If you enjoyed this story, like, subscribe and share it, to stay updated with new videos from Mind Vault.

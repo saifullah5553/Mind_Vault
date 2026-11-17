@@ -1441,3 +1441,22 @@ def test_rosetta_plan7_pictures_are_blocked(title):
 def test_rosetta_dancing_clip_blocked():
     from core.media.stock_video import _BLOCKED_IDS
     assert 44686 in _BLOCKED_IDS
+
+
+@pytest.mark.parametrize("title", [
+    "Interior of Wellcome's floating laboratory. Wellcome L0019206.jpg",
+    "Interior of an Alchemical Laboratory. Wellcome M0009427.jpg",
+    "Dogs and keepers - NARA - 299573.jpg",
+    "Woman with Dog on Leash, Medano Creek (12661002583).jpg",
+    "Agrl. Dept., Bureau of Chemistry, laboratory.jpg",
+])
+def test_pavlov_plan11_pictures_are_blocked(title):
+    from core.media.stock import acceptable
+    assert not acceptable({"title": title, "license": "CC0", "width": 3000}, "history")
+
+
+def test_pavlov_physiology_lab_still_allowed_after_plan11():
+    from core.media.stock import acceptable
+    for title in ("Dogs with their keepers at the Physiology Department Wellcome L0022519.jpg",
+                  "Interior of the laboratory in the Physiology department, Wellcome L0022528.jpg"):
+        assert acceptable({"title": title, "license": "CC0", "width": 3000}, "history"), title

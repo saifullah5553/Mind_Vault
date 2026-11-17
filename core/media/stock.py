@@ -212,7 +212,12 @@ _BLOCKED_TITLES = re.compile(
     # Rosetta plan 8: a portrait of an unknown young woman captioned THOMAS YOUNG.
     r"Unidentified young woman|LE LOT ILLUSTRE - La Gare|"
     # Rosetta render 3: the Flitscher Klause fort in Slovenia (1881) over the opening.
-    r"DSCF7802|Flitscher Klause", re.I)
+    r"DSCF7802|Flitscher Klause|"
+    # Pavlov plan 11: Henry Wellcome's Nile boat laboratory, an alchemy painting,
+    # a US archive photo of dogs and keepers.
+    r"floating laboratory|Alchemical Laboratory|NARA - 299573|"
+    # Pavlov plan 12: a modern US dog-walking photo, a US Agriculture Department lab.
+    r"Woman with Dog on Leash|Medano Creek|Bureau of Chemistry", re.I)
 MIN_WIDTH = 1600   # below this a 1440p frame is visibly upscaled
 # "Sarah Chepchirchir - Paris Half Marathon": a photo titled with a person's name
 # shows that person. In the mood pool they'd appear over a line about someone else.

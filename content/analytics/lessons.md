@@ -47,3 +47,18 @@ YouTube Analytics API enabled in the Google Cloud project (owner action).
 9. **Long videos keep 8–18% of viewers on average (4 videos, tentative).** Viewers leave
    early; the cold open and first 30 seconds must show the strongest picture and state
    the twist, and the title must promise a turn the video delivers.
+
+## 2026-11-18 (1,193 views, 2 subscribers, 31 Shorts)
+
+10. **Lesson 2 repeats again: a turn or ending beats set-up.** The top Short is now a
+    last part, "Meiji Japan: How the Unequal Treaties Finally Ended" (140 views, 29/day),
+    ahead of every Part 1. "End of the Samurai" (80) and "Lost Its Althing, Then Won It
+    Back" (66) also sit near the top. Descriptive headlines ("A Parliament Born in a
+    Rift", 3; "The Maeslant Barrier", 9) stay at the bottom. Lesson 2 is no longer
+    tentative: five series show it.
+11. **Part 1 still leads on average (41 vs 30 views, 4 series), but a strong later part
+    can beat it.** Give every part its own turn in the headline; never write a later part
+    off as "continuation".
+12. **Rosetta and Pavlov reels are 1–2 days old:** judge them only by views per day at
+    the next run. Pavlov Part 1 ("Why His Biographer Says There Was No Bell", a myth
+    reversal) runs at 26/day, the best start since Japan (tentative).

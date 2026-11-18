@@ -69,6 +69,8 @@ def test_other_platform_copies_get_the_other_audio(tmp_path):
     _swap_reel_audio(video, alt, 10.0, 4.0, tmp_path / "reel.mp4")
     dur, info = _probe(tmp_path / "reel.mp4")
     assert dur == pytest.approx(6, abs=0.3) and "Audio:" in info     # padded under the card
+    _swap_reel_audio(video, alt, 10.0, 6.0, tmp_path / "cut.mp4", [(12.0, 14.0)])
+    assert _probe(tmp_path / "cut.mp4")[0] == pytest.approx(6, abs=0.3)   # greeting left out
 
 
 def test_track_credit():

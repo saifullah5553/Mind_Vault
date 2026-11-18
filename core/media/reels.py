@@ -32,6 +32,7 @@ class Sentence:
     end: float
     text: str
     cues: list[Cue]
+    skip: tuple[float, float] | None = None   # a cut-out greeting just before this sentence
 
 
 @dataclass
@@ -43,8 +44,17 @@ class Part:
     sentences: list[Sentence]
 
     @property
+    def cuts(self) -> list[tuple[float, float]]:
+        """Spans of the long video left out of this part (the greeting)."""
+        return [s.skip for s in self.sentences[1:] if s.skip]
+
+    @property
     def duration(self) -> float:
-        return self.end - self.start
+        return self.end - self.start - sum(b - a for a, b in self.cuts)
+
+    def local(self, t: float) -> float:
+        """A time in the long video, as a time in this reel."""
+        return t - self.start - sum(b - a for a, b in self.cuts if b <= t)
 
     @property
     def text(self) -> str:
@@ -74,8 +84,38 @@ def _letters(text: str) -> str:
     return re.sub(r"[^a-z]+", " ", text.lower()).strip()
 
 
+# The channel greeting after the hook ('Hello, friends, and welcome to your own
+# channel, Mind Vault. Today's story: ...'). A reel opens on its own hook, so it
+# is cut out of every part.
+_GREETING = re.compile(r"^(?:hello friends|welcome to your own channel|today s story)")
+# Closing asks older videos use, so their reels still drop them.
+_OLD_CTAS = ("join mind vault for more stor", "if you enjoyed this story like")
+
+
+def is_greeting(text: str) -> bool:
+    return bool(_GREETING.match(_letters(text)))
+
+
+def _drop_greeting(sents: list[Sentence]) -> list[Sentence]:
+    out: list[Sentence] = []
+    cut: float | None = None
+    for s in sents:
+        if is_greeting(s.text):
+            cut = s.start if cut is None else cut
+            continue
+        if cut is not None and out:
+            # From the greeting's first word to just before the next sentence:
+            # the pause after the hook stays, so the join sounds natural.
+            end = max(cut, s.start - 0.1)
+            s.skip = (round(max(out[-1].end, cut - 0.05), 3), round(end, 3))
+        cut = None
+        out.append(s)
+    return out
+
+
 def sentences(cues: list[Cue], cta: str = "") -> list[Sentence]:
-    """Join caption cues into sentences, and drop the closing call to action."""
+    """Join caption cues into sentences, cut the greeting, and drop the closing
+    call to action."""
     out: list[Sentence] = []
     cur: list[Cue] = []
     for c in cues:
@@ -87,11 +127,12 @@ def sentences(cues: list[Cue], cta: str = "") -> list[Sentence]:
         out.append(Sentence(cur[0].start, cur[-1].end, " ".join(x.text for x in cur), cur))
     # The closing call to action (current wording, or the one older videos use)
     # is not a reel's story: the reel asks on its own end card instead.
-    keys = [k for k in (_letters(cta)[:30], "join mind vault for more stor") if k]
+    keys = [k for k in (_letters(cta)[:30], *_OLD_CTAS) if k]
     for i, s in enumerate(out):
         if any(_letters(s.text).startswith(k) for k in keys):
-            return out[:i]
-    return out
+            out = out[:i]
+            break
+    return _drop_greeting(out)
 
 
 # A reel is watched on its own: its first sentence must not lean on the one before.
@@ -143,7 +184,8 @@ def split(sents: list[Sentence], parts: int | None = None) -> list[Part]:
     inf = float("inf")
 
     def cost(i: int, j: int) -> float:
-        dur = sents[j].end - sents[i].start
+        dur = sents[j].end - sents[i].start - sum(
+            b - a for s in sents[i + 1:j + 1] if s.skip for a, b in [s.skip])
         if not MIN_SECONDS <= dur <= MAX_SECONDS and n > 1:
             return inf
         c = ((dur - target) / 8.0) ** 2
@@ -205,8 +247,8 @@ def part_srt(part: Part) -> str:
     rows = []
     cues = [c for s in part.sentences for c in s.cues]
     for n, c in enumerate(cues, 1):
-        a = max(0.0, c.start - part.start)
-        b = min(part.duration, c.end - part.start)
+        a = max(0.0, part.local(c.start))
+        b = min(part.duration, part.local(c.end))
         rows.append(f"{n}\n{_stamp(a)} --> {_stamp(b)}\n{c.text}\n")
     return "\n".join(rows)
 

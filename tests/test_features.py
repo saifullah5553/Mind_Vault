@@ -114,6 +114,14 @@ def test_documentary_agent_builds_long_chaptered_script():
     assert script.full_text.count("[CHAPTER:") == 4
     assert script.word_count > 800                # ~6+ minutes of narration
     assert script.structure.startswith("documentary-")
+    # The greeting is the second line, after the hook; the closing ask is last.
+    first, second = script.introduction.split("
+
+")[:2]
+    assert first == "One decision ended a thousand years of power."
+    assert second == ("Hello, friends, and welcome to your own channel, Mind Vault. "
+                      "Today's story: the fall of an empire.")
+    assert script.full_text.rstrip().endswith("so you never miss a new story.")
 
 
 def test_quality_scorecard_has_all_dimensions():

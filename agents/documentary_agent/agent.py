@@ -47,7 +47,9 @@ class DocumentaryAgent(BaseAgent):
                 f"familiar version and follow the people and choices that shaped what came next."
                 if category == "history" else
                 f"This is a story about {topic}. And it may change how you see yourself.")
-        intro = (f"{hook}\n\n" if hook else "") + lead
+        # The greeting comes after the hook, never before it (brand.greeting).
+        greet = (self.settings.brand.greeting or "").replace("{topic}", topic).strip()
+        intro = (f"{hook}\n\n" if hook else "") + (f"{greet}\n\n" if greet else "") + lead
 
         # Chapters.
         # A hard word budget keeps every documentary under the length limit, and

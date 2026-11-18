@@ -1371,7 +1371,7 @@ def test_wrong_pavlov_pictures_are_blocked(title):
 def test_pavlov_pictures_still_allowed():
     from core.media.stock import acceptable
     for title in ("Ivan-Pavlov06.jpg", "Dogs with their keepers at the Physiology Department Wellcome L0022519.jpg",
-                  "Metronome (2555843095).jpg", "House where I. P. Pavlov.jpg"):
+                  "Metronome Wittner Taktell.jpg", "House where I. P. Pavlov.jpg"):
         assert acceptable({"title": title, "license": "CC0", "width": 3000}, "history"), title
 
 
@@ -1460,3 +1460,95 @@ def test_pavlov_physiology_lab_still_allowed_after_plan11():
     for title in ("Dogs with their keepers at the Physiology Department Wellcome L0022519.jpg",
                   "Interior of the laboratory in the Physiology department, Wellcome L0022528.jpg"):
         assert acceptable({"title": title, "license": "CC0", "width": 3000}, "history"), title
+
+
+@pytest.mark.parametrize("title", [
+    "Metronome (2555843095).jpg",
+    "Pavlov.jpg",
+    "Lewis Larsen i.e., Larsson developing photographs.jpg",
+    "Korg TM-40 metronome.jpg",
+    "I.P. Pavlov deska.jpg",
+    "Pavlov crater AS17-151-23237.jpg",
+    "Pavlov A B 2000 (3).jpg",
+    "Treas., Chemical Laborator testing whiskey.jpg",
+])
+def test_pavlov_plan13_pictures_are_blocked(title):
+    from core.media.stock import acceptable
+    assert not acceptable({"title": title, "license": "CC0", "width": 3000}, "history")
+
+
+def test_pavlov_portraits_still_allowed_after_plan13():
+    from core.media.stock import acceptable
+    for title in ("Ivan Pavlov NLM3.jpg", "Ivan Petrovich Pavlov at his desk Wellcome L0074965.jpg",
+                  "Metronome Wittner Taktell.jpg"):
+        assert acceptable({"title": title, "license": "CC0", "width": 3000}, "history"), title
+
+
+@pytest.mark.parametrize("title", [
+    "Dasima-bugak.jpg",
+    "Dasima 2.jpg",
+    "01 Western Han Terracotta Soldier of Yangjiawan.jpg",
+    "Han terracotta shields.jpg",
+    "Aryballos (perfume flask) in the form of a helmeted head MET DP114682.jpg",
+    "(Auch) Tête de statue de guerrier - Culture totonaque - Musée des Amériques - Auch.jpg",
+    "\"Refined Elegance in the Four Seasons\" (Shiji seiga), Album of Flower Paintings MET DP-22138-008 crd.jpg",
+    "World Heritage Site in Japan(2008) Vietnamese.jpg",
+    "易俗大剧院 (54102763203).jpg",
+    "A storm at Pors-Loubous.jpg",
+    "Concourse of Shiji Dadao Sta. of Nantong Rail Transit Line 1 20250802 01.jpg",
+    "Jade Huang, Tomb of Marquis Yi of Zeng (10167526824).jpg",
+    "Adams The Tetons and the Snake River.jpg",
+    "50362 Mount Tai UNESCO mark.jpg",
+    "2019 Bronze Goose from Qin Shihuang Terracotta Army Burial.jpg",
+])
+def test_terracotta_plan1_pictures_are_blocked(title):
+    from core.media.stock import acceptable
+    assert not acceptable({"title": title, "license": "CC0", "width": 3000}, "history")
+
+
+def test_qin_pictures_still_allowed_after_terracotta_plan1():
+    from core.media.stock import acceptable
+    for title in ("Qin Shihuang Terracotta Army, Pit 1.jpg", "Sima Qian (painted portrait).jpg",
+                  "Qin Shihuang Mausoleum (26138507173).jpg", "Shiji.jpg"):
+        assert acceptable({"title": title, "license": "CC0", "width": 3000}, "history"), title
+
+
+def test_terracotta_plan3_blocks():
+    from core.media.stock import acceptable
+    from core.media.stock_video import acceptable_title
+    assert not acceptable_title("cruise ship, cruises, harbour, ship, sea, port")
+    assert acceptable_title("junk, sailing ship, sea, coast")
+    for title in ("(Narbonne) Alexandre le Grand devant le tombeau d'Achille - Giovanni Panini.jpg",
+                  "Terracotta fragment kylix (drinking cup)"):
+        assert not acceptable({"title": title, "license": "CC0", "width": 3000}, "history"), title
+
+
+@pytest.mark.parametrize("title", [
+    "Evangile Jean Grandes Heures Anne de Bretagne.jpg",
+    "Graveyard of Mausoleum Contructors (9897161854).jpg",
+    "Qin Shihuang's Mausoleum (9897299296).jpg",
+    "Qin State Pottery Tile End, Qin Shihuang Mausoleum (9931024584).jpg",
+])
+def test_terracotta_render1_pictures_are_blocked(title):
+    from core.media.stock import acceptable
+    assert not acceptable({"title": title, "license": "CC0", "width": 3000}, "history")
+
+
+def test_qin_mausoleum_photo_still_allowed():
+    from core.media.stock import acceptable
+    assert acceptable({"title": "Qin Shihuang Tomb, Lintong, Shaanxi (9894935505).jpg", "license": "CC0", "width": 3000}, "history")
+
+
+@pytest.mark.parametrize("title", [
+    "Festival Hall of Sun Yat-sen Mausoleum at 1920s.jpg",
+    "AppiaAnticaHistoric.JPG",
+    "2014 North Tomb (Zhaoling, Tomb of Manchu Chief Abahai or Huang Taiji) 02.jpg",
+    "Qin Terracotta Army Museum Layout (9894917615).jpg",
+    "Srill life flowers terracotta vase",
+    "Man Armor (c. 1500) Vincenzo",
+    "Various lamps bronze terracotta, one",
+    "Terracotta askos (vessel) form fish",
+])
+def test_terracotta_render2_pictures_are_blocked(title):
+    from core.media.stock import acceptable
+    assert not acceptable({"title": title, "license": "CC0", "width": 3000}, "history")

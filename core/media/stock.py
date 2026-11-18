@@ -46,7 +46,9 @@ _STOP = {
 _UNSAFE = re.compile(
     r"\bsex|offend|abuse|\bnude|naked|porn|erotic|fetish|\brap(?:e|ed|es|ist)\b|"
     r"suicid|self-harm|\bgore\b|corpse|tortur|lingerie|bikini|"
-    r"stripper|striptease|burlesque|pin[- ]?up|topless|showgirl", re.I)
+    r"stripper|striptease|burlesque|pin[- ]?up|topless|showgirl|"
+    # Footage tags too: a modern cruise liner stood in for the first emperor's ships.
+    r"\bcruises?\b", re.I)
 # Charts, models and slides: Commons answers abstract topics with these, and a
 # diagram of an academic model is not a documentary image.
 _DIAGRAM = re.compile(
@@ -177,6 +179,29 @@ _BLOCKED_TITLES = re.compile(
     # a 1958 dress, a 'young man' portrait, street signs.
     r"DSCF7797|Buonaparte leaving Egypt|Gros-Battle|Egyptienne, 1958|Walter Thomas|"
     r"carrièra Drècha|"
+    # Terracotta Army plan 1: Korean kelp (dasima) over Sima Qian, Western Han figures
+    # from Yangjiawan over the Qin army, a Greek flask and a Totonac head as 'clay head',
+    # another village, a Japanese flower album titled Shiji, unrelated paintings, a Japan
+    # heritage poster, a Xi'an theatre.
+    r"Dasima|Yangjiawan|Western Han|^(?:File:)?Han terracotta|Aryballos|totonaque|Dazhai|"
+    r"Shiji seiga|Farewell to Liu Man|Huang He Lou|World Heritage Site in Japan|易俗大剧院|"
+    # Terracotta plan 2: a Brittany storm, a Nantong metro station named Shiji Dadao,
+    # bird bronzes and jades from other tombs, museum text panels, the Tetons, Mount
+    # Tai, Greek terracotta vases.
+    r"Pors-Loubous|Shiji Dadao|Bronze Crane from Qin|Bronze Goose from Qin|Marquis Yi of Zeng|"
+    r"Qin Army Museum Introduction|Construction of the Qin Terracotta Army Pits|Tetons|"
+    r"Mount Tai UNESCO|Terracotta rim fragment|Terracotta neck-amphora|"
+    # Terracotta plan 3: Alexander at the tomb of Achilles, another Greek cup.
+    r"tombeau d'Achille|Terracotta fragment kylix|"
+    # Terracotta render 1: a Book of Hours gospel page over the tomb, museum text
+    # panels read as walls of text, the same tile twice.
+    r"Grandes Heures|Graveyard of Mausoleum Con|Qin Shihuang's Mausoleum \(9897299296\)|Qin State Pottery Tile|"
+    # Terracotta render 2: Sun Yat-sen's 1920s mausoleum, Rome's Appian Way and a
+    # Manchu tomb over the Qin tomb lines, a museum floor plan.
+    r"Festival Hall of Sun Yat-sen|AppiaAntica|Zhaoling, Tomb of Manchu|Qin Terracotta Army Museum Layout|"
+    # Terracotta render 3: a still-life vase, Italian Renaissance armour, mixed
+    # Mediterranean lamps and a Greek fish askos over the China story.
+    r"Srill life flowers|Man Armor \(c\. 1500\)|Various lamps bronze terracotta|Terracotta askos|"
     # Pavlov plan 4: a 2020 Nobel winner, an Indian medical college, hunting prints,
     # child-labour photos, other men named Mackintosh, Watson and Skinner, a Soviet
     # postal cover, a Pisa cement works, a market building.
@@ -217,7 +242,12 @@ _BLOCKED_TITLES = re.compile(
     # a US archive photo of dogs and keepers.
     r"floating laboratory|Alchemical Laboratory|NARA - 299573|"
     # Pavlov plan 12: a modern US dog-walking photo, a US Agriculture Department lab.
-    r"Woman with Dog on Leash|Medano Creek|Bureau of Chemistry", re.I)
+    r"Woman with Dog on Leash|Medano Creek|Bureau of Chemistry|"
+    # Pavlov plan 13: Prague's giant Letna metronome, the Czech village of Pavlov
+    # (aerial view), a named stranger, a modern digital metronome.
+    r"Metronome \(2555843095\)|I\.P\. Pavlov deska|(?:^|File:)Pavlov\.jpg|Lewis Larsen|Korg TM-40|"
+    # Pavlov plan 14: the lunar Pavlov crater, an unrelated "Pavlov A B", a US whiskey lab.
+    r"Pavlov crater|Pavlov A B 2000|testing whiskey", re.I)
 MIN_WIDTH = 1600   # below this a 1440p frame is visibly upscaled
 # "Sarah Chepchirchir - Paris Half Marathon": a photo titled with a person's name
 # shows that person. In the mood pool they'd appear over a line about someone else.

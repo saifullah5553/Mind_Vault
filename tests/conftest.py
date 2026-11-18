@@ -81,3 +81,17 @@ def _private_ai_cache(tmp_path, monkeypatch):
     """Tests never read or fill the real illustration cache (storage/ai_cache)."""
     from core.media import ai_images
     monkeypatch.setattr(ai_images, "CACHE_DIR", tmp_path / "_ai_cache")
+
+
+@pytest.fixture(autouse=True)
+def _private_search_cache(tmp_path, monkeypatch):
+    """Tests never read or fill the real picture-search cache (storage/cache/searches)."""
+    from core.media import briefs
+    monkeypatch.setattr(briefs, "SEARCH_CACHE_DIR", tmp_path / "_search_cache")
+
+
+@pytest.fixture(autouse=True)
+def _private_pixabay_cache(tmp_path, monkeypatch):
+    """Tests never read or fill the real Pixabay search cache or its daily count."""
+    from core.media import stock_video
+    monkeypatch.setattr(stock_video, "PIXABAY_CACHE_DIR", tmp_path / "_pixabay_cache")

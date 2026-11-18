@@ -50,8 +50,10 @@ If you're enjoying our videos, subscribe to Mind Vault, and like and share this 
 ```
 
 The greeting and the CTA are the owner's wording (2026-11-18), kept exactly. The
-greeting is always the SECOND line, right after the hook, never the first: viewers
-decide in the first 6-8 seconds, and a hello loses them before the story starts.
+greeting comes right after the hook, never first: viewers decide in the first 6-8
+seconds, and a hello loses them before the story starts. The hook is the first
+sentence, or a short opening scene of 2-4 sentences (at most about 15 seconds); never
+break a scene in the middle to greet.
 "Today's story:" names the story in 3-8 plain words that match the title's promise
 ("the truth behind Pavlov's dogs", "how China buried an army of clay"). Reels cut the
 greeting out automatically (core/media/reels.py) and open on the hook.
@@ -214,7 +216,7 @@ picture worth a close-up (a face, a seal, a ship, an inscription).
   That's what holds retention.
 - Never "delve", "journey", "tapestry", "in the realm of", "profound", "multifaceted",
   "fast-forward", or "as we navigate". Never say "chapter" or "part".
-- The greeting is the second sentence, exactly as written above, right after the hook.
+- The greeting comes right after the hook (or the short opening scene), exactly as written above.
 - End with one line that sticks, then the CTA exactly as written above.
 - Write about real people respectfully and accurately. Use no invented quotes: only
   quote what a source shows they said.

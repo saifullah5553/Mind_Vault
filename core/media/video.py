@@ -232,7 +232,8 @@ def _directed_segment(ffmpeg: str, scene, i: int, dur: float, res, fps: int, par
     try:
         proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
                                 stderr=subprocess.DEVNULL)
-        for f, (frame, _kind) in enumerate(camera.frames(src, dur, fps, res, i)):
+        for f, (frame, _kind) in enumerate(camera.frames(src, dur, fps, res, i,
+                                                         getattr(scene, "held", 0))):
             frame = Image.composite(black, frame, mask)
             ImageDraw.Draw(frame).text((30, h - 46), brand, font=font, fill=(210, 210, 220))
             if getattr(scene, "label", ""):

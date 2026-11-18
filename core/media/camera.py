@@ -106,17 +106,33 @@ def _box(cx: float, cy: float, bw: float, sw: int, sh: int) -> tuple[float, floa
 
 
 def plan(size: tuple[int, int], focus: tuple[float, float], seconds: float, fps: int,
-         out_width: int, index: int) -> list[Shot]:
-    """The shots for one still: one or two, filling `seconds` exactly."""
+         out_width: int, index: int, held: int = 0) -> list[Shot]:
+    """The shots for one still: one or two, filling `seconds` exactly.
+
+    `held` > 0: this line keeps the previous line's picture (picture briefs). It
+    cuts to a new angle on the same picture, alternating a close-up on the
+    subject and a medium shot from the other side, so it reads as coverage of
+    one scene rather than the same shot twice."""
     sw, sh = size
     total = max(2, round(seconds * fps))
     fx, fy = focus[0] * sw, focus[1] * sh
     aspect = sw / sh
+    if held and 1.3 <= aspect <= 2.1:
+        full = min(sw, sh * ASPECT)
+        close = full / 1.8
+        if held % 2 and close >= CLOSEUP_SHARPNESS * out_width:
+            return [Shot(total, _box(fx, fy, close, sw, sh), _box(fx, fy, close / 1.06, sw, sh),
+                         "closeup")]
+        medium = full / 1.35
+        return [Shot(total, _box(sw - fx, fy, medium, sw, sh), _box(fx, fy, medium / 1.05, sw, sh),
+                     "medium")]
     if aspect > 2.1:                                   # a scroll or panorama: pan across it
         bw = sh * ASPECT
         left, right = _box(bw / 2, sh / 2, bw, sw, sh), _box(sw - bw / 2, sh / 2, bw, sw, sh)
         # End on the side the interest is on.
         start, end = (left, right) if fx >= sw / 2 else (right, left)
+        if held % 2:
+            start, end = end, start                    # a held line pans back
         return [Shot(total, start, end, "pan")]
     if aspect < 0.95:                                  # a tall portrait: whole, slow push
         return [Shot(total, (0, 0, 1, 1), (0.04, 0.03, 0.96, 0.91), "portrait")]
@@ -124,6 +140,8 @@ def plan(size: tuple[int, int], focus: tuple[float, float], seconds: float, fps:
         bw = sw
         top, bottom = _box(sw / 2, 0, bw, sw, sh), _box(sw / 2, sh, bw, sw, sh)
         start, end = (top, bottom) if fy > sh / 2 else (bottom, top)
+        if held % 2:
+            start, end = end, start
         return [Shot(total, start, end, "tilt")]
 
     full = min(sw, sh * ASPECT)
@@ -187,11 +205,11 @@ def portrait_frame(src, box_frac, res):
     return full.transform((w, h), Image.EXTENT, (x0 * w, y0 * h, x1 * w, y1 * h), Image.BICUBIC)
 
 
-def frames(src, seconds: float, fps: int, res, index: int):
+def frames(src, seconds: float, fps: int, res, index: int, held: int = 0):
     """Every output frame for a still, as (PIL image, shot kind)."""
     from PIL import Image
     res = (int(res[0]), int(res[1]))
-    shots = plan(src.size, interest(src), seconds, fps, res[0], index)
+    shots = plan(src.size, interest(src), seconds, fps, res[0], index, held)
     for shot in shots:
         for box in boxes(shot):
             if shot.kind == "portrait":

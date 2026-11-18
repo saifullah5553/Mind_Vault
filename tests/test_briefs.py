@@ -133,3 +133,4 @@ def test_unbriefed_lines_hold_the_previous_shot_never_a_random_picture(tmp_path,
     assert scenes[0].source.startswith("brief 'Everyone knows the story'")
     assert scenes[1].source.startswith("hold") and scenes[2].source.startswith("hold")
     assert Path(scenes[1].image_path).read_bytes() == Path(scenes[0].image_path).read_bytes()
+    assert (scenes[0].held, scenes[1].held, scenes[2].held) == (0, 1, 2)   # new angles in turn

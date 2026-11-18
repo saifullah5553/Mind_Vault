@@ -283,7 +283,8 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
 
     # AI illustrations the script asked for ('ILLUSTRATE: cue = prompt; ...'): the
     # first line containing each cue shows it, tagged on screen (core/media/ai_images.py).
-    if illustrate.strip():
+    # With briefs, illustrations are part of each line's brief (kind: illustration).
+    if illustrate.strip() and not brief_list:
         from core.media import ai_images
         made = 0
         for cue, prompt in ai_images.parse(illustrate):
@@ -317,6 +318,7 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
         assigned = {s.index: m for s, m in zip(rest, picks)}
 
     last_still: Path | None = None
+    held_run = 0
     for scene in scenes:
         out = out_dir / f"scene_{scene.index:03d}.jpg"
         done = scene.index in done_named
@@ -325,9 +327,12 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
             # gives it a new move), never a random picture.
             done = _hold(last_still, out)
             if done:
+                held_run += 1
+                scene.held = held_run
                 scene.source = "hold: previous shot"
         if done and _shows(scene) and not str(scene.source).startswith("hold"):
             last_still = out
+            held_run = 0
 
         if pool and not done:
             if any("theme" in m for m in pool):

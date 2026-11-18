@@ -106,6 +106,7 @@ class Scene(BaseModel):
     label_sub: str = ""
     tag: str = ""                     # corner tag, e.g. "ILLUSTRATION" on AI pictures
     title: str = ""                   # cold open: the film title over the first shot
+    held: int = 0                     # nth line in a row holding the previous picture
 
 
 class ScenePlan(BaseModel):

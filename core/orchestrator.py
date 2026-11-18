@@ -197,6 +197,14 @@ class Orchestrator:
                            ("tags", "tags"), ("illustrate", "illustrate")):
             if head.get(field):
                 ctx.extra[key] = head[field]
+        # Picture briefs beside the script (core/media/briefs.py): one master
+        # prompt per line instead of TOPIC searches.
+        from core.media.briefs import pictures_file
+        pics = pictures_file(script_file)
+        if pics.exists():
+            ctx.extra["pictures"] = str(pics)
+        else:
+            ctx.extra.pop("pictures", None)
         self._update_content(ctx, title=ctx.script.title, script=ctx.script.full_text)
 
     # ── the pipeline ───────────────────────────────────────────────────────
@@ -445,6 +453,7 @@ class Orchestrator:
             "category": ctx.category,
             # 'cue = prompt; ...' from the script header: AI illustrations (core/media/ai_images.py)
             "illustrate": ctx.extra.get("illustrate", ""),
+            "pictures": ctx.extra.get("pictures", ""),
             "title": ctx.script.title if ctx.script else "",
             "thumbnail_text": ctx.extra.get("thumbnail_text", ""),
         }, ctx)

@@ -9,7 +9,10 @@ brand:
   name: "Mind_Vault"
   tagline: "The vault of the human mind and its history."
   language: "en"
-  cta: "If you enjoyed this story, like, subscribe and share it, to stay updated with new videos from Mind Vault."
+  cta: "If you're enjoying our videos, subscribe to Mind Vault, and like and share this video, so you never miss a new story."
+  # Spoken right after the hook line (never before it: viewers decide in the first
+  # 6-8 seconds). {topic} is the story in a few words. Reels cut it out.
+  greeting: "Hello, friends, and welcome to your own channel, Mind Vault. Today's story: {topic}."
   # Every video ends on this card, and every description carries the longer text.
   disclaimer_screen: >-
     For education and entertainment only. Not medical, psychological, legal or

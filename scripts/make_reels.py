@@ -115,8 +115,14 @@ def _render_part(src: Path, part: reels.Part, headline: str, card: Path, out: Pa
     d = part.duration
     cta_from = max(0.0, d - reels.NEXT_STEP_SECONDS)
     secs = get_settings().brand.disclaimer_seconds_short
+    # The greeting after the hook is left out: cut its span from the range.
+    keep = "+".join(f"between(t,{a - part.start:.3f},{b - part.start:.3f})" for a, b in part.cuts)
+    pre = (f"[0:v]select='not({keep})',setpts=N/FRAME_RATE/TB[sv];"
+           f"[0:a]aselect='not({keep})',asetpts=N/SR/TB[sa];" if keep else
+           "[0:v]null[sv];[0:a]anull[sa];")
     filt = (
-        "[0:v]split[a][b];"
+        pre +
+        "[sv]split[a][b];"
         "[a]scale=270:480:force_original_aspect_ratio=increase,crop=270:480,boxblur=10:2,"
         f"scale={W}:{H},eq=brightness=-0.18:saturation=0.85[bg];"
         f"[b]scale={W}:-2[fg];[bg][fg]overlay=0:{FG_Y}[v1];[v1][1:v]overlay=0:0[v1h];"
@@ -124,14 +130,15 @@ def _render_part(src: Path, part: reels.Part, headline: str, card: Path, out: Pa
         f"[v2]subtitles=c.srt:force_style='{_CAPTION_STYLE}',"
         f"scale=out_color_matrix=bt709:out_range=tv,fps={FPS},format=yuv420p,setsar=1[vp];"
         f"[2:v]fps={FPS},format=yuv420p,setsar=1[vc];"
-        f"[0:a]afade=t=in:d=0.12,afade=t=out:st={max(0.0, d - 0.35):.3f}:d=0.35,"
+        f"[sa]afade=t=in:d=0.12,afade=t=out:st={max(0.0, d - 0.35):.3f}:d=0.35,"
         "aformat=sample_rates=48000:channel_layouts=stereo[ap];"
         "[3:a]aformat=sample_rates=48000:channel_layouts=stereo[ac];"
         "[vp][ap][vc][ac]concat=n=2:v=1:a=1[vv][a];"
         # concat drops the colour tags; set them so every player shows the same colours.
         "[vv]setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=tv[v]")
     raw = work / "raw.mp4"
-    cmd = [ffmpeg, "-y", "-ss", f"{part.start:.3f}", "-t", f"{d:.3f}", "-i", str(src.resolve()),
+    span = part.end - part.start                     # the range read, before the cut
+    cmd = [ffmpeg, "-y", "-ss", f"{part.start:.3f}", "-t", f"{span:.3f}", "-i", str(src.resolve()),
            "-i", str((work / "head.png").resolve()), "-i", str(card.resolve()),
            "-f", "lavfi", "-t", f"{secs}", "-i", "anullsrc=r=48000:cl=stereo",
            "-i", str((work / "next.png").resolve()),
@@ -147,14 +154,18 @@ def _render_part(src: Path, part: reels.Part, headline: str, card: Path, out: Pa
     shutil.rmtree(work, ignore_errors=True)
 
 
-def _swap_reel_audio(reel: Path, alt: Path, start: float, length: float, out: Path) -> None:
+def _swap_reel_audio(reel: Path, alt: Path, start: float, length: float, out: Path,
+                     cuts=()) -> None:
     """A reel copy for Facebook/TikTok: the same picture, the narration with the
     generated score (the YouTube cut carries a YouTube-only track), silence under
-    the disclaimer card."""
+    the disclaimer card. `cuts` (long-video seconds) are left out, as in the reel."""
     from core.media.video import _ffmpeg_exe
     ffmpeg = _ffmpeg_exe()
+    keep = "+".join(f"between(t,{a - start:.3f},{b - start:.3f})" for a, b in cuts)
+    sel = f"aselect='not({keep})',asetpts=N/SR/TB," if keep else ""
     subprocess.run([ffmpeg, "-y", "-i", str(reel), "-ss", f"{start:.3f}", "-t", f"{length:.3f}",
-                    "-i", str(alt), "-filter_complex", "[1:a]apad[a]", "-map", "0:v", "-map", "[a]",
+                    "-i", str(alt), "-filter_complex", f"[1:a]{sel}apad[a]", "-map", "0:v",
+                    "-map", "[a]",
                     "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-shortest",
                     "-movflags", "+faststart", str(out)], check=True, capture_output=True)
 
@@ -224,7 +235,7 @@ def cmd_render(args) -> None:
         _render_part(src, p, head, card, f)
         files.append(f)
         plan.append({"part": p.number, "total": p.total, "start": p.start, "end": p.end,
-                     "headline": head, "title": reels.youtube_title(title, p.number, p.total),
+                     "cuts": p.cuts, "headline": head, "title": reels.youtube_title(title, p.number, p.total),
                      "seconds": round(_duration(f), 1), "text": p.text, "file": f.name})
     card.unlink(missing_ok=True)
     (out / "plan.json").write_text(json.dumps(plan, indent=2), encoding="utf-8")
@@ -307,7 +318,8 @@ def cmd_publish(args) -> None:
         f = out / r["file"]
         alt = _bundle(args.run_id) / "audio_off_youtube.m4a"
         if alt.exists():
-            _swap_reel_audio(f, alt, r["start"], r["end"] - r["start"], ready / r["file"])
+            _swap_reel_audio(f, alt, r["start"], r["end"] - r["start"], ready / r["file"],
+                             r.get("cuts", []))
         else:
             shutil.copyfile(f, ready / r["file"])
         (ready / f"{f.stem}.txt").write_text(f"{r['title']}\n\n{desc}\n", encoding="utf-8")

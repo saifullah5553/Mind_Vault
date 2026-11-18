@@ -100,3 +100,17 @@ def test_cold_open_title_and_hit():
     assert frame.getextrema() != ((120, 120), (120, 120), (120, 120))     # on screen
     ev = sfx.events([None, "map:{}", None], [0, 14, 20], title_at=1.0)
     assert ev[0] == ("hit", 1.0) and ("whoosh", 13.45) in ev
+
+
+def test_a_held_line_cuts_to_a_new_angle_on_the_same_picture():
+    from core.media import camera
+    size, focus = (4000, 2500), (0.7, 0.4)
+    first = camera.plan(size, focus, 3.0, 30, 1920, 4)
+    close = camera.plan(size, focus, 3.0, 30, 1920, 5, held=1)
+    medium = camera.plan(size, focus, 3.0, 30, 1920, 6, held=2)
+    assert first[0].kind == "wide"
+    assert [s.kind for s in close] == ["closeup"] and [s.kind for s in medium] == ["medium"]
+    # the close-up frames less of the picture than the medium shot
+    cw = close[0].start[2] - close[0].start[0]
+    mw = medium[0].start[2] - medium[0].start[0]
+    assert cw < mw

@@ -102,3 +102,52 @@ def test_closing_ask_is_cut_from_reels_old_and_new_wording():
         s = reels.sentences(reels.parse_srt(srt), get_settings().brand.cta)
         assert [x.text for x in s] == ["In 1953, a storm came.", "The dikes broke."]
     assert "subscribe" in get_settings().brand.cta and "share" in get_settings().brand.cta
+
+
+def test_old_closing_asks_are_still_cut_from_reels():
+    from core.config import get_settings
+    for old in ("If you enjoyed this story, like, subscribe and share it, to stay updated.",
+                "Join Mind Vault for more stories."):
+        srt = _srt([(0, 3, "In 1953, a storm came."), (3.3, 6.0, "The dikes broke."), (6.5, 9, old)])
+        s = reels.sentences(reels.parse_srt(srt), get_settings().brand.cta)
+        assert [x.text for x in s] == ["In 1953, a storm came.", "The dikes broke."]
+
+
+def _greeted():
+    return _srt([(0.0, 4.0, "In 1904, a man won the Nobel Prize."),
+                 (4.5, 8.0, "Hello, friends, and welcome to your own channel, Mind Vault."),
+                 (8.3, 10.0, "Today's story: the truth behind Pavlov's dogs."),
+                 (10.6, 14.0, "Everyone knows the story."),
+                 (14.3, 18.0, "Almost none of it is true.")])
+
+
+def test_reels_cut_the_greeting_and_keep_the_hook():
+    s = reels.sentences(reels.parse_srt(_greeted()))
+    assert [x.text for x in s] == ["In 1904, a man won the Nobel Prize.",
+                                   "Everyone knows the story.", "Almost none of it is true."]
+    assert s[1].skip == (4.45, 10.5) and s[0].skip is None and s[2].skip is None
+    assert reels.is_greeting("Hello friends, and welcome back") and not reels.is_greeting("Hello.")
+
+
+def test_a_part_across_the_greeting_is_shorter_and_its_captions_close_the_gap():
+    s = reels.sentences(reels.parse_srt(_greeted()))
+    part = reels.Part(1, 1, 0.0, 18.2, s)
+    assert part.cuts == [(4.45, 10.5)]
+    assert part.duration == pytest.approx(18.2 - 6.05)
+    srt = reels.part_srt(part)
+    assert "00:00:04,550 --> 00:00:07,950" in srt      # 'Everyone knows' right after the hook
+    assert "Hello" not in srt and "Today" not in srt
+
+
+def test_a_part_starting_after_the_greeting_has_nothing_to_cut():
+    s = reels.sentences(reels.parse_srt(_greeted()))
+    assert reels.Part(2, 2, 10.48, 18.2, s[1:]).cuts == []
+
+
+def test_the_new_closing_ask_and_greeting():
+    from core.config import get_settings
+    b = get_settings().brand
+    assert b.cta.startswith("If you're enjoying our videos, subscribe to Mind Vault")
+    assert "like and share" in b.cta
+    assert b.greeting.startswith("Hello, friends, and welcome to your own channel, Mind Vault.")
+    assert "{topic}" in b.greeting and reels.is_greeting(b.greeting.replace("{topic}", "x"))

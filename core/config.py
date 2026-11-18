@@ -39,6 +39,7 @@ class BrandConfig(BaseModel):
     tagline: str = ""
     language: str = "en"
     cta: str = ""
+    greeting: str = ""
     # Shown as an end card on every video and added to every description.
     disclaimer_screen: str = ""
     disclaimer_description: str = ""

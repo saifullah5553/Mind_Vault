@@ -59,9 +59,11 @@ class SEOAgent(BaseAgent):
             limit = r.get("desc_max", 2000)
             parts = [self._platform_desc(description, platform),
                      # The owner's standing ask, in every description.
-                     ("Like, subscribe and share to stay updated with new videos."
+                     ("If you're enjoying our videos, subscribe to Mind Vault, and like and "
+                      "share this video, so you never miss a new story."
                       if platform == "youtube" else
-                      "Like, follow and share to stay updated with new videos.")]
+                      "If you're enjoying our videos, follow Mind Vault, and like and share "
+                      "this video, so you never miss a new story.")]
             if platform == "youtube" and chapters:
                 parts.append(chapters)
             if disclosure:

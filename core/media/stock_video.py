@@ -319,6 +319,50 @@ def _tagged(tags: str, query: str) -> bool:
     return has(words[0], leading) and all(has(w, tags) for w in words)
 
 
+# The owner's Pixabay quota is shared with another project, and every picture plan
+# used to repeat the same searches (15 plans for one film). Searches are kept for
+# 24 hours, as Pixabay's API terms ask, and new ones are capped per day.
+PIXABAY_CACHE_DIR = Path(__file__).resolve().parents[2] / "storage" / "cache" / "pixabay"
+PIXABAY_CACHE_HOURS = 24
+PIXABAY_DAILY_MAX = 40
+
+
+def _pixabay_search(params: dict) -> dict | None:
+    """The search's JSON from the 24-hour cache, else from Pixabay while today's
+    allowance lasts. None when the allowance is spent (other providers fill in)."""
+    import datetime
+    import hashlib
+    import json
+
+    asked = {k: v for k, v in params.items() if k != "key"}       # never store the key
+    name = hashlib.sha1(json.dumps(asked, sort_keys=True).encode()).hexdigest()
+    path = PIXABAY_CACHE_DIR / f"{name}.json"
+    try:
+        if path.exists() and time.time() - path.stat().st_mtime < PIXABAY_CACHE_HOURS * 3600:
+            return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        pass
+    count_file = PIXABAY_CACHE_DIR / "_today.json"
+    today = datetime.date.today().isoformat()
+    try:
+        count = json.loads(count_file.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        count = {}
+    used = count.get("n", 0) if count.get("date") == today else 0
+    if used >= PIXABAY_DAILY_MAX:
+        log.info("Pixabay: today's %d new searches are used; skipping %r", PIXABAY_DAILY_MAX,
+                 asked.get("q", ""))
+        return None
+    PIXABAY_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    count_file.write_text(json.dumps({"date": today, "n": used + 1}), encoding="utf-8")
+    data = _pixabay_get(params).json()
+    try:
+        path.write_text(json.dumps(data), encoding="utf-8")
+    except OSError:
+        pass
+    return data
+
+
 def _pixabay_get(params: dict):
     """The search request, retried through rate limits and dropped connections."""
     import httpx
@@ -354,9 +398,9 @@ def _pixabay_clips(query: str, limit: int, landscape: bool = True,
         return []
     out: list[dict] = []
     try:
-        r = _pixabay_get({"key": key, "q": query, "per_page": "100", "video_type": "film",
-                          "safesearch": "true"})
-        for v in r.json().get("hits", []):
+        data = _pixabay_search({"key": key, "q": query, "per_page": "100",
+                                "video_type": "film", "safesearch": "true"}) or {}
+        for v in data.get("hits", []):
             tags = str(v.get("tags", "")).lower()
             if not acceptable_title(tags) or _NOT_FILMED.search(tags) or v.get("id") in _BLOCKED_IDS:
                 continue

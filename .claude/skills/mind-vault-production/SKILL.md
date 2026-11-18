@@ -35,7 +35,9 @@ THUMBNAIL: JAPAN'S 15-YEAR LEAP        <- 2 to 4 words, capitals
 TAGS: history of japan, meiji restoration, black ships, commodore perry, edo period, japan documentary, ...
 
 [INTRODUCTION]
-The hook, then the promise of the story.
+The hook: one sentence, the strongest moment in the story.
+Hello, friends, and welcome to your own channel, Mind Vault. Today's story: <the story in a few words>.
+Then the promise of the story.
 
 [CHAPTER: The Black Ships]              <- chapters shape the writing; they are never spoken or shown
 ...
@@ -44,8 +46,17 @@ The hook, then the promise of the story.
 ...
 
 [CTA]
-If you enjoyed this story, like, subscribe and share it, to stay updated with new videos from Mind Vault.
+If you're enjoying our videos, subscribe to Mind Vault, and like and share this video, so you never miss a new story.
 ```
+
+The greeting and the CTA are the owner's wording (2026-11-18), kept exactly. The
+greeting comes right after the hook, never first: viewers decide in the first 6-8
+seconds, and a hello loses them before the story starts. The hook is the first
+sentence, or a short opening scene of 2-4 sentences (at most about 15 seconds); never
+break a scene in the middle to greet.
+"Today's story:" names the story in 3-8 plain words that match the title's promise
+("the truth behind Pavlov's dogs", "how China buried an army of clay"). Reels cut the
+greeting out automatically (core/media/reels.py) and open on the hook.
 
 For a history documentary, TOPIC is one picture search per part of the story, so each
 part shows its own subject:
@@ -95,6 +106,50 @@ line, at least 8:
 ```
 Commodore Matthew Perry's ships arrived at Uraga, near Edo, in July 1853 | https://www.britannica.com/...
 ```
+
+### Picture briefs: one master prompt per line (the owner's rule, 2026-11-18)
+
+Wrong pictures come from broad searches. So write `content/scripts/<slug>.pictures.yaml`
+beside the script: one brief per line, in story order, saying exactly what that line
+must show, in deep detail (format and fields in core/media/briefs.py). With a briefs
+file, the TOPIC pool, the ILLUSTRATE header and stock footage are not used: each line
+gets its brief's photo, its illustration, or holds the previous shot (the camera cuts
+to a new angle). Never a random filler.
+
+```yaml
+- cue: "won the Nobel Prize"            # words from the line
+  kind: photo                           # photo | illustration | hold
+  who: "Ivan Petrovich Pavlov (1849-1936), Russian physiologist, Nobel Prize 1904; a scientist, not a writer, priest or politician"
+  not: "Valentin Pavlov (Soviet prime minister), other Pavlovs, his students alone"
+  look: "older man, full white beard, short white hair, upright"
+  clothing: "white laboratory coat over a dark suit"
+  setting: "his laboratory at the Institute of Experimental Medicine, with a dog or apparatus"
+  mood: "serious and focused, watching an experiment; not a ceremony"
+  era: "1890-1936"
+  framing: "medium shot, face clearly visible"
+  search: ["Pavlov laboratory Wellcome", "Ivan Pavlov experiment dog"]
+  must: ["Pavlov"]
+  any: ["Ivan", "I. P.", "laboratory"]
+  reject: ["statue", "monument", "stamp"]
+  label: "Ivan Pavlov"
+```
+
+- For a person: who they were (scientist, poet, king), the years, their look, their
+  clothing, the place (laboratory, library, court), their mood (thinking, smiling,
+  stern), and who must NOT be shown (namesakes, relatives, students).
+- For a place or object: which one exactly, the period, the view (wide, close-up).
+- `must`/`any`/`reject` are the checks a candidate's title and description must pass;
+  `era` rejects pictures dated outside it.
+- `kind: illustration` with a `prompt` for moments no photo can show (never a real
+  person's face, never children who were real study subjects); `kind: hold` for a line
+  that should stay on the previous picture. A line with no brief holds too.
+- Spend searches on the lines that matter; hold the rest. Real children and private
+  people are never shown in real photos.
+
+The plan writes `storage/images/<id>/briefs/briefs.txt` and one numbered sheet per
+photo brief (`briefs/NNN.jpg`). LOOK at every sheet against its brief and write
+`pick: "<file title>"` (or `pick: none` to hold) in the yaml. Then plan again to
+confirm, and render only when every picked picture meets its brief.
 
 Then plan the pictures before rendering (about 10 minutes):
 
@@ -161,6 +216,7 @@ picture worth a close-up (a face, a seal, a ship, an inscription).
   That's what holds retention.
 - Never "delve", "journey", "tapestry", "in the realm of", "profound", "multifaceted",
   "fast-forward", or "as we navigate". Never say "chapter" or "part".
+- The greeting comes right after the hook (or the short opening scene), exactly as written above.
 - End with one line that sticks, then the CTA exactly as written above.
 - Write about real people respectfully and accurately. Use no invented quotes: only
   quote what a source shows they said.

@@ -194,8 +194,13 @@ def _try_stable_diffusion(scene: Scene, out_path: Path) -> bool:  # pragma: no c
 
 def generate_images(scenes: list[Scene], run_dir: str | Path,
                     topic: str = "", category: str = "history",
-                    subtitles: bool = True, illustrate: str = "") -> list[Scene]:
+                    subtitles: bool = True, illustrate: str = "",
+                    pictures: str = "") -> list[Scene]:
     """Render one frame per scene. Sets `scene.image_path`. Never raises.
+
+    `pictures` is the script's picture-briefs file (core/media/briefs.py). With
+    it, every line gets the picture its brief describes, an illustration, or the
+    previous shot held: no TOPIC pool and no random fillers.
 
     `subtitles=False` (long-form: captions ship as a caption track) leaves the
     picture clean and keeps its colour instead of darkening it for text.
@@ -214,10 +219,12 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
     shown: list[dict] = []
     used: dict[str, int] = {}
     use_stock = provider in ("auto", "stock")
+    from core.media import briefs as _briefs
+    brief_list = _briefs.load(pictures) if pictures else []
 
     # One coherent, on-topic image pool for the whole video (see stock.fetch_pool).
     pool: list[dict] = []
-    if use_stock and topic:
+    if use_stock and topic and not brief_list:
         try:
             from core.media.stock import fetch_pool, fetch_themed_pool
             # One photo per still, so pictures don't repeat within a video.
@@ -250,9 +257,14 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
     def _shows(scene) -> bool:
         return not scene.animation_kind and not scene.clip_path
 
+    # Picture briefs first: each line's own master prompt (core/media/briefs.py).
+    if brief_list:
+        _apply_briefs(brief_list, scenes, out_dir, width, height, brand, subtitles,
+                      category, shown, done_named, director, _shows, use_stock)
+
     # A named person/place/work gets the actual subject, once per video.
     # Only for scenes that will show a still (cards and footage don't).
-    if use_stock:
+    if use_stock and not brief_list:
         for scene in scenes:
             if not _shows(scene) or getattr(scene, "title", ""):
                 # The cold open shows the story's subject (the best pool match),
@@ -271,7 +283,8 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
 
     # AI illustrations the script asked for ('ILLUSTRATE: cue = prompt; ...'): the
     # first line containing each cue shows it, tagged on screen (core/media/ai_images.py).
-    if illustrate.strip():
+    # With briefs, illustrations are part of each line's brief (kind: illustration).
+    if illustrate.strip() and not brief_list:
         from core.media import ai_images
         made = 0
         for cue, prompt in ai_images.parse(illustrate):
@@ -304,9 +317,22 @@ def generate_images(scenes: list[Scene], run_dir: str | Path,
                                 pool, [_shows(s) for s in rest])
         assigned = {s.index: m for s, m in zip(rest, picks)}
 
+    last_still: Path | None = None
+    held_run = 0
     for scene in scenes:
         out = out_dir / f"scene_{scene.index:03d}.jpg"
         done = scene.index in done_named
+        if brief_list and not done and _shows(scene) and last_still is not None:
+            # No brief, or nothing met it: keep the previous shot (the camera
+            # gives it a new move), never a random picture.
+            done = _hold(last_still, out)
+            if done:
+                held_run += 1
+                scene.held = held_run
+                scene.source = "hold: previous shot"
+        if done and _shows(scene) and not str(scene.source).startswith("hold"):
+            last_still = out
+            held_run = 0
 
         if pool and not done:
             if any("theme" in m for m in pool):
@@ -479,3 +505,64 @@ def _backdrop(src: Path, out: Path, width: int, height: int) -> bool:
     except Exception as exc:
         log.debug("backdrop failed (%s)", exc)
         return False
+
+
+def _hold(prev: Path, out: Path) -> bool:
+    """This scene shows the previous scene's picture (and its camera source)."""
+    import shutil
+    try:
+        shutil.copyfile(prev, out)
+        if source_copy(prev).exists():
+            shutil.copyfile(source_copy(prev), source_copy(out))
+        return True
+    except OSError as exc:
+        log.debug("hold copy failed (%s)", exc)
+        return False
+
+
+def _apply_briefs(brief_list, scenes, out_dir: Path, width: int, height: int, brand: str,
+                  subtitles: bool, category: str, shown: list, done: set, director: dict,
+                  shows, use_stock: bool) -> None:
+    """Every briefed line: its picked/best photo, its illustration, or nothing
+    (the main loop then holds the previous shot). Plan-only runs also write the
+    candidate sheets for review (briefs/NN.jpg + briefs/briefs.txt)."""
+    import os
+
+    from core.media import ai_images, briefs
+    from core.media.stock import _download
+
+    plan_only = os.getenv("MIND_VAULT_PLAN_ONLY") == "1"
+    by_line = briefs.match(brief_list, [s.narration for s in scenes])
+    rows = []
+    for i, b in sorted(by_line.items()):
+        scene = scenes[i]
+        if not shows(scene) or getattr(scene, "title", ""):
+            continue          # cards, maps, footage and the cold open keep their own
+        out = out_dir / f"scene_{scene.index:03d}.jpg"
+        found: list = []
+        if b.kind == "illustration" and b.prompt:
+            meta = ai_images.generate(b.prompt, out_dir / f"_ai_{scene.index:03d}.jpg")
+            if meta and _cinematic_from_photo(Path(meta["path"]), scene, out, width, height,
+                                              brand, subtitle=subtitles):
+                shown.append(meta)
+                scene.source = f"AI illustration: {b.prompt[:100]}"
+                scene.tag = "ILLUSTRATION"
+                done.add(scene.index)
+        elif b.kind == "photo" and use_stock:
+            found = briefs.candidates(b, category)
+            hit = briefs.chosen(b, found)
+            if hit:
+                src = out_dir / f"_brief_{scene.index:03d}.jpg"
+                if _download(hit["url"], src) and _cinematic_from_photo(
+                        src, scene, out, width, height, brand, subtitle=subtitles):
+                    meta = {**hit, "path": str(src)}
+                    shown.append(meta)
+                    scene.source = f"brief '{b.cue}': {hit.get('title', '')}"[:160]
+                    done.add(scene.index)
+                    _direct(scene, meta, out_dir, director, named=b.label)
+            if plan_only:
+                briefs.sheet(b, found, scene.narration, out_dir / "briefs" / f"{scene.index:03d}.jpg")
+        rows.append((scene.index, scene.narration, b, found))
+    if plan_only and rows:
+        (out_dir / "briefs").mkdir(parents=True, exist_ok=True)
+        (out_dir / "briefs" / "briefs.txt").write_text(briefs.report(rows), encoding="utf-8")

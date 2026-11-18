@@ -74,7 +74,10 @@ class VideoAgent(BaseAgent):
         # 2) REAL FOOTAGE: each shot used once, spread through the video.
         import os
         skip_footage = os.getenv("MIND_VAULT_SKIP_FOOTAGE") == "1"
-        if self.config.get("use_stock_footage", True) and topic and not skip_footage:
+        # With picture briefs every line's picture is chosen for it; footage
+        # searches (and their Pixabay quota) would only bring unbriefed clips.
+        if (self.config.get("use_stock_footage", True) and topic and not skip_footage
+                and not payload.get("pictures")):
             self._attach_footage(plan.scenes, img_dir, topic, category, fmt.resolution)
 
         # 3) Eye-catching stills for every other scene (rendered at the video's
@@ -82,7 +85,8 @@ class VideoAgent(BaseAgent):
         if self.config.get("generate_images", True):
             self.settings.images.width, self.settings.images.height = fmt.resolution
             generate_images(plan.scenes, img_dir, topic=topic, category=category,
-                            subtitles=False, illustrate=payload.get("illustrate", ""))
+                            subtitles=False, illustrate=payload.get("illustrate", ""),
+                            pictures=payload.get("pictures", ""))
 
         if os.getenv("MIND_VAULT_PLAN_ONLY") == "1":
             # The picture plan: the shot list and a sheet of the planned stills,

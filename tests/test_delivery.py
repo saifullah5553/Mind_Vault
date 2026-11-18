@@ -444,6 +444,9 @@ def test_vertical_video_can_crop_big_landscape_clips(monkeypatch):
     monkeypatch.setattr(httpx, "get", lambda *a, **k: _pixabay_reply(big))
     assert _pixabay_clips("cat", 1, landscape=False)[0]["url"] == "u4k"
     # 1080p would be upscaled 1.78x after the crop: too soft.
+    import shutil
+    from core.media import stock_video
+    shutil.rmtree(stock_video.PIXABAY_CACHE_DIR, ignore_errors=True)   # a new answer, not the cached one
     monkeypatch.setattr(httpx, "get", lambda *a, **k: _pixabay_reply(small))
     assert _pixabay_clips("cat", 1, landscape=False) == []
 
@@ -1552,3 +1555,37 @@ def test_qin_mausoleum_photo_still_allowed():
 def test_terracotta_render2_pictures_are_blocked(title):
     from core.media.stock import acceptable
     assert not acceptable({"title": title, "license": "CC0", "width": 3000}, "history")
+
+
+def _fake_pixabay(monkeypatch, calls):
+    from core.media import stock_video
+
+    class R:
+        def json(self):
+            return {"hits": []}
+
+    def fake_get(params):
+        calls.append(params["q"])
+        return R()
+    monkeypatch.setattr(stock_video, "_pixabay_get", fake_get)
+    monkeypatch.setenv("PIXABAY_API_KEY", "secret-key")
+    return stock_video
+
+
+def test_pixabay_search_is_cached(monkeypatch):
+    calls = []
+    sv = _fake_pixabay(monkeypatch, calls)
+    sv._pixabay_clips("dog laboratory", 5)
+    sv._pixabay_clips("dog laboratory", 5)
+    assert calls == ["dog laboratory"]               # the second plan costs nothing
+    for f in sv.PIXABAY_CACHE_DIR.glob("*.json"):
+        assert "secret-key" not in f.read_text(encoding="utf-8")
+
+
+def test_pixabay_new_searches_capped_per_day(monkeypatch):
+    calls = []
+    sv = _fake_pixabay(monkeypatch, calls)
+    monkeypatch.setattr(sv, "PIXABAY_DAILY_MAX", 2)
+    for q in ("a dog", "a bell", "a metronome", "a buzzer"):
+        sv._pixabay_clips(q, 5)
+    assert calls == ["a dog", "a bell"]

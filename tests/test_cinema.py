@@ -1,5 +1,6 @@
 """The camera director (core/media/camera.py) and sound design (core/media/sfx.py)."""
 import numpy as np
+import pytest
 from PIL import Image, ImageDraw
 
 from core.media import camera, sfx
@@ -114,3 +115,38 @@ def test_a_held_line_cuts_to_a_new_angle_on_the_same_picture():
     cw = close[0].start[2] - close[0].start[0]
     mw = medium[0].start[2] - medium[0].start[0]
     assert cw < mw
+
+
+def test_portrait_frame_never_reuses_another_pictures_frame():
+    """Norway 1905, 5:22: a render worker showed Michelsen over Maud's line. The
+    portrait cache keyed on id(src); a freed picture's id is reused by the next one."""
+    from PIL import Image
+
+    from core.media import camera
+    res = (64, 36)
+    for shade in range(10, 250, 12):
+        # .convert() as the renderer does: the new object lands on the freed address.
+        src = Image.new("RGB", (30, 60), (shade, shade, shade)).convert("RGB")
+        centre = camera.portrait_frame(src, (0.0, 0.0, 1.0, 1.0), res).getpixel((32, 18))[0]
+        del src
+        assert abs(centre - shade) <= 3, (shade, centre)
+
+
+@pytest.mark.parametrize("line,raw,label", [
+    ("In June 1945, after the defeat of Germany, he came home.", "1945",
+     "In June, after the defeat of Germany, he came home"),
+    ("On the twelfth and thirteenth of November, 1905, Norway voted again.", "1905",
+     "On the twelfth and thirteenth of November, Norway voted again"),
+    ("They had a little son, Alexander, born in 1903.", "1903",
+     "They had a little son, Alexander, born"),
+    ("A review in 1999 found the same.", "1999", "A review found the same"),
+])
+def test_number_card_label_leaves_no_stray_commas(line, raw, label):
+    """Norway 1905: cards read 'In June , after' and 'November, , Norway'."""
+    from core.media.animation import stat_label
+    assert stat_label(line, raw) == label
+
+
+def test_date_card_text_is_tidy():
+    from core.media.animation import tidy
+    assert tidy("Between  and , the union broke .") == "Between and, the union broke"

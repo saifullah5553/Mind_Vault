@@ -188,9 +188,13 @@ def portrait_frame(src, box_frac, res):
     res = (int(res[0]), int(res[1]))
     w, h = res
     cache = portrait_frame.__dict__.setdefault("_cache", {})
+    # Keyed on the picture object itself, held here: an id() alone is reused once
+    # a picture is freed, and a render worker then showed one portrait over the
+    # next portrait's line (Norway 1905: Michelsen over Maud at 5:22).
     key = (id(src), res)
-    if key not in cache:
+    if cache.get("src") is not src or key not in cache:
         cache.clear()
+        cache["src"] = src
         r = max(w / src.width, h / src.height)
         bg = src.resize((round(src.width * r) + 2, round(src.height * r) + 2), Image.BILINEAR)
         bg = bg.crop(((bg.width - w) // 2, (bg.height - h) // 2, (bg.width - w) // 2 + w,

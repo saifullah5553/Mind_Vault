@@ -202,6 +202,26 @@ def _draw_title(img, scene_text, style, res, p):
                             radius=5, fill=style.accent)
 
 
+def tidy(text: str) -> str:
+    """The punctuation left when a number or year is lifted out of a line:
+    'In June , after' -> 'In June, after'; 'November, , Norway' -> 'November, Norway'."""
+    t = re.sub(r"\(\s*\)", "", text)
+    t = re.sub(r"\s+([,.;:!?])", r"\1", t)              # no space before punctuation
+    t = re.sub(r"([,;:])(?:\s*[,;:])+", r"\1", t)       # one comma, not two
+    t = re.sub(r"\s{2,}", " ", t)
+    return t.strip(" ,.;:-")
+
+
+def stat_label(scene_text: str, raw: str) -> str:
+    """The line under a big number: the line without the number, and without the
+    preposition that came with it, wherever it sits ('A review in 1999 ...')."""
+    label = re.sub(r"\b(?:in|by|since|from|around|about)\s+" + re.escape(raw) + r"\s*,?\s*", "",
+                   scene_text, flags=re.I)
+    label = tidy(re.sub(re.escape(raw), "", label)) or scene_text
+    label = label[:1].upper() + label[1:]
+    return re.sub(r"\s+(?:in|on|by|from|since|of)$", "", label, flags=re.I)
+
+
 def _draw_stat(img, scene_text, style, res, p):
     from PIL import ImageDraw
     w, h = res
@@ -215,12 +235,7 @@ def _draw_stat(img, scene_text, style, res, p):
     except ValueError:
         target = 100.0
     is_year = not suffix and raw.isdigit() and len(raw) == 4 and 1000 <= target <= 2100
-    # Take the preposition with the year, wherever it sits ("A review in 1999 ...").
-    label = re.sub(r"\b(?:in|by|since|from|around|about)\s+" + re.escape(raw) + r"\s*,?\s*", "",
-                   scene_text, flags=re.I)
-    label = re.sub(re.escape(raw), "", label).strip(" ,.;:") or scene_text
-    label = label[:1].upper() + label[1:]
-    label = re.sub(r"\s+(?:in|on|by|from|since|of)$", "", label, flags=re.I)
+    label = stat_label(scene_text, raw)
 
     if is_year:
         # A year is a date, not a quantity: no thousands separator, no count-up.
@@ -279,8 +294,7 @@ def _draw_timeline(img, scene_text, style, res, p):
                     style.ink, appear)
     # What the dates are about, under the line.
     about = re.sub(_YEAR_RE, "", scene_text)
-    about = re.sub(r"\s+", " ", re.sub(r"\b(?:from|to|and|between|in)\s+(?=\W|$)", "",
-                                       about, flags=re.I)).strip(" ,.;:-")
+    about = tidy(re.sub(r"\b(?:from|to|and|between|in)\s+(?=\W|$)", "", about, flags=re.I))
     if about:
         lf, wrapped = _fit_text(d, about, lambda s: _font(s, False), int(w * 0.76),
                                 int(w * 0.036), max_h=int(h * 0.2), spacing=8)

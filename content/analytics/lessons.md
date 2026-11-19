@@ -62,3 +62,16 @@ YouTube Analytics API enabled in the Google Cloud project (owner action).
 12. **Rosetta and Pavlov reels are 1–2 days old:** judge them only by views per day at
     the next run. Pavlov Part 1 ("Why His Biographer Says There Was No Bell", a myth
     reversal) runs at 26/day, the best start since Japan (tentative).
+
+## 2026-11-19 (1,279 views, 2 subscribers, 35 Shorts)
+
+13. **Lesson 12 corrected: Pavlov Part 1 slowed from 26/day to 9.6/day** after its first
+    day; one early burst is not a trend.
+14. **Country stories draw more Shorts views than single-object or single-person stories
+    (tentative, 5 series).** At a few days old, the Japan, Netherlands and Iceland reels ran
+    at about 4-25 views/day; the Rosetta Stone reels run at 1-8/day and the Pavlov reels at
+    1-11/day. Keep most topics on a country's turning point (a nation that breaks free,
+    loses, or wins something back), and give object or person stories a country-scale turn
+    in the headline. Recheck when the Terracotta reels are a few days old.
+15. **Long videos still get almost no views (6 videos, 0-11 views, 8-18% average view).**
+    Lesson 9 stands; the reels remain the way in.

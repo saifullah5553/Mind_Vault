@@ -536,8 +536,10 @@ def _apply_briefs(brief_list, scenes, out_dir: Path, width: int, height: int, br
     rows = []
     for i, b in sorted(by_line.items()):
         scene = scenes[i]
-        if not shows(scene) or getattr(scene, "title", ""):
-            continue          # cards, maps, footage and the cold open keep their own
+        if not shows(scene):
+            continue          # cards, maps and footage keep their own
+        # The cold open (scene.title) takes its brief too: with briefs there is no
+        # pool, so skipping it left the first shot a blank card (Norway plan 2).
         out = out_dir / f"scene_{scene.index:03d}.jpg"
         found: list = []
         if b.kind == "illustration" and b.prompt:

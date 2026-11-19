@@ -134,3 +134,31 @@ def test_unbriefed_lines_hold_the_previous_shot_never_a_random_picture(tmp_path,
     assert scenes[1].source.startswith("hold") and scenes[2].source.startswith("hold")
     assert Path(scenes[1].image_path).read_bytes() == Path(scenes[0].image_path).read_bytes()
     assert (scenes[0].held, scenes[1].held, scenes[2].held) == (0, 1, 2)   # new angles in turn
+
+
+def test_cold_open_line_takes_its_brief(tmp_path, monkeypatch):
+    """The first line carries the cold-open title; with briefs it must still get its
+    brief's photo, not a blank card."""
+    from PIL import Image
+
+    from core.config import get_settings
+    from core.media import images, stock
+
+    s = get_settings()
+    s.images.provider = "stock"
+    s.images.width, s.images.height = 320, 180
+
+    def fake_download(url, dest):
+        Image.new("RGB", (640, 400), (120, 90, 60)).save(dest)
+        return True
+    monkeypatch.setattr(stock, "_download", fake_download)
+    monkeypatch.setattr(stock, "_commons_search", lambda q, limit=3, curated=None: [
+        _hit("Pavlov experiments with dog Wellcome M0014738.jpg", "Ivan Pavlov laboratory")])
+    monkeypatch.setattr(stock, "_openverse_search", lambda q, limit=3: [])
+    monkeypatch.setattr(stock, "fetch_pool", lambda *a, **k: pytest.fail("no pool with briefs"))
+    pics = _write(tmp_path, [PAVLOV])
+    scenes = _scenes(["Everyone knows the story of Pavlov's dogs.", "Then came the bell."])
+    scenes[0].title = "Pavlov's Dogs"
+    images.generate_images(scenes, tmp_path / "run", topic="Ivan Pavlov", category="history",
+                           subtitles=False, pictures=str(pics))
+    assert scenes[0].source.startswith("brief 'Everyone knows the story'")

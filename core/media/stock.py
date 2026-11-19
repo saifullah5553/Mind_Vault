@@ -202,6 +202,10 @@ _BLOCKED_TITLES = re.compile(
     # Terracotta render 3: a still-life vase, Italian Renaissance armour, mixed
     # Mediterranean lamps and a Greek fish askos over the China story.
     r"Srill life flowers|Man Armor \(c\. 1500\)|Various lamps bronze terracotta|Terracotta askos|"
+    # Terracotta plan 4 (2026-11-19): Mediterranean museum terracottas (urns, rattles,
+    # vessels) keep landing on Qin lines; block the object family, and a 1974 news montage.
+    r"Terracotta (?:cinerary|rattle|urn|vase|vessel|lamp|figurine|statuette|jug|bowl|plaque|amphora|krater|kylix|lekythos|oinochoe|pyxis|alabastron)|"
+    r"cinerary urn|1974 Events montage|Terracotta miniature jar|Ancient terracotta horse sculpture|Sun Yat-sen|"
     # Pavlov plan 4: a 2020 Nobel winner, an Indian medical college, hunting prints,
     # child-labour photos, other men named Mackintosh, Watson and Skinner, a Soviet
     # postal cover, a Pisa cement works, a market building.

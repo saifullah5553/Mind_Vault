@@ -1,0 +1,575 @@
+# Picture briefs for "Norway 1905" (core/media/briefs.py). One brief per line, story order.
+# Real people shown only when it is really them. Crown Prince Olav appears only inside the
+# historic 1905 arrival photos (a public royal event), never in close child portraits.
+# No war violence: the 1940 lines use calm photos of the king, never combat.
+
+# ── INTRODUCTION ────────────────────────────────────────────────────────────
+- cue: "a Danish prince stepped ashore"
+  kind: photo
+  who: "King Haakon VII (formerly Prince Carl of Denmark) arriving in Kristiania (Oslo) on 25 November 1905, the historic landing photograph; crowds, officials, the harbour"
+  not: "later royal visits, other kings, modern Oslo harbour"
+  look: "a tall man in naval coat and cap stepping ashore, a small child carried in his arm, top hats around"
+  clothing: "dark naval greatcoat, winter clothes of 1905"
+  setting: "the quay at Vippetangen, Kristiania harbour, crowds, flags"
+  mood: "historic, solemn, crowded"
+  framing: "wide or medium shot of the landing"
+  search: ["Kongeindtoget 25-11-05", "Haakon VII ankomst Kristiania 1905", "Kong Haakon ankommer 1905", "Haakon VII arrival Kristiania 1905", "kongens ankomst 1905"]
+  must: []
+  any: ["Kongeindtoget", "ankomst", "arrival", "Vippetangen"]
+  reject: ["statue", "monument", "1906", "Trondheim", "painting of"]
+  label: "Kristiania, 25 November 1905"
+  pick: "Kongeindtoget 25-11-05 - no-nb digifoto 20160118 00038 NB NS NM 00206.jpg"
+
+- cue: "he had been Prince Carl of Denmark"
+  kind: photo
+  who: "Prince Carl of Denmark (1872-1957) before 1905, a Danish naval officer, second son of Crown Prince Frederik; later King Haakon VII of Norway"
+  not: "Carl XVI Gustaf of Sweden, Prince Carl of Sweden (Duke of Västergötland), King Charles, any other Carl"
+  look: "slim young man, moustache, upright"
+  clothing: "Danish naval officer's uniform"
+  setting: "studio portrait"
+  mood: "formal, calm"
+  era: "1890-1905"
+  framing: "portrait, face clear"
+  search: ["Prince Carl of Denmark", "Prins Carl af Danmark", "Prins Carl Danmark 1905"]
+  must: ["Carl"]
+  any: ["Denmark", "Danmark", "Prins", "Prince"]
+  reject: ["Gustaf", "Västergötland", "Sweden", "Sverige", "statue", "Charles"]
+  label: "Prince Carl of Denmark"
+
+- cue: "Now he was Haakon the Seventh"
+  kind: photo
+  who: "King Haakon VII of Norway (reigned 1905-1957) as a young king, around 1905-1910"
+  not: "Haakon VII statues, Crown Prince Haakon (born 1973), King Harald, Olav V alone"
+  look: "tall, slim, moustache"
+  clothing: "Norwegian admiral's or general's uniform"
+  setting: "formal portrait"
+  mood: "dignified"
+  framing: "portrait, face clear"
+  search: ["HandelsbladetNovember 1905", "King and Queen of Norway Davidson", "Haakon VII 1905", "King Haakon VII of Norway 1906", "Kong Haakon VII portrett", "Kong Haakon 7"]
+  must: []
+  any: ["Haakon", "King and Queen of Norway", "Handelsbladet"]
+  reject: ["statue", "monument", "Magnus", "Crown Prince Haakon", "Mette-Marit", "1973"]
+  label: "King Haakon VII"
+  pick: "HandelsbladetNovember 1905.jpg"
+
+- cue: "Hello, friends"
+  kind: hold
+
+- cue: "In a single summer, Norway left its union"
+  kind: photo
+  who: "a public event or document of the 1905 union dissolution in Norway: crowds in Kristiania in 1905, the Storting building in 1905, or a 1905 poster or flag"
+  not: "modern Oslo, 2005 centenary events"
+  setting: "Kristiania (Oslo) streets or the Storting, 1905"
+  mood: "historic, tense"
+  era: "1905-1905"
+  framing: "wide"
+  search: ["Unionsoppløsningen 1905", "7. juni 1905 Kristiania", "union dissolution 1905 Norway"]
+  must: ["1905"]
+  any: ["union", "Unionsoppløsningen", "juni", "Storting", "Kristiania"]
+  reject: ["2005", "stamp", "map"]
+
+- cue: "By the end of this story"
+  kind: hold
+
+# ── EIDSVOLL ────────────────────────────────────────────────────────────────
+- cue: "The story begins in 1814"
+  kind: hold
+
+- cue: "In the Treaty of Kiel"
+  kind: photo
+  who: "King Frederick VI of Denmark and Norway (1768-1839), the king who gave Norway up in the Treaty of Kiel, 1814; a painted portrait in royal robes"
+  not: "Frederik VII, Frederik VIII, Christian VII, his lying-in-state, documents or letters"
+  look: "older man, long face, pale"
+  clothing: "coronation robes, ermine"
+  setting: "painted portrait"
+  mood: "formal, regal"
+  framing: "portrait"
+  search: ["Frederik vi in coronationrobes1830", "King Frederick VI of Denmark"]
+  must: []
+  any: ["Frederik vi", "Frederick VI", "Frederik VI"]
+  reject: ["lit de parade", "Andrew Jackson", "Christian VII", "Anointment"]
+  label: "King Frederick VI"
+  pick: "Frederik vi in coronationrobes1830.jpg"
+
+- cue: "Norway was not asked"
+  kind: hold
+
+- cue: "One hundred and twelve elected men"
+  kind: photo
+  who: "Oscar Wergeland's painting of the Norwegian Constituent Assembly at Eidsvoll in 1814 (Riksforsamlingen på Eidsvoll 1814), the men standing in the hall"
+  not: "modern re-enactments, the 2014 bicentenary, other assemblies"
+  setting: "the hall at the Eidsvoll manor, 1814, men in early 19th-century coats"
+  mood: "solemn, historic"
+  framing: "wide, the whole painting"
+  search: ["Eidsvoll 1814 Wergeland", "Riksforsamlingen på Eidsvoll", "Eidsvoll 1814 painting"]
+  must: ["Eidsvoll"]
+  any: ["Wergeland", "1814", "Riksforsamlingen", "assembly"]
+  reject: ["2014", "stamp", "banknote", "photo of a painting in a museum"]
+  label: "The assembly at Eidsvoll, 1814"
+
+- cue: "they signed a constitution of their own"
+  kind: photo
+  who: "the Eidsvoll manor house (Eidsvollsbygningen), the building where the 1814 constitution was signed"
+  not: "the town of Eidsvoll's modern buildings, Eidsvoll church, the railway station"
+  setting: "the white and yellow wooden manor among trees, exterior"
+  mood: "calm, historic"
+  framing: "wide shot of the building"
+  search: ["Eidsvollsbygningen", "Eidsvoll manor house", "Eidsvoll building"]
+  must: ["Eidsvoll"]
+  any: ["bygning", "building", "manor", "Eidsvollsbygningen", "Carsten Anker"]
+  reject: ["station", "church", "kirke", "interior detail"]
+
+- cue: "Sweden's answer came in late July"
+  kind: illustration
+  prompt: "early nineteenth-century oil painting in the style of a Napoleonic-era military painting, a distant column of Swedish infantry of 1814 marching on a dirt track through a Norwegian pine valley in summer, dark blue coats with white crossbelts, tall black shakos, muskets with bayonets on their shoulders, a few small turf-roofed log farmhouses, soft painterly brushwork, figures small in the landscape, no faces in close-up, no fighting, no blood, no cars, no vehicles, no road signs, no poles, no wires, no modern buildings, no text, no flags"
+
+- cue: "the Convention of Moss"
+  kind: photo
+  who: "the Convention house in Moss, Norway (Konventionsgården, Moss jernverk), where the ceasefire was signed on 14 August 1814"
+  not: "moss the plant, other buildings in Moss, Kate Moss"
+  setting: "the historic main building at Moss ironworks"
+  mood: "calm, historic"
+  framing: "wide shot of the building"
+  search: ["Konventionsgården Moss", "Konvensjonsgården Moss", "Moss jernverk hovedbygning", "Convention of Moss 1814"]
+  must: ["Moss"]
+  any: ["Konvention", "Konvensjon", "jernverk", "1814", "convention"]
+  reject: ["plant", "Bryophyta", "Kate", "lichen", "forest floor"]
+  label: "Moss, 1814"
+
+- cue: "Sweden accepted Norway's new constitution"
+  kind: photo
+  who: "the original 1814 Norwegian Constitution document (Grunnloven), its handwritten pages with signatures and seals"
+  not: "later printed editions, the US constitution, modern books"
+  setting: "close-up of the manuscript pages"
+  mood: "historic, important"
+  framing: "close-up"
+  search: ["Grunnloven 1814 original", "Norwegian Constitution 1814 document", "Kongeriget Norges Grundlov 1814"]
+  must: ["1814"]
+  any: ["Grunnlov", "Grundlov", "Constitution", "konstitusjon"]
+  reject: ["United States", "America", "stamp", "coin"]
+  label: "Norway's constitution, 1814"
+
+- cue: "its own parliament, the Storting"
+  kind: photo
+  who: "the Storting building in Kristiania (Oslo), the Norwegian parliament, ideally an old photograph from 1866-1910"
+  not: "other parliaments, modern office buildings, the Royal Palace"
+  setting: "Karl Johans gate, the yellow-brick building with its round hall"
+  mood: "stately"
+  era: "1866-1930"
+  framing: "wide shot of the building"
+  search: ["Stortinget Kristiania", "Stortingsbygningen 1900", "Storting building Oslo old photograph"]
+  must: ["Storting"]
+  any: ["Kristiania", "Christiania", "bygning", "building", "Stortingsbygningen"]
+  reject: ["interior detail", "modern", "logo"]
+  label: "The Storting, Kristiania"
+
+- cue: "a foreign policy run from Stockholm"
+  kind: photo
+  who: "the Royal Palace of Stockholm (Stockholms slott), seat of the Swedish-Norwegian king, an old photograph about 1880-1910"
+  not: "Drottningholm, Oslo palace, modern Stockholm skyline"
+  setting: "the palace by the water in Stockholm"
+  mood: "stately, distant"
+  era: "1860-1915"
+  framing: "wide shot"
+  search: ["Stockholms slott 1900", "Royal Palace Stockholm 1890", "Stockholm palace old photograph"]
+  must: ["Stockholm"]
+  any: ["slott", "palace", "Royal"]
+  reject: ["Drottningholm", "Oslo", "map"]
+
+# ── THE CONSULS ────────────────────────────────────────────────────────────
+  pick: "Bennet - View of the Royal Palace in Stockholm.jpg"
+
+- cue: "that strange marriage held"
+  kind: photo
+  who: "the union flag or union mark of Sweden-Norway (the 'herring salad' union badge), or the two kingdoms' joint coat of arms, 1844-1905"
+  not: "the modern Norwegian or Swedish flag alone, Union Jack, European Union"
+  setting: "flag or emblem"
+  mood: "historic"
+  framing: "close-up"
+  search: ["union mark Norway Sweden", "Unionsmerket", "Sweden-Norway union flag", "Sildesalaten flagg"]
+  must: []
+  any: ["union", "Unionsmerket", "Sildesalaten", "unionsflagg"]
+  reject: ["European", "Union Jack", "trade union", "Soviet"]
+
+- cue: "The quarrel came down to consuls"
+  kind: photo
+  who: "Norwegian merchant sailing ships in a harbour about 1890-1905, for example Bergen harbour (Vågen) with Bryggen behind"
+  not: "modern cruise ships, Viking ships, warships"
+  setting: "harbour full of tall-masted ships, wooden wharves"
+  mood: "busy, maritime"
+  era: "1880-1910"
+  framing: "wide"
+  search: ["Bergen harbour 1900", "Bryggen Bergen 1890 ships", "Vågen Bergen 1900"]
+  must: ["Bergen"]
+  any: ["harbour", "havn", "Vågen", "Bryggen", "ships", "skip"]
+  reject: ["cruise", "Viking", "modern", "Bergen op Zoom", "Bergen-Belsen", "Bergen County"]
+
+- cue: "Christian Michelsen, became prime minister"
+  kind: photo
+  who: "Christian Michelsen (1857-1925), Bergen shipowner and Norway's prime minister 1905-1907"
+  not: "the Chr. Michelsen Institute building, his statue in Bergen, other Michelsens"
+  look: "middle-aged man, moustache, receding hair"
+  clothing: "dark suit, high collar"
+  setting: "studio portrait"
+  mood: "determined, serious"
+  era: "1890-1925"
+  framing: "portrait, face clear"
+  search: ["Christian Michelsen 1905", "Christian Michelsen statsminister", "Christian Michelsen portrait"]
+  must: ["Michelsen"]
+  any: ["Christian", "Chr.", "statsminister", "prime minister"]
+  reject: ["Institute", "Institutt", "statue", "monument", "støtte", "ship", "CMI"]
+  label: "Christian Michelsen"
+  pick: "Anders Beer Wilse - 43. Chr. Michelsen 1905 - DEX W 00595 - Norsk Teknisk Museum.jpg"
+
+- cue: "King Oscar the Second refused to sign it"
+  kind: photo
+  who: "King Oscar II of Sweden and Norway (1829-1907), around 1900-1905"
+  not: "Oscar I, Oscar Wilde, the Oscar award, Prince Oscar Bernadotte"
+  look: "old man, full white beard"
+  clothing: "uniform or dark suit with orders"
+  setting: "formal portrait"
+  mood: "stern, regal"
+  era: "1880-1907"
+  framing: "portrait, face clear"
+  search: ["Oscar II of Sweden", "Kung Oscar II", "Oscar II Sverige Norge konge"]
+  must: ["Oscar"]
+  any: ["II", "Kung", "konge", "King", "Sweden", "Sverige"]
+  reject: ["Wilde", "award", "Academy", "statue", "monument", "Bernadotte, Prince", "coin", "stamp"]
+  label: "King Oscar II"
+
+- cue: "His Norwegian ministers would not"
+  kind: photo
+  who: "the Michelsen cabinet of 1905 (Regjeringen Michelsen), the Norwegian ministers together in one group photograph"
+  not: "later cabinets, Swedish ministers"
+  clothing: "dark suits of 1905"
+  setting: "group photo, indoors or on steps"
+  mood: "serious, formal"
+  era: "1905-1907"
+  framing: "group shot"
+  search: ["Regjeringen Michelsen 1905", "Michelsen cabinet 1905", "Michelsens regjering"]
+  must: ["Michelsen"]
+  any: ["regjering", "regjeringen", "cabinet", "statsråd", "ministry"]
+  reject: ["statue", "Institute", "Institutt"]
+  pick: "Regjeringen Christian Michelsen (1905) (20140430 00126 bldsa fFA00278).jpg"
+
+- cue: "It looked like a dead end"
+  kind: hold
+
+# ── THE SEVENTH OF JUNE ─────────────────────────────────────────────────────
+- cue: "It passed a resolution"
+  kind: photo
+  who: "the Storting's chamber (Stortingssalen) in Kristiania, old photograph before 1930, or the Storting meeting on 7 June 1905"
+  not: "modern sessions, other parliaments"
+  setting: "the semicircular debating chamber"
+  mood: "solemn"
+  framing: "wide"
+  search: ["Carl Berner leser 7. juni-erklæringen", "Stortingssalen 1905", "7. juni 1905 Stortinget", "Stortingssalen gammelt bilde"]
+  must: []
+  any: ["Storting", "7. juni"]
+  reject: ["modern", "2010", "2020", "logo"]
+  pick: "Christian Krohg - Stortingspresident Carl Berner leser 7. juni-erklæringen - Norsk portrettarkiv - Riksantikvaren - B000177.jpg"
+
+- cue: "The resigned ministers were told"
+  kind: photo
+  who: "the Norwegian ministers and members of the Storting in the chamber during the union debate, 7 June 1905"
+  era: "1905-1905"
+  framing: "wide"
+  search: ["Fra Stortingssalen under unionsbehandlingen 7. juni 1905", "Stortingssalen 7. juni 1905"]
+  must: ["1905"]
+  any: ["Stortingssalen", "unionsbehandlingen", "Regjering"]
+  reject: ["statue"]
+  pick: "Fra Stortingssalen under unionsbehandlingen 7. juni, 1905. Regjering og stortingsrepresentanter - no-nb digifoto 20140430 00124 bldsa fFA00171.jpg"
+
+- cue: "In Sweden, many were furious"
+  kind: photo
+  who: "a Norwegian 1905 satirical cartoon about the telegram exchange between the king and the Norwegian government, from the magazine Vikingen"
+  era: "1905-1905"
+  framing: "full page"
+  search: ["En politisk Telegramveksling i 1905 Vikingen"]
+  must: ["1905"]
+  any: ["Vikingen", "Telegramveksling"]
+  pick: "En politisk Telegramveksling i 1905 Vikingen No 25 24de Juni 1905.jpg"
+
+- cue: "Think about what had just happened"
+  kind: hold
+
+- cue: "Norway had already chosen a date"
+  kind: photo
+  who: "the Norwegian referendum of 13 August 1905 on dissolving the union: a ballot, a polling place, or men voting in 1905"
+  not: "modern elections, the 1972 or 1994 EU referendums"
+  setting: "Norway, 1905"
+  mood: "civic, historic"
+  era: "1905-1905"
+  framing: "medium"
+  search: ["folkeavstemningen 1905", "folkeavstemning 13. august 1905", "Norwegian referendum 1905"]
+  must: ["1905"]
+  any: ["folkeavstemning", "folkeavstemningen", "referendum", "stemme", "august"]
+  reject: ["1972", "1994", "EU"]
+
+- cue: "Women gathered more than two hundred thousand"
+  kind: hold
+
+- cue: "The result was almost unbelievable"
+  kind: photo
+  who: "crowds on referendum day, 13 August 1905, in Norway"
+  era: "1905-1905"
+  framing: "wide"
+  search: ["Afstemningsdagen 13 Aug 1905", "Afstemningsdagen 13de August 1905"]
+  must: ["1905"]
+  any: ["Afstemningsdagen", "august", "Aug"]
+  pick: "Afstemningsdagen 13 Aug 1905 - no-nb digifoto 20160118 00030 NB NS 000081P.jpg"
+
+# ── KARLSTAD ───────────────────────────────────────────────────────────────
+- cue: "soldiers were quietly sent"
+  kind: photo
+  who: "Norwegian soldiers at the Swedish border in 1905, the neutrality guard (nøytralitetsvakten) or a border fort garrison in 1905"
+  not: "World War II soldiers, modern troops, battles, wounded men"
+  clothing: "Norwegian army uniforms of 1905"
+  setting: "forest, fortress or camp near the border"
+  mood: "waiting, tense, no fighting"
+  era: "1905-1905"
+  framing: "wide or group"
+  search: ["nøytralitetsvakten 1905", "soldater grensen 1905", "Norwegian soldiers 1905 border", "Kongsvinger festning 1905"]
+  must: ["1905"]
+  any: ["soldat", "soldater", "nøytralitetsvakt", "grense", "soldiers", "festning"]
+  reject: ["1940", "1944", "war grave", "battle", "wounded"]
+
+- cue: "met at Karlstad"
+  kind: photo
+  who: "the Karlstad negotiations of 1905: the Norwegian and Swedish delegates, or the building in Karlstad where they met"
+  not: "modern Karlstad, sports, the university"
+  setting: "Karlstad, Sweden, September 1905"
+  mood: "formal, serious"
+  era: "1905-1905"
+  framing: "group or building"
+  search: ["Karlstadförhandlingarna 1905", "Karlstadforhandlingene 1905", "Karlstad 1905 negotiations"]
+  must: ["Karlstad"]
+  any: ["1905", "förhandling", "forhandling", "negotiation", "convention", "konvention"]
+  reject: ["university", "hockey", "football", "Färjestad"]
+  label: "Karlstad, 1905"
+
+- cue: "For more than three weeks"
+  kind: hold
+
+- cue: "Norwegian forts inside it were pulled down"
+  kind: photo
+  who: "Ørje fortress (Ørje fort) in Østfold, Norway, its remains or old photo"
+  not: "other forts, Halden's Fredriksten unless named Ørje"
+  setting: "earthworks or fort remains in a forest"
+  mood: "quiet, historic"
+  framing: "wide"
+  search: ["Ørje fort", "Ørje festning", "Ørje fortress"]
+  must: ["Ørje"]
+  any: ["fort", "festning", "fortress", "skanse"]
+  reject: ["sluser", "lock", "church", "kirke"]
+  label: "Ørje fort"
+
+- cue: "King Oscar the Second gave up the throne"
+  kind: photo
+  who: "King Oscar II of Sweden (1829-1907) in old age, a different photo from the earlier one"
+  not: "Oscar I, Oscar Wilde, the Oscar award"
+  look: "old man, white beard"
+  era: "1895-1907"
+  framing: "portrait"
+  search: ["Oscar II 1905", "Oscar II king of Sweden photograph", "Kung Oscar II porträtt"]
+  must: ["Oscar"]
+  any: ["II", "Kung", "King", "konge"]
+  reject: ["Wilde", "award", "statue", "monument", "coin", "stamp"]
+  pick: "King Oscar II of Sweden, II by Anders Zorn 1898, UA 1378.jpg"
+
+- cue: "Ninety-one years of union were over"
+  kind: photo
+  who: "Norway's new flag (without the union mark) raised at 10 o'clock on 9 June 1905"
+  era: "1905-1905"
+  framing: "wide"
+  search: ["Da Norges nye flag heistes 1905"]
+  must: ["1905"]
+  any: ["flag", "heistes"]
+  pick: "Da Norges nye flag heistes Kl. 10 den 9de Juni 1905 - no-nb digifoto 20160225 00011 bldsa PK14917.jpg"
+
+# ── A KING BY VOTE ─────────────────────────────────────────────────────────
+- cue: "The answer was a young Danish prince"
+  kind: photo
+  who: "Prince Carl of Denmark (later Haakon VII) as a young man, about 1895-1905, a second photo different from the first"
+  not: "Carl XVI Gustaf, Swedish Prince Carl, other Carls"
+  clothing: "Danish navy uniform"
+  era: "1890-1905"
+  framing: "portrait or full figure"
+  search: ["Prins Carl af Danmark 1896", "Prince Carl of Denmark naval officer", "Prins Carl og Prinsesse Maud"]
+  must: ["Carl"]
+  any: ["Denmark", "Danmark", "Prins", "Prince", "Maud"]
+  reject: ["Gustaf", "Västergötland", "Sverige", "statue"]
+  pick: "Prins Carl og prinsesse Maud med sykler - no-nb digifoto 20160108 00281 bldsa pk kgl0007 (cropped).jpg"
+
+- cue: "Crown Prince Frederik of Denmark"
+  kind: photo
+  who: "Crown Prince Frederik of Denmark (1843-1912), later King Frederik VIII, father of Prince Carl"
+  not: "Frederik IX, Frederik X, Frederik VII, Crown Prince Frederik born 1968"
+  look: "middle-aged man, full beard"
+  clothing: "uniform"
+  era: "1870-1912"
+  framing: "portrait"
+  search: ["Frederik VIII of Denmark", "Frederick VIII of Denmark", "Kronprins Frederik (VIII)", "King Frederik VIII"]
+  must: ["Frederik"]
+  any: ["VIII", "Kronprins", "Crown Prince", "Frederick VIII"]
+  reject: ["IX", "X", "VII", "1968", "Mary", "statue", "Frederik 5", "Frederik V ", "kroningsdrakt"]
+  label: "Crown Prince Frederik of Denmark"
+
+- cue: "His wife, Maud"
+  kind: photo
+  who: "Princess Maud of Wales (1869-1938), youngest daughter of King Edward VII, later Queen Maud of Norway"
+  not: "Maud Adams, other Mauds, Queen Mary, Queen Alexandra"
+  look: "slender woman, hair up"
+  clothing: "Edwardian dress"
+  era: "1890-1910"
+  framing: "portrait"
+  search: ["Princess Maud of Wales", "Queen Maud of Norway 1906", "Dronning Maud"]
+  must: ["Maud"]
+  any: ["Wales", "Princess", "Queen", "Dronning", "Norway"]
+  reject: ["Adams", "Land", "Dronning Maud Land", "Antarctica", "statue", "ship"]
+  label: "Princess Maud"
+  pick: "Dronning Maud (1906).jpg"
+
+- cue: "They had a little son"
+  kind: hold
+
+- cue: "Some Norwegians wanted a republic"
+  kind: hold
+
+- cue: "He refused to take the crown unless"
+  kind: photo
+  who: "Prince Carl of Denmark and Princess Maud, a photograph of the couple before 1905"
+  framing: "medium"
+  search: ["Laurits Tuxen Prins Carls og prinsesse Mauds vielse", "Prins Carl og prinsesse Maud"]
+  must: ["Carl"]
+  any: ["Prins", "Maud"]
+  reject: ["Gustaf", "Hessen", "Saleman"]
+  pick: "Laurits Tuxen - Prins Carls og prinsesse Mauds vielse - NG.M.01642 - National Museum of Art, Architecture and Design.jpg"
+
+- cue: "the Storting elected Carl"
+  kind: photo
+  who: "the Storting building in Kristiania (Oslo), a different old photograph from the earlier one"
+  not: "other parliaments"
+  era: "1866-1930"
+  framing: "wide"
+  search: ["Stortinget 1905", "Stortingsbygningen Kristiania gammelt foto", "Storting Christiania"]
+  must: ["Storting"]
+  any: ["1905", "Kristiania", "Christiania", "bygning"]
+  reject: ["modern", "logo", "salen"]
+  pick: "Den 7. Juni 1905 - no-nb digifoto 20160225 00009 bldsa PK14904.jpg"
+
+- cue: "took the name Haakon"
+  kind: hold
+
+- cue: "His son Alexander became Olav"
+  kind: hold
+
+- cue: "came ashore at Vippetangen"
+  kind: photo
+  who: "the arrival of King Haakon VII and Queen Maud in Kristiania, 25 November 1905, a different photo from the opening one: the procession, the ship, or the crowds"
+  not: "later visits"
+  era: "1905-1905"
+  framing: "wide"
+  search: ["Kongeparets ankomst 1905", "Heimdal 1905 Kristiania", "Haakon Maud Kristiania 1905"]
+  must: ["1905"]
+  any: ["Haakon", "Maud", "ankomst", "Heimdal", "Kongen", "kongeparet"]
+  reject: ["statue", "1906", "Trondheim"]
+  pick: "Kongeindtoget 25-11-05 - no-nb digifoto 20160118 00033 NB NS 000098B.jpg"
+
+- cue: "he swore his oath"
+  kind: photo
+  who: "Haakon VII swearing his oath to the constitution in the Storting, 27 November 1905"
+  not: "other ceremonies"
+  era: "1905-1905"
+  framing: "wide"
+  search: ["Edsavleggelsen i Stortinget 1905", "Haakon VII ed Stortinget 1905", "kongens edsavleggelse 1905"]
+  must: ["1905"]
+  any: ["Edsavleggelsen", "edsavleggelse", "oath"]
+  reject: ["1906", "statue"]
+
+- cue: "crowned in Nidaros Cathedral"
+  kind: photo
+  who: "the coronation of Haakon VII and Maud in Nidaros Cathedral, Trondheim, 22 June 1906; or Nidaros Cathedral's west front in an old photograph"
+  not: "other cathedrals, modern events, interior altars"
+  setting: "Trondheim, 1906"
+  mood: "ceremonial"
+  framing: "wide"
+  search: ["kroningen 1906 Trondheim", "coronation Haakon VII 1906", "Nidarosdomen 1906", "Nidaros Cathedral"]
+  must: []
+  any: ["Nidaros", "kroning", "kroningen", "coronation"]
+  reject: ["altar", "crucifix", "Jesus", "modern", "Olav V 1958", "Harald 1991"]
+  label: "Nidaros Cathedral, Trondheim"
+
+# ── CONCLUSION ─────────────────────────────────────────────────────────────
+- cue: "Thirty-five years later"
+  kind: hold
+
+- cue: "Nazi Germany invaded Norway"
+  kind: illustration
+  prompt: "wide shot of a calm grey Norwegian fjord on a cold April morning in 1940, steep snowy mountains, a small wooden village on the shore, dark storm clouds gathering, a few distant warships far away on the water, no fighting, no fire, no flags, no symbols, no text, no people close up"
+
+- cue: "The Germans demanded"
+  kind: hold
+
+- cue: "Haakon refused"
+  kind: photo
+  who: "King Haakon VII in 1940, for example the famous photograph of the king and Crown Prince Olav sheltering by a birch tree near Molde in April 1940"
+  not: "German soldiers, Quisling, battles, ruins"
+  look: "tall old man with moustache"
+  clothing: "dark greatcoat, winter clothes"
+  framing: "medium"
+  search: ["Kongebjørka", "King Haakon VII 1940"]
+  must: []
+  any: ["Kongebjorka", "Kongebjørka", "Haakon"]
+  reject: ["statue", "Quisling", "soldiers dead", "Weserübung"]
+  label: "King Haakon VII, 1940"
+  pick: "Kongebjorka.jpeg"
+
+- cue: "He went into exile in Great Britain"
+  kind: photo
+  who: "King Haakon VII in Britain during the Second World War (1940-1945), meeting Norwegian forces or British officials in London or Scotland"
+  not: "German troops, battles"
+  era: "1940-1945"
+  framing: "medium"
+  search: ["King Haakon VII of Norway Britain", "King Haakon VII inspects", "Haakon VII London 1940", "King Haakon of Norway visit"]
+  must: ["Haakon"]
+  any: ["London", "Britain", "England", "Scotland", "exile", "1941", "1942", "1943"]
+  reject: ["statue", "ruin", "dead", "First World War", "Before the First"]
+
+- cue: "In June 1945"
+  kind: photo
+  who: "King Haakon VII's return to Oslo on 7 June 1945, crowds welcoming him"
+  not: "German soldiers, ruins"
+  era: "1945-1945"
+  framing: "wide"
+  search: ["Haakon VII 7 juni 1945", "Kongen kommer hjem 1945", "King Haakon return Oslo 1945"]
+  must: ["1945"]
+  any: ["Haakon", "Kongen", "kongen", "King", "hjemkomst"]
+  reject: ["statue", "ruin"]
+
+- cue: "He reigned until his death"
+  kind: photo
+  who: "King Haakon VII in his last years, 1950-1957, an old man"
+  not: "Olav V, Harald V"
+  era: "1946-1957"
+  framing: "portrait"
+  search: ["Haakon VII 1955", "Kong Haakon VII 1950", "King Haakon VII 1957"]
+  must: ["Haakon"]
+  any: ["VII", "Kong", "King", "1950", "1955", "1957"]
+  reject: ["statue", "monument", "funeral", "coffin"]
+
+- cue: "Norway did not win its freedom"
+  kind: photo
+  who: "the flag changed at Kristiansten fortress, Trondheim, at the union dissolution in 1905"
+  era: "1905-1905"
+  framing: "wide"
+  search: ["Flaggskifte på Kristiansten festning ved Unionsoppløsningen"]
+  must: ["1905"]
+  any: ["Flaggskifte", "Kristiansten"]
+  pick: "Flaggskifte på Kristiansten festning ved Unionsoppløsningen (1905) (4186762135).jpg"
+
+- cue: "And the king the people chose"
+  kind: hold
+
+- cue: "If you're enjoying our videos"
+  kind: hold

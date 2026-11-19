@@ -1589,3 +1589,27 @@ def test_pixabay_new_searches_capped_per_day(monkeypatch):
     for q in ("a dog", "a bell", "a metronome", "a buzzer"):
         sv._pixabay_clips(q, 5)
     assert calls == ["a dog", "a bell"]
+
+
+@pytest.mark.parametrize("title", [
+    "Terracotta cinerary urn",
+    "Terracotta rattle (?) form owl",
+    "1974 Events montage 16-grid version.jpg",
+    "Terracotta vase with lid",
+    "Terracotta miniature jar two handles",
+    "Ancient terracotta horse sculpture",
+    "Memorial arch of Sun Yat-sen Mausoleum at 1930s.jpg",
+])
+def test_terracotta_plan4_pictures_are_blocked(title):
+    from core.media.stock import acceptable
+    assert not acceptable({"title": title, "license": "CC0", "width": 3000}, "history")
+
+
+@pytest.mark.parametrize("title", [
+    "Painted Terracotta Warriors.jpg",
+    "Qin Terracotta Warriors, Pit 1 01.jpg",
+    "Terracotta warrior head",
+])
+def test_terracotta_warriors_still_allowed(title):
+    from core.media.stock import acceptable
+    assert acceptable({"title": title, "license": "CC0", "width": 3000}, "history")

@@ -156,6 +156,30 @@
       "lat": 59.927,
       "lon": 30.646,
       "country": "Russia"
+    },
+    {
+      "name": "Eidsvoll",
+      "lat": 60.3153,
+      "lon": 11.1514,
+      "country": "Norway"
+    },
+    {
+      "name": "Karlstad",
+      "lat": 59.3793,
+      "lon": 13.5036,
+      "country": "Sweden"
+    },
+    {
+      "name": "Kristiania",
+      "lat": 59.9139,
+      "lon": 10.7522,
+      "country": "Norway"
+    },
+    {
+      "name": "Vippetangen",
+      "lat": 59.9036,
+      "lon": 10.7406,
+      "country": "Norway"
     }
   ]
 }

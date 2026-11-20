@@ -67,7 +67,7 @@ YouTube Analytics API enabled in the Google Cloud project (owner action).
 
 13. **Lesson 12 corrected: Pavlov Part 1 slowed from 26/day to 9.6/day** after its first
     day; one early burst is not a trend.
-14. **Country stories draw more Shorts views than single-object or single-person stories
+14. **(Contradicted 2026-11-20, see 16.) Country stories draw more Shorts views than single-object or single-person stories
     (tentative, 5 series).** At a few days old, the Japan, Netherlands and Iceland reels ran
     at about 4-25 views/day; the Rosetta Stone reels run at 1-8/day and the Pavlov reels at
     1-11/day. Keep most topics on a country's turning point (a nation that breaks free,
@@ -75,3 +75,15 @@ YouTube Analytics API enabled in the Google Cloud project (owner action).
     in the headline. Recheck when the Terracotta reels are a few days old.
 15. **Long videos still get almost no views (6 videos, 0-11 views, 8-18% average view).**
     Lesson 9 stands; the reels remain the way in.
+
+## 2026-11-20 (1,329 views, 2 subscribers, 41 Shorts)
+
+16. **Lesson 14 is contradicted: a single-object story can beat the country stories.**
+    On their first day, the Terracotta reels run at 25-188 views/day ("How the Terracotta
+    Army Was Made, and the Chromium Myth" 188/day, "Why No One Knew It Existed for 2,000
+    Years" 172/day, "Mercury Rivers and Crossbow Traps" 93/day). That is the best start of any series;
+    Rosetta and Pavlov stay at 0-10/day. So the subject type is not the lever: a mystery,
+    a hidden discovery or a myth reversal in the headline is (tentative; one series, day
+    one only; recheck at the next run as views per day). Keep giving every reel a turn.
+17. **Later parts can lead again (lesson 11 repeats).** Terracotta Parts 4 and 5 beat Part 1
+    on day one, as Meiji Part 8 did. Every part needs its own hook.

@@ -1,0 +1,102 @@
+TOPIC: the Hawthorne effect psychology
+SUBCATEGORY: Social psychology
+TITLE: The Hawthorne Effect: The Famous Factory Study That Was Partly Fiction
+DESCRIPTION: The Hawthorne effect says people change what they do when they know they are being watched, and it began at a telephone factory near Chicago in the 1920s. This is the story of the dimming lights, the six women in the test room, and the lost data that turned up decades later and told a different story.
+THUMBNAIL: THE LOST DATA
+TAGS: hawthorne effect, hawthorne studies, hawthorne works, elton mayo, observer effect, western electric, psychology documentary, social psychology, illumination experiments, levitt and list, management and the worker, being watched psychology, history of psychology
+
+[INTRODUCTION]
+In the 1920s, at a telephone factory near Chicago, researchers turned the lights up, and the workers produced more.
+Then they turned the lights down. And the workers produced more again.
+Only when the room was almost as dark as moonlight did the work finally slow down.
+Hello, friends, and welcome to your own channel, Mind Vault. Today's story: the factory where being watched changed everything.
+That puzzle gave psychology one of its most famous ideas: the Hawthorne effect.
+People, it says, change what they do when they know they are being watched.
+But decades later, two economists found the lost data. And the famous story was not quite what everyone had been told.
+By the end, you will know what really happened at Hawthorne, and what is left of the effect today.
+
+[CHAPTER: The Factory]
+The factory was the Hawthorne Works, in Cicero, Illinois, just outside Chicago.
+It belonged to the Western Electric Company, part of the giant AT&T.
+Western Electric made the telephones and the switching equipment for the Bell System, America's great telephone network.
+At its peak, Hawthorne employed up to forty-five thousand workers.
+It was a city of brick buildings, chimneys and towers.
+And its owners wanted to know something simple.
+Would their workers produce more in brighter light, or in dimmer light?
+
+[CHAPTER: The Lights]
+The first test began in 1924, and it was about light.
+The idea seemed obvious. Better light should mean better work.
+The researchers chose two rooms.
+In the experiment room, they changed the lighting.
+In the control room, the lighting stayed the same.
+They turned the lights up. Output rose in the experiment room.
+But it also rose in the control room, where nothing had changed.
+Then they turned the lights down. Output rose again, in both rooms.
+They kept dimming. Only at about the level of moonlight did the work in the experiment room finally drop.
+Light, it seemed, was not the answer.
+Something else was going on. But what?
+
+[CHAPTER: The Test Room]
+In 1927, a new experiment began.
+Two women were chosen from the factory floor. They then chose four other women to join them.
+The six worked in a separate room, assembling telephone relays.
+Each finished relay was dropped down a chute, where it was counted.
+So every relay each woman made was on the record.
+The researchers changed the working day, step by step.
+Two five-minute breaks: output went up.
+Two ten-minute breaks: output went up again.
+Six five-minute breaks: output went down.
+Then came food. Soup or coffee with a sandwich in the morning, and a snack later in the day. Output went up.
+They let the women finish at half past four instead of five, and gave them Saturdays off. Output went up.
+And here is the strange part.
+Changing almost anything seemed to raise output, even when the change was just a return to the old conditions.
+
+[CHAPTER: The Professor]
+The man whose name became tied to all this was Elton Mayo.
+He was born in Adelaide, in Australia, in 1880.
+In 1926, he became a professor of industrial research at the Harvard Business School.
+Most of the work at Hawthorne was done by his assistant, Fritz Roethlisberger, and by William Dickson of Western Electric. Mayo rarely visited the plant.
+But Mayo had an explanation.
+The workers, he said, were responding to the sympathy and interest of the observers.
+For the first time, someone was paying attention to them.
+The studies grew. Starting in 1928, researchers carried out about twenty thousand interviews with workers.
+Then, in 1931, they began watching a group of fourteen men wiring telephone equipment.
+This time, output fell. The men feared that if they worked faster, their pay rate would be cut.
+In 1939, Roethlisberger and Dickson published the full account, in a book called Management and the Worker.
+Management experts would later vote it one of the most influential management books of the twentieth century.
+In the 1950s, the pattern got a name: the Hawthorne effect.
+In 1958, the researcher Henry Landsberger suggested why. Being part of a study was new and exciting, and the extra attention could lift output, at least for a while.
+The idea spread far beyond factories, into hospitals and medical trials.
+If people know they are being studied, the results may change.
+
+[CHAPTER: The Lost Data]
+But there was a problem.
+The data from the famous light experiments had never been properly analysed.
+For decades, they were thought to have been destroyed.
+Then two economists, Steven Levitt and John List, went looking.
+They found the records on microfilm, at the University of Wisconsin in Milwaukee.
+In 2009, they published what the numbers really showed.
+Their verdict was blunt. The remarkable patterns in the usual telling of the story, they wrote, were entirely fictional.
+The data did not show output jumping every time the lights changed.
+But Levitt and List did find something.
+There were hints of a smaller, more subtle Hawthorne effect, hidden in the original numbers.
+Other critics had already raised doubts.
+One pointed out that the women in the test room could see the counters that recorded their work. They were getting feedback, perhaps for the first time.
+Another called the whole story "a glorified anecdote."
+And many researchers now describe the test room study as poorly controlled. Too many things changed at once to know which one mattered.
+
+[CONCLUSION]
+So was there a Hawthorne effect?
+Perhaps. But if it was there, it was smaller, and messier, than the legend.
+John List has said that he is still confident the effect is real.
+Scientists still take it seriously. When people know they are being watched, they may behave differently.
+In a medical trial, for example, patients who are being studied may get slightly better care, or take their medicine more carefully.
+That is why careful studies use control groups, and why researchers try not to let their attention change what they measure.
+The Hawthorne Works closed in 1983. Most of it was knocked down and replaced by a shopping centre.
+But one of the old towers still stands, on the corner of Twenty-Second Street and Cicero Avenue.
+The famous story was too neat to be true.
+The real lesson is simpler. Before you trust a famous finding, ask to see the data.
+
+[CTA]
+If you're enjoying our videos, subscribe to Mind Vault, and like and share this video, so you never miss a new story.

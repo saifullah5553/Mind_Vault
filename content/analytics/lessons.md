@@ -87,3 +87,22 @@ YouTube Analytics API enabled in the Google Cloud project (owner action).
     one only; recheck at the next run as views per day). Keep giving every reel a turn.
 17. **Later parts can lead again (lesson 11 repeats).** Terracotta Parts 4 and 5 beat Part 1
     on day one, as Meiji Part 8 did. Every part needs its own hook.
+
+## 2026-11-23 (2,088 views, 3 subscribers, 60 Shorts)
+
+18. **One Short broke out: "The 1893 Suffrage Petition: 32,000 Names Against the Liquor
+    Trade" (NZ Part 3, 1,096 views, about 750/day).** It is a middle part whose headline
+    carries a hard number and a fight (a petition against a powerful trade). The next
+    best are also turns or endings: "Qin Shi Huang's Tomb: Mercury Clues and Why It Was
+    Never Opened" (Part 7, 255, a mystery) and "Meiji Japan: How the Unequal Treaties
+    Finally Ended" (Part 8, 149). Lesson 2 repeats: a concrete number plus a conflict or
+    an unsolved question in the headline (tentative for the number; one breakout).
+19. **Lessons 4, 8 and 11 reverse: later parts now average more than Part 1 (51 vs 36
+    views, 10 series).** A later part with a strong turn can carry a whole series. Write
+    every headline as if it were Part 1, and never let a middle part be set-up.
+20. **Lesson 16 corrected: first-day bursts fade (repeats lesson 13).** The Terracotta
+    reels that ran at 172-188 views/day on day one now total 1-51 views. Judge a reel by
+    its total after three or more days, not by day one.
+21. **Long videos are still not found (10 videos, 34 views in all).** Lessons 9 and 15
+    stand: the reels are the way in, so every description and reel must point to the
+    full video.
